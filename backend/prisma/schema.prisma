@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id             String    @id @default(uuid()) @db.Uuid
+  phone          String    @unique
+  name           String?
+  role           String
+  firebase_uid   String?   @unique
+  created_at     DateTime  @default(now())
+  
+  mentorProfile  MentorProfile?
+  wallet         Wallet?
+  mentorBalance  MentorBalance?
+  
+  callSessionsStudent CallSession[] @relation("StudentCalls")
+  callSessionsMentor  CallSession[] @relation("MentorCalls")
+  
+  ratingsStudent Rating[] @relation("StudentRatings")
+  ratingsMentor  Rating[] @relation("MentorRatings")
+
+  @@map("users")
+}
+
+model MentorProfile {
+  mentorId       String    @id @db.Uuid
+  iit_name       String
+  branch         String?
+  year           Int?
+  verified       Boolean   @default(false)
+  id_doc_url     String?
+  bio            String?
+  photo_url      String?
+  rate_per_min   Decimal   @default(10.00) @db.Decimal(6, 2)
+  avg_rating     Decimal   @default(0) @db.Decimal(3, 2)
+  total_calls    Int       @default(0)
+  isOnline       Boolean   @default(false)
+  lastOnlineAt   DateTime?
+  
+  user           User      @relation(fields: [mentorId], references: [id])
+
+  @@map("mentor_profiles")
+}
+
+model Wallet {
+  userId         String    @id @db.Uuid
+  balance        Decimal   @default(0) @db.Decimal(10, 2)
+  updatedAt      DateTime  @default(now()) @map("updated_at")
+
+  user           User      @relation(fields: [userId], references: [id])
+
+  @@map("wallets")
+}
+
+model MentorBalance {
+  mentorId       String    @id @db.Uuid
+  pendingPayout  Decimal   @default(0) @db.Decimal(10, 2)
+  totalEarned    Decimal   @default(0) @db.Decimal(10, 2)
+  totalWithdrawn Decimal   @default(0) @db.Decimal(10, 2)
+
+  user           User      @relation(fields: [mentorId], references: [id])
+
+  @@map("mentor_balances")
+}
+
+model WalletTransaction {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @db.Uuid
+  amount            Decimal  @db.Decimal(10, 2)
+  type              String   
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  status            String   @default("pending")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@map("wallet_transactions")
+}
+
+model CallSession {
+  id              String    @id @default(uuid()) @db.Uuid
+  student_id      String    @db.Uuid
+  mentor_id       String    @db.Uuid
+  exotelSid       String?   @map("exotel_sid")
+  status          String    @default("pending")
+  startedAt       DateTime? @map("started_at")
+  endedAt         DateTime? @map("ended_at")
+  durationSecs    Int       @default(0) @map("duration_secs")
+  amountCharged   Decimal   @default(0) @db.Decimal(10, 2) @map("amount_charged")
+  mentorEarning   Decimal   @default(0) @db.Decimal(10, 2) @map("mentor_earning")
+  platformFee     Decimal   @default(0) @db.Decimal(10, 2) @map("platform_fee")
+  is_free         Boolean   @default(false)
+  settledAt       DateTime? @map("settled_at")
+  recordingUrl    String?   @map("recording_url")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  student         User      @relation("StudentCalls", fields: [student_id], references: [id])
+  mentor          User      @relation("MentorCalls", fields: [mentor_id], references: [id])
+  rating          Rating?
+
+  @@map("call_sessions")
+}
+
+model Rating {
+  id          String   @id @default(uuid()) @db.Uuid
+  sessionId   String   @unique @db.Uuid
+  studentId   String?  @db.Uuid
+  mentorId    String?  @db.Uuid
+  score       Int
+  comment     String?
+  createdAt   DateTime @default(now())
+
+  session     CallSession @relation(fields: [sessionId], references: [id])
+  student     User?       @relation("StudentRatings", fields: [studentId], references: [id])
+  mentor      User?       @relation("MentorRatings", fields: [mentorId], references: [id])
+
+  @@map("ratings")
+}
