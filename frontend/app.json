@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "mentivo-app",
-    "slug": "mentivo-app",
+    "name": "Mentivo",
+    "slug": "com.mentivo.in",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -21,7 +21,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.abtheinvador18.mentivoapp"
+      "package": "com.mentivo.in"
     },
     "web": {
       "favicon": "./assets/favicon.png"
