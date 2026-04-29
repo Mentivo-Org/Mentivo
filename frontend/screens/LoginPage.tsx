@@ -9,6 +9,7 @@ import {
   Image,
 } from "react-native";
 import Ionicons from "@react-native-vector-icons/ionicons";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 interface LoginPageProps {
@@ -25,9 +26,27 @@ const LoginPage: React.FC<LoginPageProps> = ({ navigation }) => {
     console.log("Sign in with:", email, password);
   };
 
-  const handleGoogleSignIn = () => {
-    console.log("Sign in with Google");
+const handleGoogleSignIn = async () => {
+  console.log("Sign in with Google");
+  try {
+    await GoogleSignin.hasPlayServices();
+    const userInfo = await GoogleSignin.signIn();
+    
+    // This is the 'credential' we send to our backend
+    const idToken = userInfo?.data?.idToken; 
+    console.log(idToken);
+
+    // Call your Node.js API
+    const response = await fetch('http://10.150.63.231:3000/auth/google-native', {
+      method: 'POST',
+      body: JSON.stringify({ idToken: idToken })
+    });
+    
+    return await response.json();
+  } catch (error) {
+    console.log("Native Sign-In Cancelled or Failed", error);
   };
+};
 
   const handlePhoneSignIn = () => {
     console.log("Sign in with Phone");

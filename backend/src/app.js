@@ -1,14 +1,39 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import authrouter from './routes/auth.js'
 
 const app = express();
 app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') || '*' }));
 
 app.use(express.json());
 
+app.use((req, res, next) => {
+  const start = Date.now();
+  const { method, url, ip } = req;
+
+  // This runs AFTER the request is finished
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const status = res.statusCode;
+    
+    console.log(`${method} ${url} ${status} - ${duration}ms from ${ip}`);
+  });
+
+  next();
+});
+
 // Routes
-app.use('/auth', require('./routes/auth'));
+
+app.get('/health', async (req,res) => {
+  console.log(req.body);
+  return res.status(200).json({
+    message: "Server is running",
+    body: req.body,
+  })
+})
+
+app.use('/auth', authrouter);
 
 app.use((err, req, res, next) => {
   console.error(err);

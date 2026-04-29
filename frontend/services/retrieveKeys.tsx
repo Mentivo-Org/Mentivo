@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // 1. Define the shape of our state
@@ -34,6 +35,14 @@ const checkLoginStatus = async () => {
   useEffect(() => {
     checkLoginStatus();
   }, []);
+  useEffect(() => {
+  GoogleSignin.configure({
+    // IMPORTANT: This must be a "Web Client ID", 
+    // NOT an Android or iOS Client ID.
+    webClientId: '456108214629-ddj51krdofouhptf81ar6f0h8tb8gsu8.apps.googleusercontent.com', 
+    offlineAccess: true, // Required if you want a refresh_token for your backend
+  });
+}, []);
 
   return (
     <AuthContext.Provider value={{ isSignedIn, setIsSignedIn, checkLoginStatus }}>
