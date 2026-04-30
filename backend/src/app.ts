@@ -1,12 +1,12 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import authrouter from './routes/auth.js'
+import authrouter from './routes/auth.ts'
 
 const app = express();
+app.use(express.json());
 app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') || '*' }));
 
-app.use(express.json());
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -33,7 +33,10 @@ app.get('/health', async (req,res) => {
   })
 })
 
-app.use('/auth', authrouter);
+app.use('/auth', async (req,res,next  ) => {
+  console.log(req.body);
+  authrouter(req,res,next);
+});
 
 app.use((err, req, res, next) => {
   console.error(err);

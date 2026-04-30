@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { supabaseAdmin } from '../lib/supabaseAdmin';
+import { supabaseAdmin } from '../lib/supabaseAdmin.ts';
 
-export const authenticateUser = async (req, res, next) => {
+export const authenticateUser = async (req: Request, res:Response, next:NextFunction) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

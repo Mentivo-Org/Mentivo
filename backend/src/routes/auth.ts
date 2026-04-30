@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { handleNativeGoogle, loginWithEmail, sendOtp, verifyOtp } from '../controllers/loginController.js'
+import { handleNativeGoogle, loginWithEmail, refreshUserToken, sendOtp, verifyOtp } from '../controllers/loginController.ts'
 
 const app = Router()
 
@@ -14,6 +14,9 @@ app.post('/otp/verify', verifyOtp);
 
 // Google Sign-in
 app.post('/google-native', handleNativeGoogle)
+
+// Refresh token
+app.post('/refresh', refreshUserToken)
 
 // router.post('/verify', async (req, res) => {
 //     // Basic unauthenticated verify for test purposes without firebase key

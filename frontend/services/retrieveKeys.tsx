@@ -7,6 +7,7 @@ interface AuthContextType {
   isSignedIn: boolean | null;
   setIsSignedIn: (value: boolean | null) => void;
   checkLoginStatus: () => Promise<void>;
+  handleLogout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,6 +32,22 @@ const checkLoginStatus = async () => {
   }
 };
 
+const handleLogout = async ()=> {
+
+  try {
+    await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
+    const isSignedIn = await GoogleSignin.hasPreviousSignIn();
+    if(isSignedIn) {
+      await GoogleSignin.signOut();
+    }
+    setIsSignedIn(false);
+    console.log("User successfully signed out");
+  }
+  catch(e) {
+    console.error("Logout failed", e);
+  }
+}
+
   // 2. Run this ONLY when the app starts
   useEffect(() => {
     checkLoginStatus();
@@ -41,11 +58,12 @@ const checkLoginStatus = async () => {
     // NOT an Android or iOS Client ID.
     webClientId: '456108214629-ddj51krdofouhptf81ar6f0h8tb8gsu8.apps.googleusercontent.com', 
     offlineAccess: true, // Required if you want a refresh_token for your backend
+    forceCodeForRefreshToken: true,
   });
 }, []);
 
   return (
-    <AuthContext.Provider value={{ isSignedIn, setIsSignedIn, checkLoginStatus }}>
+    <AuthContext.Provider value={{ isSignedIn, setIsSignedIn, checkLoginStatus, handleLogout }}>
       {children}
     </AuthContext.Provider>
   );

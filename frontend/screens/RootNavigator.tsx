@@ -9,11 +9,13 @@ import { NavigationContainer } from "@react-navigation/native";
 import { useAuth } from "../services/retrieveKeys";
 
 import LandingPage from "./LandingPage";
-import LoginPage from "./LoginPage";
-import SignupPage from "./SignupPage";
+import StudentLoginPage from "./student/StudentLoginPage";
+
 
 import StudentHomePage from "./student/StudentHomePage";
 import MentorHomePage from "./mentor/MentorHomePage";
+import CompleteProfile from "./CompleteProfile";
+import StudentSignupPage from "./student/StudentSignupPage";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -66,8 +68,9 @@ export default function RootNavigator() {
             headerShown: false,
           }}>
             <Stack.Screen name="Landing" component={LandingPage} />
-            <Stack.Screen name="Login" component={LoginPage} />
-            <Stack.Screen name="SignUp" component={SignupPage} />
+            <Stack.Screen name="StudentLogin" component={StudentLoginPage} />
+            <Stack.Screen name="StudentSignUp" component={StudentSignupPage} />
+            <Stack.Screen name="CompleteProfile" component={CompleteProfile} />
           </Stack.Navigator>
         )}
       </NavigationContainer>

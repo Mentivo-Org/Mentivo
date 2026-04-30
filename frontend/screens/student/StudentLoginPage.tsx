@@ -7,42 +7,79 @@ import {
   TouchableOpacity,
   TextInput,
   Image,
+  Alert,
 } from "react-native";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../../services/retrieveKeys";
+import { LoginEndpoints } from "../../constants/endpoint";
+import api from "../../services/api";
+import { ActivityIndicator } from "react-native";
 
 interface LoginPageProps {
   navigation?: any;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ navigation }) => {
+const StudentLoginPage: React.FC<LoginPageProps> = ({ navigation }) => {
+  const {setIsSignedIn} = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setLoading] = useState(false);
 
-  const handleSignIn = () => {
-    // Navigation logic will be added by the app context
-    console.log("Sign in with:", email, password);
+const handleEmailLogin = async () => {
+    if (!email || !password) return Alert.alert("Error", "Please fill in all fields");
+    
+    setLoading(true);
+    try {
+      // Using Axios instance for the request
+      const response = await api.post(LoginEndpoints.login, {
+        email,
+        password,
+      });
+
+      const { accessToken, refreshToken, user } = response.data;
+
+      // Persist tokens for the Interceptor to use
+      await AsyncStorage.setItem('accessToken', accessToken);
+      await AsyncStorage.setItem('refreshToken', refreshToken);
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+
+      Alert.alert("Success", "Welcome back!");
+      navigation.replace('StudentHome'); // Or MentorHome based on user role
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || "Login failed";
+      Alert.alert("Login Error", errorMsg);
+    } finally {
+      setLoading(false);
+    }
   };
-
 const handleGoogleSignIn = async () => {
   console.log("Sign in with Google");
   try {
     await GoogleSignin.hasPlayServices();
-    const userInfo = await GoogleSignin.signIn();
+    await GoogleSignin.signOut();
+    const userInfo = await GoogleSignin.signIn({
+      prompt: 'select_account'
+    });
     
     // This is the 'credential' we send to our backend
     const idToken = userInfo?.data?.idToken; 
     console.log(idToken);
 
     // Call your Node.js API
-    const response = await fetch('http://10.150.63.231:3000/auth/google-native', {
-      method: 'POST',
-      body: JSON.stringify({ idToken: idToken })
-    });
+    const response = await api.post(LoginEndpoints.googleLogin, {idToken, mode: "sign-in"})
     
-    return await response.json();
+    const data = await response.data;
+    // console.log(data);
+    if(response.status==200) {
+      await AsyncStorage.setItem('access_token', data?.access_token);
+      await AsyncStorage.setItem('refresh_token', data?.refresh_token);
+      await AsyncStorage.setItem('user', JSON.stringify(data?.user));
+      setIsSignedIn(true);
+    }
   } catch (error) {
     console.log("Native Sign-In Cancelled or Failed", error);
   };
@@ -57,8 +94,18 @@ const handleGoogleSignIn = async () => {
   };
 
   const handleSignUp = () => {
-    navigation?.replace("SignUp");
+    navigation?.replace("StudentSignUp");
   };
+
+  if(isLoading) {
+    return (
+      <SafeAreaView>
+        <View>
+          <ActivityIndicator size={10}/>
+        </View>
+      </SafeAreaView>
+    )
+  }
 
   return (
     <SafeAreaView style={styles.root}>
@@ -67,7 +114,9 @@ const handleGoogleSignIn = async () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Ionicons name="arrow-back" size={24} color="#00288e" />
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={30} color="#00288e"/>
+          </TouchableOpacity>
           <Text style={styles.headerBrand}>Mentivo</Text>
           <View style={{ width: 24 }} />
         </View>
@@ -161,7 +210,7 @@ const handleGoogleSignIn = async () => {
               {/* Sign In Button */}
               <TouchableOpacity
                 style={styles.signInButton}
-                onPress={handleSignIn}
+                onPress={handleEmailLogin}
                 activeOpacity={0.8}
               >
                 <Text style={styles.signInButtonText}>Sign In</Text>
@@ -231,6 +280,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
+    marginLeft: 10,
     marginBottom: 24,
     height: 50,
   },
@@ -464,4 +514,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LoginPage;
+export default StudentLoginPage;

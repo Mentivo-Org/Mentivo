@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,           // Set to false to stop TS from validating JS logic
+    "noImplicitAny": false,     // This is the specific rule triggering your error
+    "moduleResolution": "node",
+    "allowImportingTsExtensions": true,
+    "baseUrl": ".",
+    "paths": {
+      "*": ["node_modules/*", "src/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
+}

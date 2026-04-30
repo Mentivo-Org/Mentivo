@@ -28,7 +28,7 @@ const LandingPage = () => {
             Unlock your potential with personalized mentorship from the prestigious IIT community. Bridge the gap between ambition and achievement with expert guidance.
           </Text>
           <View style={styles.buttonGroup}>
-            <TouchableOpacity style={styles.primaryButton} activeOpacity={0.8} onPress={()=> navigation.navigate('Login')}>
+            <TouchableOpacity style={styles.primaryButton} activeOpacity={0.8} onPress={()=> navigation.navigate('StudentLogin')}>
               <Text style={styles.primaryButtonText}>I am a Student</Text>
               <Ionicons name="arrow-forward" size={18} color="#fff" style={styles.buttonIcon} />
             </TouchableOpacity>

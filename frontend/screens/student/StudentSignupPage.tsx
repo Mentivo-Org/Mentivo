@@ -9,32 +9,100 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@react-native-vector-icons/ionicons";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import api from "../../services/api";
+import { LoginEndpoints } from "../../constants/endpoint";
+import { useAuth } from "../../services/retrieveKeys";
 
 interface SignupPageProps {
   navigation?: any;
 }
 
-const SignupPage: React.FC<SignupPageProps> = ({ navigation }) => {
+const StudentSignupPage: React.FC<SignupPageProps> = ({ navigation }) => {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const {setIsSignedIn} = useAuth();
 
   const handleCreateAccount = () => {
     console.log("Create account", { fullName, email, phone, password });
   };
 
-  const handleGoogleSignUp = () => {
-    console.log("Sign up with Google");
+// const handleGoogleSignUp = async () => {
+//   console.log("Sign up with Google");
+//   try {
+//     await GoogleSignin.hasPlayServices();
+//     await GoogleSignin.signOut();
+//     const userInfo = await GoogleSignin.signIn({
+//       prompt: 'select_account'
+//     });
+    
+//     // This is the 'credential' we send to our backend
+//     const idToken = userInfo?.data?.idToken; 
+//     console.log(idToken);
+
+//     // Call your Node.js API
+//     const response = await api.post(LoginEndpoints.googleLogin, {idToken, mode: "sign-up"})
+    
+//     const data = await response.data;
+//     // console.log(data);
+//     if(response.status==200) {
+//       await AsyncStorage.setItem('access_token', data?.access_token);
+//       await AsyncStorage.setItem('refresh_token', data?.refresh_token);
+//       await AsyncStorage.setItem('user', JSON.stringify(data?.user));
+//       setIsSignedIn(true);
+//     }
+//   } catch (error) {
+//     console.log("Native Sign-In Cancelled or Failed", error);
+//   };
+// };
+
+  const handleGoogleSignUp = async () => {
+  console.log("Sign up with Google");
+  try {
+    await GoogleSignin.hasPlayServices();
+    await GoogleSignin.signOut();
+    const userInfo = await GoogleSignin.signIn({
+      prompt: 'select_account'
+    });
+    
+    // This is the 'credential' we send to our backend
+    const idToken = userInfo?.data?.idToken; 
+    console.log(idToken);
+
+    // Call your Node.js API
+    const response = await api.post(LoginEndpoints.googleLogin, {idToken, mode: "sign-up"})
+    
+    const data = await response.data;
+    console.log(data);
+    if(data.email&&data.name) {
+      navigation.replace("CompleteProfile", {
+        full_name: data.name,
+        email: data.email,
+        idToken: idToken,
+        role: "student"
+      })
+    }
+    // // console.log(data);
+    // if(response.status==200) {
+    //   await AsyncStorage.setItem('access_token', data?.access_token);
+    //   await AsyncStorage.setItem('refresh_token', data?.refresh_token);
+    //   await AsyncStorage.setItem('user', JSON.stringify(data?.user));
+    //   setIsSignedIn(true);
+    // }
+  } catch (error) {
+    console.log("Native Sign-In Cancelled or Failed", error);
   };
+};
 
   const handleSignIn = () => {
-    navigation?.replace("Login");
+    navigation?.replace("StudentLogin");
   };
 
   const handleLoginNav = () => {
-    navigation?.replace("Login");
+    navigation?.replace("StudentLogin");
   };
 
   return (
@@ -378,4 +446,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SignupPage;
+export default StudentSignupPage;
