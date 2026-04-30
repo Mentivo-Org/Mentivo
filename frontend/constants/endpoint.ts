@@ -1,3 +1,4 @@
+// export const baseUrl = 'http://10.150.63.231:3000';
 export const baseUrl = 'https://api.mentivo.in';
 
 export const LoginEndpoints = {

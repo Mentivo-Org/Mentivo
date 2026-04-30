@@ -67,7 +67,7 @@ const handleGoogleSignIn = async () => {
     
     // This is the 'credential' we send to our backend
     const idToken = userInfo?.data?.idToken; 
-    console.log(idToken);
+    // console.log(idToken);
 
     // Call your Node.js API
     const response = await api.post(LoginEndpoints.googleLogin, {idToken, mode: "sign-in"})

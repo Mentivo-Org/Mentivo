@@ -51,4 +51,52 @@ api.interceptors.response.use(
   }
 );
 
+// frontend/services/api.ts
+
+// Request Interceptor
+api.interceptors.request.use(
+  (config) => {
+    // Log the details before the request is sent
+    console.log('--- [API REQUEST START] ---');
+    console.log(`Method: ${config.method?.toUpperCase()}`);
+    console.log(`URL: ${config.url}`);
+    if (config.data) {
+      console.log('Payload:', JSON.stringify(config.data, null, 2));
+    }
+    console.log('---------------------------');
+    return config;
+  },
+  (error) => {
+    console.error('!!! [API REQUEST ERROR] !!!', error);
+    return Promise.reject(error);
+  }
+);
+
+// Response Interceptor
+api.interceptors.response.use(
+  (response) => {
+    console.log('--- [API RESPONSE SUCCESS] ---');
+    console.log(`Status: ${response.status}`);
+    console.log('Data:', JSON.stringify(response.data, null, 2));
+    console.log('------------------------------');
+    return response;
+  },
+  (error) => {
+    console.log('--- [API RESPONSE ERROR] ---');
+    if (error.response) {
+      // The server responded with a status code outside the 2xx range
+      console.log(`Status: ${error.response.status}`);
+      console.log('Error Data:', JSON.stringify(error.response.data, null, 2));
+    } else if (error.request) {
+      // The request was made but no response was received (Network Error)
+      console.log('No response received. Possible Network/CORS issue.');
+      console.log('Request Details:', error.request);
+    } else {
+      console.log('Error Message:', error.message);
+    }
+    console.log('----------------------------');
+    return Promise.reject(error);
+  }
+);
+
 export default api;
