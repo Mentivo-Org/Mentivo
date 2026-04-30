@@ -5,7 +5,10 @@ import authrouter from './routes/auth.ts'
 
 const app = express();
 app.use(express.json());
-app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') || '*' }));
+app.use(cors({
+  origin: ['https://mentivo.in', 'http://localhost:8081'], 
+  credentials: true
+}));
 
 
 app.use((req, res, next) => {
