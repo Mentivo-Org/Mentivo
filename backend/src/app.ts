@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import authrouter from './routes/auth.ts'
+import { supabaseAdmin } from 'lib/supabaseAdmin.ts';
 
 const app = express();
 app.use(express.json());
@@ -36,7 +37,23 @@ app.get('/health', async (req,res) => {
   })
 })
 
-app.use('/auth', async (req,res,next  ) => {
+app.get('/api/health-check', async (req, res) => {
+  try {
+    // Just select the ID of one mentor to prove the DB is active
+    const { data, error } = await supabaseAdmin
+      .from('users') // Use any table name you actually have
+      .select('id')
+      .limit(1);
+    
+    if (error) throw error;
+    
+    res.status(200).send('System Status: Active');
+  } catch (err) {
+    res.status(500).send('System Status: Paused');
+  }
+});
+
+app.use('/api/auth', async (req,res,next  ) => {
   console.log(req.body);
   authrouter(req,res,next);
 });
