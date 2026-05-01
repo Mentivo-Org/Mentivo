@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import authrouter from './routes/auth.ts'
-import { supabaseAdmin } from 'lib/supabaseAdmin.ts';
+import { supabaseAdmin } from './lib/supabaseAdmin.ts'
 
 const app = express();
 app.use(express.json());
@@ -15,13 +15,22 @@ app.use(cors({
 app.use((req, res, next) => {
   const start = Date.now();
   const { method, url, ip } = req;
+  const timestamp = new Date().toISOString();
 
-  // This runs AFTER the request is finished
+  // 1. IMMEDIATE LOG: Log as soon as the request hits the server
+  console.log(`>>> [INCOMING] ${method} ${url} | IP: ${ip}`);
+
+  // 2. FINISH LOG: Log the outcome once the system is done with it
   res.on('finish', () => {
     const duration = Date.now() - start;
-    const status = res.statusCode;
-    
-    console.log(`${method} ${url} ${status} - ${duration}ms from ${ip}`);
+    console.log(`<<< [OUTCOME] ${method} ${url} | Status: ${res.statusCode} | ${duration}ms`);
+  });
+
+  // 3. ERROR LOG: Log if the connection is closed abruptly without finishing
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      console.log(`!!! [ABORTED] ${method} ${url} | Connection closed prematurely`);
+    }
   });
 
   next();
