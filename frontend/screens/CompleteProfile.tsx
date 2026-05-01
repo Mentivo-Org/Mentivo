@@ -30,7 +30,7 @@ interface CompleteProfileProps {
 }
 
 const CompleteProfile: React.FC<CompleteProfileProps> = ({ navigation }) => {
-  const [phoneNumber, setPhoneNumber] = useState("+91 ");
+  const [phoneNumber, setPhoneNumber] = useState("+91");
     const { setIsSignedIn } = useAuth();
     const route = useRoute<any>();
     const {full_name, email, idToken, role} = route.params;
@@ -49,7 +49,13 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ navigation }) => {
         await AsyncStorage.setItem('access_token', data?.access_token);
         await AsyncStorage.setItem('refresh_token', data?.refresh_token);
         await AsyncStorage.setItem('user', JSON.stringify(data?.user));
-        setIsSignedIn(true);
+        //Send OTP to phone number by backend
+        //Forward to OTP verification page
+
+        navigation.navigate("SendOtp", {
+          phone: phoneNumber
+        });
+
       }
     } catch (error) {
       console.log("Native Sign-In Cancelled or Failed", error);

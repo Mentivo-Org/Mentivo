@@ -21,11 +21,13 @@ const checkLoginStatus = async () => {
   try {
     const access = await AsyncStorage.getItem('access_token');
     const refresh = await AsyncStorage.getItem('refresh_token');
+    const verifiedPhone = await AsyncStorage.getItem('verified_phone')
     
     console.log("Tokens found:", { access: !!access, refresh: !!refresh });
 
     // Explicitly set to true or false. NEVER leave it as null.
-    setIsSignedIn(!!(access && refresh));
+    setIsSignedIn(!!(access && refresh && verifiedPhone));
+    console.log("Logged in status: ",!!(access && refresh && verifiedPhone)?"ACTIVE":"LOGGED OUT")
   } catch (e) {
     console.error("AsyncStorage Error:", e);
     setIsSignedIn(false); // If it fails, default to logged out
@@ -35,7 +37,7 @@ const checkLoginStatus = async () => {
 const handleLogout = async ()=> {
 
   try {
-    await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
+    await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user', 'verified_phone']);
     const isSignedIn = await GoogleSignin.hasPreviousSignIn();
     if(isSignedIn) {
       await GoogleSignin.signOut();

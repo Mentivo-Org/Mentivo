@@ -1,8 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import authrouter from './routes/auth.ts'
-import { supabaseAdmin } from './lib/supabaseAdmin.ts'
+import authrouter from './routes/auth.ts';
+import { supabaseAdmin } from './lib/supabaseAdmin.ts';
 
 const app = express();
 app.use(express.json());

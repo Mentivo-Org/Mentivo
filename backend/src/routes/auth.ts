@@ -1,16 +1,17 @@
 import { Router } from 'express';
 import { handleNativeGoogle, loginWithEmail, refreshUserToken, sendOtp, verifyOtp } from '../controllers/loginController.ts'
+import { authenticateUser } from '../auth/authenticateUser.ts';
 
-const app = Router()
+const app = Router();
 
 // backend/routes/auth.js
 app.post('/login', loginWithEmail);
 
-// Send OTP
-app.post('/otp/send', sendOtp);
+// // Send OTP
+// app.post('/otp/send', sendOtp);
 
 // Verify OTP
-app.post('/otp/verify', verifyOtp);
+app.post('/otp/verify', authenticateUser, verifyOtp);
 
 // Google Sign-in
 app.post('/google-native', handleNativeGoogle)

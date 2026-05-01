@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { supabaseAdmin } from '../lib/supabaseAdmin.ts';
 
 export const authenticateUser = async (req: Request, res:Response, next:NextFunction) => {

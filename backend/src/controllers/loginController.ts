@@ -1,9 +1,9 @@
-import express from "express";
+import type { Request, Response, NextFunction } from "express";
 import { supabaseAdmin } from "../lib/supabaseAdmin.ts";
 import prisma from '../config/db.ts'
-type RequestHandler = express.RequestHandler;
 
-export const loginWithEmail:RequestHandler = async (req, res) => {
+
+export const loginWithEmail = async (req:Request, res:Response) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -33,21 +33,50 @@ export const loginWithEmail:RequestHandler = async (req, res) => {
   });
 };
 
-export const sendOtp:RequestHandler = async (req, res) => {
-  const { phone } = req.body;
-  const { error } = await supabaseAdmin.auth.signInWithOtp({ phone });
-  res.json({ success: !error });
+export const sendOtp = async (phone: string) => {
+  console.log("Trying to send OTP");
+  console.log(typeof phone, "is the type of", phone);
+  const { data, error } = await supabaseAdmin.auth.signInWithOtp({ phone });
+  console.log(data);
+  console.error({ success: !error });
 };
 
-export const verifyOtp:RequestHandler = async (req, res) => {
-  const { phone, token } = req.body;
-  const { data, error } = await supabaseAdmin.auth.verifyOtp({ phone, token, type: 'sms' });
+export const verifyOtp = async (req:Request, res:Response) => {
+  try {
+    const { phone, token } = req.body;
+    
+    const userName = req.user?.user_metadata?.full_name;
+    console.log("User Name is ", userName);
+    if(!userName) return res.status(401).json({error: "Please login first"});
   
-  if (error) return res.status(400).json(error);
-  res.json(data.session);
+    const { error } = await supabaseAdmin.auth.verifyOtp({ phone, token, type: 'sms' });
+    if(error) return res.status(401).json({error: "Invalid OTP"})
+  
+    const userRow = await prisma.user.findUnique({
+      where: {phone: phone, name: userName}
+    });
+  
+    if(!userRow) return res.status(404).json({error: "User not found"});
+  
+    const updatedUser = await prisma.user.update({
+      where: {id: userRow.id},
+      data: {
+        isPhoneVerified: true
+      }
+    });
+
+    return res.status(201).json({
+      message: "Phone number successfully verified",
+      user: updatedUser,
+    })
+  }
+  catch (e) {
+    console.error("Error in verifying OTP: ",e)
+    return res.status(400).json(e);
+  }
 };
 
-export const handleNativeGoogle:RequestHandler = async (req, res) => {
+export const handleNativeGoogle = async (req:Request, res:Response) => {
   const idToken = req.body?.idToken;
   const mode = req.body?.mode;
   const phone = req.body?.phone;
@@ -95,7 +124,12 @@ export const handleNativeGoogle:RequestHandler = async (req, res) => {
         phone: phone,
         role
       }
-    })
+    });
+
+    //send otp
+
+    sendOtp(phone);
+
     return res.status(200).json({
     access_token: data.session?.access_token,
     refresh_token: data.session?.refresh_token,
@@ -113,7 +147,7 @@ export const handleNativeGoogle:RequestHandler = async (req, res) => {
 };
 
 
-export const refreshUserToken:RequestHandler = async (req, res) => {
+export const refreshUserToken = async (req:Request, res:Response) => {
   const { refreshToken } = req.body;
 
   if (!refreshToken) {

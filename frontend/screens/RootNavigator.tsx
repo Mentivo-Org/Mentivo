@@ -16,6 +16,7 @@ import StudentHomePage from "./student/StudentHomePage";
 import MentorHomePage from "./mentor/MentorHomePage";
 import CompleteProfile from "./CompleteProfile";
 import StudentSignupPage from "./student/StudentSignupPage";
+import SendOtpScreen from "./SendOtp";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -71,6 +72,7 @@ export default function RootNavigator() {
             <Stack.Screen name="StudentLogin" component={StudentLoginPage} />
             <Stack.Screen name="StudentSignUp" component={StudentSignupPage} />
             <Stack.Screen name="CompleteProfile" component={CompleteProfile} />
+            <Stack.Screen name="SendOtp" component={SendOtpScreen} />
           </Stack.Navigator>
         )}
       </NavigationContainer>
