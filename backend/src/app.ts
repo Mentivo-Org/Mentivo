@@ -12,29 +12,29 @@ app.use(cors({
 }));
 
 
-app.use((req, res, next) => {
-  const start = Date.now();
-  const { method, url, ip } = req;
-  const timestamp = new Date().toISOString();
+// app.use((req, res, next) => {
+//   const start = Date.now();
+//   const { method, url, ip } = req;
+//   const timestamp = new Date().toISOString();
 
-  // 1. IMMEDIATE LOG: Log as soon as the request hits the server
-  console.log(`>>> [INCOMING] ${method} ${url} | IP: ${ip}`);
+//   // 1. IMMEDIATE LOG: Log as soon as the request hits the server
+//   console.log(`>>> [INCOMING] ${method} ${url} | IP: ${ip}`);
 
-  // 2. FINISH LOG: Log the outcome once the system is done with it
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    console.log(`<<< [OUTCOME] ${method} ${url} | Status: ${res.statusCode} | ${duration}ms`);
-  });
+//   // 2. FINISH LOG: Log the outcome once the system is done with it
+//   res.on('finish', () => {
+//     const duration = Date.now() - start;
+//     console.log(`<<< [OUTCOME] ${method} ${url} | Status: ${res.statusCode} | ${duration}ms`);
+//   });
 
-  // 3. ERROR LOG: Log if the connection is closed abruptly without finishing
-  res.on('close', () => {
-    if (!res.writableEnded) {
-      console.log(`!!! [ABORTED] ${method} ${url} | Connection closed prematurely`);
-    }
-  });
+//   // 3. ERROR LOG: Log if the connection is closed abruptly without finishing
+//   res.on('close', () => {
+//     if (!res.writableEnded) {
+//       console.log(`!!! [ABORTED] ${method} ${url} | Connection closed prematurely`);
+//     }
+//   });
 
-  next();
-});
+//   next();
+// });
 
 // Routes
 
@@ -42,7 +42,6 @@ app.get('/health', async (req,res) => {
   console.log(req.body);
   return res.status(200).json({
     message: "Server is running",
-    body: req.body,
   })
 })
 
