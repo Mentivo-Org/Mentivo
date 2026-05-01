@@ -10,6 +10,7 @@ app.use(cors({
   origin: ['https://mentivo.in', 'http://localhost:8081'], 
   credentials: true
 }));
+app.set('trust proxy', 1);
 
 
 app.use((req, res, next) => {
