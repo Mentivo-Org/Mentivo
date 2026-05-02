@@ -1,17 +1,15 @@
 import { Router } from 'express';
-import { handleNativeGoogle, loginWithEmail, refreshUserToken, sendOtp, verifyOtp } from '../controllers/loginController.ts'
+import { handleNativeGoogle, loginWithEmail, refreshUserToken, signUpWithEmail, verifyOtp } from '../controllers/loginController.ts'
 import { authenticateUser } from '../auth/authenticateUser.ts';
 
 const app = Router();
 
 // backend/routes/auth.js
+app.post('/signup', signUpWithEmail);
 app.post('/login', loginWithEmail);
 
-// // Send OTP
-// app.post('/otp/send', sendOtp);
-
-// Verify OTP
-app.post('/otp/verify', authenticateUser, verifyOtp);
+// OTP Verification
+app.post('/otp/verify', verifyOtp);
 
 // Google Sign-in
 app.post('/google-native', handleNativeGoogle)
@@ -20,20 +18,20 @@ app.post('/google-native', handleNativeGoogle)
 app.post('/refresh', refreshUserToken)
 
 // router.post('/verify', async (req, res) => {
-//     // Basic unauthenticated verify for test purposes without firebase key
-//     const { phone, role, name, uid } = req.body;
+//     // Basic unauthenticated verify for test purposes
+//     const { email, role, name, uid } = req.body;
 //     try {
 //         let user = await db.user.findUnique({
-//             where: { phone }
+//             where: { email }
 //         });
 
 //         if (!user) {
 //             user = await db.user.create({
 //                 data: {
-//                     phone,
+//                     email,
 //                     role: role || 'STUDENT',
 //                     name,
-//                     firebase_uid: uid
+//                     // firebase_uid: uid // Using Supabase UID now
 //                 }
 //             });
             

@@ -12,13 +12,14 @@ enum UserRole {
 }
 
 model User {
-  id             String    @id @default(uuid()) @db.Uuid
-  email          String    @unique
-  phone          String    @unique
-  isPhoneVerified Boolean  @default(false)
-  name           String?
-  role           UserRole
-  created_at     DateTime  @default(now())
+  id              String    @id @default(uuid()) @db.Uuid
+  email           String    @unique
+  phone           String?   @unique
+  isEmailVerified Boolean   @default(false)
+  isPhoneVerified Boolean   @default(false)
+  name            String?
+  role            UserRole
+  created_at      DateTime  @default(now())
   
   mentorProfile  MentorProfile?
   wallet         Wallet?
@@ -31,8 +32,21 @@ model User {
   ratingsMentor  Rating[] @relation("MentorRatings")
 
   payouts        Payout[]
+  refreshTokens  RefreshToken[]
 
   @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  token     String   @unique
+  userId    String   @db.Uuid
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
 }
 
 model MentorProfile {
@@ -93,7 +107,7 @@ model CallSession {
   id              String    @id @default(uuid()) @db.Uuid
   student_id      String    @db.Uuid
   mentor_id       String    @db.Uuid
-  exotelSid       String?   @map("exotel_sid")
+  agoraChannelId  String?   @map("agora_channel_id")
   status          String    @default("pending")
   startedAt       DateTime? @map("started_at")
   endedAt         DateTime? @map("ended_at")
