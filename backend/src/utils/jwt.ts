@@ -10,11 +10,11 @@ export interface TokenPayload {
 }
 
 export const generateAccessToken = (payload: TokenPayload): string => {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' });
 };
 
 export const generateRefreshToken = async (payload: TokenPayload): Promise<string> => {
-  const token = jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: '30d' });
+  const token = jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: '60d' });
   
   // Store the refresh token in the database
   await prisma.refreshToken.create({
