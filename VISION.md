@@ -11,11 +11,12 @@
 3. [System Architecture](#3-system-architecture)
 4. [Database Schema](#4-database-schema)
 5. [Backend Setup](#5-backend-setup)
-6. [Service Integrations](#6-service-integrations)
-   - [Exotel — Masked Calling](#61-exotel--masked-calling)
+6. Service Integrations
+   - [Agora — VoIP Calling & Chat](#61-agora--voip-calling--chat)
    - [Razorpay — Payments & Payouts](#62-razorpay--payments--payouts)
-   - [Firebase — OTP & Notifications](#63-firebase--otp--notifications)
-   - [AWS — Hosting & Storage](#64-aws--hosting--storage)
+   - [Firebase — Auth & Notifications](#63-firebase--auth--notifications)
+   - [Supabase — Hosting & Storage](#64-supabase--hosting--storage)
+
 7. [Core Business Logic](#7-core-business-logic)
 8. [API Reference](#8-api-reference)
 9. [Build Roadmap](#9-build-roadmap)
@@ -30,7 +31,7 @@ Mentivo is a **per-minute voice mentorship marketplace** connecting JEE aspirant
 
 | Dimension | Detail |
 |-----------|--------|
-| Core mechanic | ₹10/min voice call, wallet-based, no subscription |
+| Core mechanic | ₹10/min VoIP call, wallet-based, no subscription |
 | Supply | Verified current IIT students across all IITs |
 | Demand | JEE aspirants Class 11/12, droppers, parents |
 | GTM | Offline-first via coaching institutes, then schools, then creators |
@@ -51,24 +52,25 @@ Mentivo is a **per-minute voice mentorship marketplace** connecting JEE aspirant
 | HTTP client | Axios | Interceptors for auth tokens |
 | UI components | NativeWind + custom components | Tailwind-class styling in RN |
 | Push notifications | `@react-native-firebase/messaging` | FCM integration |
+| VoIP & Chat | Agora SDK | In-app voice calls and initial chat feature |
 
 ### Backend
 | Layer | Technology | Reason |
 |-------|-----------|--------|
 | Runtime | Node.js 20 LTS | Async-first, huge ecosystem |
 | Framework | Express.js | Minimal, well-understood |
-| Database | PostgreSQL 16 (AWS RDS) | ACID transactions for billing |
-| Cache / presence | Redis 7 (AWS ElastiCache) | Mentor online/offline status, rate limiting |
+| Database | PostgreSQL (Supabase) | ACID transactions for billing |
+| Cache / presence | Redis (Upstash or Supabase) | Mentor online/offline status, rate limiting |
 | ORM | Prisma | Type-safe queries, easy migrations |
-| Auth | Firebase Auth (phone/OTP) | Handles SMS OTP natively on Android |
-| File storage | AWS S3 | Mentor profile photos, call recordings |
+| Auth | Firebase Auth / Google Login | Supports Email/Password and Social login |
+| File storage | Supabase Storage | Mentor profile photos, call recordings |
 | Background jobs | BullMQ + Redis | Payout batch jobs, low-balance watchers |
-| CDN | AWS CloudFront | S3 asset delivery |
+| CDN | Supabase CDN | Asset delivery |
 
-### Calling
+### Calling & Chat
 | Service | Role |
 |---------|------|
-| Exotel | Masked voice calls — neither party sees the other's real number |
+| Agora | VoIP voice calls & Chat — In-app communication with call timer on screen |
 
 ### Payments
 | Service | Role |
@@ -79,10 +81,9 @@ Mentivo is a **per-minute voice mentorship marketplace** connecting JEE aspirant
 ### DevOps
 | Tool | Role |
 |------|------|
-| AWS EC2 (t3.small → t3.medium) | API server |
-| AWS RDS (PostgreSQL) | Primary DB |
-| AWS ElastiCache | Redis |
-| AWS S3 + CloudFront | Media storage + CDN |
+| AWS EC2 / Vercel | API server |
+| Supabase | Primary DB & Storage |
+| Redis | Presence & Job queues |
 | PM2 | Node process manager |
 | GitHub Actions | CI/CD pipeline |
 | Sentry | Error monitoring |
@@ -96,6 +97,7 @@ Mentivo is a **per-minute voice mentorship marketplace** connecting JEE aspirant
 │              React Native App                │
 │  (Student: browse, call, wallet, ratings)    │
 │  (Mentor: go online, earnings, history)      │
+│  (Call Screen: VoIP, Live Timer)             │
 └────────────────────┬─────────────────────────┘
                      │ HTTPS REST
                      ▼
@@ -104,9 +106,9 @@ Mentivo is a **per-minute voice mentorship marketplace** connecting JEE aspirant
 │                                              │
 │  ┌─────────────┐  ┌──────────────────────┐  │
 │  │  Auth layer │  │   Business logic     │  │
-│  │  (Firebase) │  │   (calls, billing,   │  │
-│  └─────────────┘  │    ratings, payouts) │  │
-│                   └──────────────────────┘  │
+│  │ (Firebase/  │  │   (calls, billing,   │  │
+│  │  Google)    │  │    ratings, payouts) │  │
+│  └─────────────┘  └──────────────────────┘  │
 │  ┌─────────────┐  ┌──────────────────────┐  │
 │  │  Webhook    │  │   BullMQ job queue   │  │
 │  │  handlers   │  │   (payouts, alerts)  │  │
@@ -116,22 +118,17 @@ Mentivo is a **per-minute voice mentorship marketplace** connecting JEE aspirant
        ▼                              ▼
 ┌─────────────┐              ┌──────────────────┐
 │ PostgreSQL  │              │      Redis        │
-│ (RDS)       │              │  (presence,       │
+│ (Supabase)  │              │  (presence,       │
 │             │              │   job queues)     │
 └─────────────┘              └──────────────────┘
        │
-       │ calls out to
+       │ integrations
        ▼
-┌─────────────┐   ┌──────────────┐   ┌──────────┐
-│   Exotel    │   │   Razorpay   │   │  AWS S3  │
-│ (masked     │   │ (top-up +    │   │ (photos, │
-│  calls)     │   │  payouts)    │   │  records)│
-└─────────────┘   └──────────────┘   └──────────┘
-       │
-       │ webhooks back to API
-       ▼
-  /webhooks/exotel
-  /webhooks/razorpay
+┌─────────────┐   ┌──────────────┐   ┌──────────────┐
+│   Agora     │   │   Razorpay   │   │   Supabase   │
+│ (VoIP &     │   │ (top-up +    │   │   Storage    │
+│  Chat)      │   │  payouts)    │   │   (photos)   │
+└─────────────┘   └──────────────┘   └──────────────┘
 ```
 
 ### Call flow (critical path)
@@ -141,28 +138,27 @@ Student taps "Call Now"
         │
         ▼
 POST /calls/initiate
-  → check wallet balance ≥ ₹50 (5 min buffer)
+  → check wallet balance ≥ ₹10
   → check mentor is online (Redis)
-  → call Exotel API (connect.json)
-  → store call_session { status: 'pending', exotel_sid }
+  → generate Agora Token
+  → store call_session { status: 'pending', channel_id }
         │
         ▼
-Exotel bridges the call via virtual number
-  → Student's phone rings (incoming from virtual no.)
-  → Mentor's phone rings (incoming from virtual no.)
-  → Neither party sees the other's real number
+App joins Agora Channel
+  → Student joins channel
+  → Mentor receives push notification/socket event to join
+  → VoIP call starts in-app
+  → App screen starts timer
         │
         ▼
-Exotel fires webhook: Status = 'in-progress'
-  → POST /webhooks/exotel?session=<id>
+App updates status to 'in-progress'
+  → POST /calls/:id/start
   → Update call_session { status: 'active', started_at }
         │
         ▼
 Call ends (either party hangs up, or max duration hit)
-        │
-        ▼
-Exotel fires webhook: Status = 'completed', Duration = N seconds
-  → POST /webhooks/exotel?session=<id>
+  → App leaves Agora Channel
+  → POST /calls/:id/end
   → settleBilling(sessionId, durationSecs) — atomic DB transaction:
       • debit student wallet
       • credit mentor pending_payout
@@ -179,12 +175,14 @@ POST /calls/:id/rate (student submits 1–5 star rating)
 ```sql
 -- Users (both students and mentors)
 CREATE TABLE users (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  phone         TEXT UNIQUE NOT NULL,
-  name          TEXT,
-  role          TEXT NOT NULL CHECK (role IN ('student', 'mentor', 'admin')),
-  firebase_uid  TEXT UNIQUE,
-  created_at    TIMESTAMPTZ DEFAULT NOW()
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email             TEXT UNIQUE NOT NULL,
+  phone             TEXT UNIQUE,                       -- optional
+  is_email_verified BOOLEAN DEFAULT FALSE,
+  name              TEXT,
+  role              TEXT NOT NULL CHECK (role IN ('student', 'mentor', 'admin')),
+  firebase_uid      TEXT UNIQUE,
+  created_at        TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Mentor profiles
@@ -194,7 +192,7 @@ CREATE TABLE mentor_profiles (
   branch          TEXT,
   year            INT,
   verified        BOOLEAN DEFAULT FALSE,
-  id_doc_url      TEXT,                              -- S3 URL for verification doc
+  id_doc_url      TEXT,                              -- Supabase Storage URL
   bio             TEXT,
   photo_url       TEXT,
   rate_per_min    NUMERIC(6,2) DEFAULT 10.00,
@@ -236,7 +234,7 @@ CREATE TABLE call_sessions (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id      UUID NOT NULL REFERENCES users(id),
   mentor_id       UUID NOT NULL REFERENCES users(id),
-  exotel_sid      TEXT,                              -- Exotel's Call.Sid
+  agora_channel_id TEXT,                             -- Agora Channel ID
   status          TEXT DEFAULT 'pending'
                     CHECK (status IN ('pending','active','settled','failed','refunded')),
   started_at      TIMESTAMPTZ,
@@ -247,7 +245,7 @@ CREATE TABLE call_sessions (
   platform_fee    NUMERIC(10,2) DEFAULT 0,
   is_free         BOOLEAN DEFAULT FALSE,             -- first-call free flag
   settled_at      TIMESTAMPTZ,
-  recording_url   TEXT,                              -- S3 URL
+  recording_url   TEXT,                              -- Supabase Storage URL
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -285,7 +283,7 @@ CREATE TABLE referrals (
 -- Indexes
 CREATE INDEX idx_call_sessions_student   ON call_sessions(student_id);
 CREATE INDEX idx_call_sessions_mentor    ON call_sessions(mentor_id);
-CREATE INDEX idx_call_sessions_exotel    ON call_sessions(exotel_sid);
+CREATE INDEX idx_call_sessions_agora     ON call_sessions(agora_channel_id);
 CREATE INDEX idx_mentor_profiles_online  ON mentor_profiles(is_online) WHERE is_online = TRUE;
 CREATE INDEX idx_ratings_mentor          ON ratings(mentor_id);
 ```
@@ -300,30 +298,30 @@ CREATE INDEX idx_ratings_mentor          ON ratings(mentor_id);
 mentivo-api/
 ├── src/
 │   ├── config/
-│   │   ├── db.js           # Prisma client
+│   │   ├── db.js           # Prisma client (Supabase)
 │   │   ├── redis.js        # Redis client (ioredis)
 │   │   └── firebase.js     # Firebase Admin SDK
 │   ├── middleware/
-│   │   ├── auth.js         # Verify Firebase ID token
+│   │   ├── auth.js         # Verify Firebase/Google ID token
 │   │   ├── rateLimit.js    # Per-user rate limiting (Redis)
 │   │   └── validate.js     # Zod schema validation
 │   ├── routes/
 │   │   ├── auth.js         # POST /auth/verify
 │   │   ├── mentors.js      # GET /mentors, GET /mentors/:id
-│   │   ├── calls.js        # POST /calls/initiate, GET /calls/:id
+│   │   ├── calls.js        # POST /calls/initiate, POST /calls/:id/start, POST /calls/:id/end
 │   │   ├── wallet.js       # POST /wallet/topup, GET /wallet/balance
 │   │   ├── ratings.js      # POST /calls/:id/rate
 │   │   ├── payouts.js      # Admin: trigger weekly payouts
-│   │   └── webhooks.js     # POST /webhooks/exotel, /webhooks/razorpay
+│   │   └── webhooks.js     # POST /webhooks/razorpay
 │   ├── services/
-│   │   ├── exotel.js       # Exotel API wrapper
+│   │   ├── agora.js        # Agora Token generation
 │   │   ├── razorpay.js     # Razorpay API wrapper
 │   │   ├── billing.js      # settleBilling() — atomic transaction
 │   │   ├── presence.js     # Mentor online/offline via Redis
 │   │   └── notifications.js # FCM push notifications
 │   ├── jobs/
 │   │   ├── payoutJob.js    # Weekly mentor payout batch
-│   │   └── balanceWatcher.js # Cut call if wallet empty
+│   │   └── balanceWatcher.js # Watcher for low balance
 │   └── app.js
 ├── prisma/
 │   └── schema.prisma
@@ -339,16 +337,13 @@ mkdir mentivo-api && cd mentivo-api
 npm init -y
 npm install express prisma @prisma/client ioredis axios
 npm install razorpay firebase-admin bullmq zod helmet cors morgan
-npm install dotenv express-async-errors
+npm install agora-access-token dotenv express-async-errors
 
 # Dev dependencies
 npm install -D nodemon eslint
 
 # Init Prisma
 npx prisma init
-
-# Run migrations after writing schema.prisma
-npx prisma migrate dev --name init
 ```
 
 ### `src/app.js`
@@ -369,7 +364,7 @@ app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') }));
 app.use(morgan('combined'));
 
 // Raw body needed for webhook signature verification
-app.use('/webhooks', express.raw({ type: 'application/json' }));
+app.use('/webhooks/razorpay', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
 // Routes
@@ -402,7 +397,7 @@ module.exports = async (req, res, next) => {
   try {
     const decoded = await admin.auth().verifyIdToken(token);
     req.uid = decoded.uid;
-    req.phone = decoded.phone_number;
+    req.email = decoded.email;
     next();
   } catch {
     res.status(401).json({ error: 'Invalid token' });
@@ -414,80 +409,89 @@ module.exports = async (req, res, next) => {
 
 ## 6. Service Integrations
 
-### 6.1 Exotel — Masked Calling
+### 6.1 Agora — VoIP Calling & Chat
 
-**How it works:** Your server calls Exotel's `Calls/connect.json` endpoint. Exotel calls the student and mentor separately, then bridges both legs — showing your ExoPhone (virtual number) to both parties. Neither sees the other's real number.
+**How it works:** Mentivo uses Agora for in-app VoIP calls. When a student initiates a call, the server generates an Agora RTC token for a specific channel. Both student and mentor join this channel to communicate. Initial chat is also handled via Agora Chat.
 
 **Setup steps:**
-1. Sign up at [exotel.com](https://exotel.com)
-2. Get your SID, API Key, API Token from the dashboard
-3. Buy an ExoPhone number (virtual number)
-4. Set your StatusCallback URL in the API call (not the dashboard)
+1. Sign up at [agora.io](https://agora.io)
+2. Create a project and get App ID and App Certificate
+3. Enable Real-time Communications (RTC) and Agora Chat
 
-**`src/services/exotel.js`**
+**`src/services/agora.js`**
 
 ```js
-const axios = require('axios');
+const { RtcTokenBuilder, RtcRole } = require('agora-access-token');
 
-const BASE = `https://api.exotel.com/v1/Accounts/${process.env.EXOTEL_SID}`;
-const AUTH = {
-  auth: {
-    username: process.env.EXOTEL_API_KEY,
-    password: process.env.EXOTEL_API_TOKEN,
-  }
-};
+const APP_ID = process.env.AGORA_APP_ID;
+const APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE;
 
-// Initiate a masked call between student and mentor
-async function connectCall(studentPhone, mentorPhone, sessionId) {
-  const params = new URLSearchParams({
-    From:           studentPhone,
-    To:             mentorPhone,
-    CallerId:       process.env.EXOTEL_VIRTUAL_NUMBER,
-    StatusCallback: `${process.env.API_BASE_URL}/webhooks/exotel?session=${sessionId}`,
-    Record:         'true',
-    MaxDuration:    '3600',
-    TimeLimit:      '3600',
-  });
+function generateToken(channelName, uid) {
+  const expirationTimeInSeconds = 3600;
+  const currentTimestamp = Math.floor(Date.now() / 1000);
+  const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
 
-  const res = await axios.post(`${BASE}/Calls/connect.json`, params, AUTH);
-  return res.data.Call; // { Sid, Status, ... }
+  const token = RtcTokenBuilder.buildTokenWithUid(
+    APP_ID,
+    APP_CERTIFICATE,
+    channelName,
+    uid,
+    RtcRole.PUBLISHER,
+    privilegeExpiredTs
+  );
+
+  return token;
 }
 
-// End a call programmatically (e.g. wallet empty)
-async function endCall(exotelSid) {
-  await axios.post(`${BASE}/Calls/${exotelSid}.json`,
-    new URLSearchParams({ Status: 'completed' }), AUTH);
-}
-
-module.exports = { connectCall, endCall };
+module.exports = { generateToken };
 ```
 
-**`src/routes/webhooks.js` — Exotel handler**
+**`src/routes/calls.js` — Call Initiation**
 
 ```js
-const router  = require('express').Router();
-const db      = require('../config/db');
-const billing = require('../services/billing');
+const router = require('express').Router();
+const { generateToken } = require('../services/agora');
+const db = require('../config/db');
 
-router.post('/exotel', async (req, res) => {
-  // Respond 200 immediately — Exotel retries on delay
+router.post('/initiate', async (req, res) => {
+  const { mentorId } = req.body;
+  const studentId = req.user.id;
+
+  // 1. Validate wallet balance
+  const wallet = await db.wallet.findUnique({ where: { userId: studentId } });
+  if (!wallet || wallet.balance < 10) return res.status(402).json({ error: 'Insufficient balance' });
+
+  // 2. Create session
+  const channelName = `call_${Date.now()}_${studentId}`;
+  const session = await db.callSession.create({
+    data: {
+      student_id: studentId,
+      mentor_id: mentorId,
+      agora_channel_id: channelName,
+      status: 'pending'
+    }
+  });
+
+  // 3. Generate tokens for both
+  const studentToken = generateToken(channelName, studentId);
+  const mentorToken = generateToken(channelName, mentorId);
+
+  res.json({ sessionId: session.id, channelName, studentToken, mentorToken });
+});
+
+router.post('/:id/start', async (req, res) => {
+  await db.callSession.update({
+    where: { id: req.params.id },
+    data: { status: 'active', startedAt: new Date() }
+  });
   res.sendStatus(200);
+});
 
-  const { CallSid, Status, Duration, RecordingUrl } = req.body;
-  const sessionId = req.query.session;
-  if (!sessionId) return;
-
-  if (Status === 'in-progress') {
-    // Idempotent: only update if still pending
-    await db.callSession.updateMany({
-      where: { id: sessionId, status: 'pending' },
-      data:  { status: 'active', startedAt: new Date(), exotelSid: CallSid }
-    });
-  }
-
-  if (Status === 'completed') {
-    await billing.settle(sessionId, parseInt(Duration || '0', 10), RecordingUrl);
-  }
+router.post('/:id/end', async (req, res) => {
+  const { durationSecs } = req.body;
+  const billing = require('../services/billing');
+  await billing.settle(req.params.id, durationSecs);
+  res.sendStatus(200);
 });
 
 module.exports = router;
@@ -648,9 +652,9 @@ router.post('/topup/confirm', auth, async (req, res) => {
 
 ---
 
-### 6.3 Firebase — OTP & Notifications
+### 6.3 Firebase — Auth & Notifications
 
-**OTP Login (phone auth)**
+**Auth (Email/Google)**
 
 ```js
 // src/config/firebase.js
@@ -667,7 +671,7 @@ admin.initializeApp({
 module.exports = admin;
 ```
 
-The React Native app handles OTP entry natively using `@react-native-firebase/auth`. After the user enters the OTP, Firebase returns an ID token which is sent to your API with every request in the `Authorization: Bearer <token>` header. Your `auth.js` middleware verifies it.
+The React Native app handles authentication using Firebase Auth (or Google Sign-In). After login, Firebase returns an ID token sent to the API in the `Authorization: Bearer <token>` header. Your `auth.js` middleware verifies it and extracts the user's email.
 
 **Push notifications**
 
@@ -713,46 +717,32 @@ module.exports = { sendMentorOnlineAlert, sendLowBalanceAlert, sendPostCallRatin
 
 ---
 
-### 6.4 AWS — Hosting & Storage
+### 6.4 Supabase — Hosting & Storage
 
-**EC2 setup (Ubuntu 22.04)**
+**Hosting**
 
-```bash
-# Install Node.js 20
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
+The API server can be hosted on **Vercel**, **AWS EC2**, or directly via **Supabase Edge Functions** (if preferred). Primary database and storage are handled by Supabase.
 
-# Install PM2 globally
-sudo npm install -g pm2
-
-# Clone and run
-git clone https://github.com/your-org/mentivo-api.git
-cd mentivo-api
-npm install --production
-npx prisma migrate deploy
-pm2 start src/app.js --name mentivo-api
-pm2 save && pm2 startup
-```
-
-**S3 — Profile photos and call recordings**
+**Supabase Storage — Profile photos and call recordings**
 
 ```js
 // src/services/storage.js
-const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
-const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const { createClient } = require('@supabase/supabase-js');
 
-const s3 = new S3Client({ region: process.env.AWS_REGION });
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-async function getUploadUrl(key, contentType) {
-  return getSignedUrl(s3, new PutObjectCommand({
-    Bucket:      process.env.S3_BUCKET,
-    Key:         key,
-    ContentType: contentType,
-  }), { expiresIn: 300 }); // 5-min upload window
+async function getUploadUrl(bucket, path) {
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUploadUrl(path);
+  return data.signedUrl;
 }
 
-function getPublicUrl(key) {
-  return `https://${process.env.CLOUDFRONT_DOMAIN}/${key}`;
+function getPublicUrl(bucket, path) {
+  const { data } = supabase.storage
+    .from(bucket)
+    .getPublicUrl(path);
+  return data.publicUrl;
 }
 
 module.exports = { getUploadUrl, getPublicUrl };
@@ -847,17 +837,18 @@ router.post('/:id/rate', auth, async (req, res) => {
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | `/auth/verify` | — | Exchange Firebase token for user record |
+| POST | `/auth/verify` | — | Exchange Firebase/Google token for user record |
 | GET | `/mentors` | Required | List online mentors with filters |
 | GET | `/mentors/:id` | Required | Single mentor profile |
 | PATCH | `/mentors/me/online` | Mentor | Set online status + heartbeat |
-| POST | `/calls/initiate` | Required | Start a masked call |
+| POST | `/calls/initiate` | Required | Start an Agora VoIP session |
+| POST | `/calls/:id/start` | Required | Mark call as active (start billing) |
+| POST | `/calls/:id/end` | Required | End call and trigger settlement |
 | GET | `/calls/:id` | Required | Get call session details |
 | POST | `/calls/:id/rate` | Required | Submit post-call rating |
 | GET | `/wallet/balance` | Required | Get student wallet balance |
 | POST | `/wallet/topup` | Required | Create Razorpay top-up order |
 | POST | `/wallet/topup/confirm` | Required | Confirm payment + credit wallet |
-| POST | `/webhooks/exotel` | — (signed) | Exotel call status callbacks |
 | POST | `/webhooks/razorpay` | — (signed) | Razorpay payment callbacks |
 
 ---
@@ -865,18 +856,18 @@ router.post('/:id/rate', auth, async (req, res) => {
 ## 9. Build Roadmap
 
 ### Phase 1 — MVP (Weeks 1–6)
-**Goal:** One working end-to-end call with billing.
+**Goal:** One working end-to-end VoIP call with billing.
 
 | Week | Tasks |
 |------|-------|
-| 1 | Exotel account setup. Razorpay account setup. Firebase project. AWS account + EC2 + RDS provisioned. |
-| 2 | DB schema + Prisma migrations. Auth middleware. `/auth/verify` endpoint. |
-| 3 | Exotel `connectCall()` service. `/calls/initiate` route. Webhook handler skeleton. |
-| 4 | `settleBilling()` atomic transaction. Wallet debit + mentor credit. Test end-to-end with two real SIMs. |
+| 1 | Agora account setup. Razorpay account setup. Firebase project. Supabase project provisioned. |
+| 2 | DB schema + Prisma migrations. Auth middleware (Firebase/Google). `/auth/verify` endpoint. |
+| 3 | Agora `generateToken()` service. `/calls/initiate` route. Call screen with VoIP integration. |
+| 4 | `settleBilling()` atomic transaction. Wallet debit + mentor credit. Test end-to-end in-app. |
 | 5 | Razorpay wallet top-up flow (create order → confirm → credit). Wallet balance check before calls. |
-| 6 | React Native app: OTP login screen, mentor list, single-tap call, wallet top-up. Internal TestFlight / APK. |
+| 6 | React Native app: Google login, mentor list, single-tap call, in-app timer, wallet top-up. |
 
-**Exit criteria:** A real masked call completes between two phones, wallet is debited correctly, mentor earnings are credited.
+**Exit criteria:** A real in-app VoIP call completes between two devices, wallet is debited correctly, mentor earnings are credited.
 
 ---
 
@@ -885,7 +876,7 @@ router.post('/:id/rate', auth, async (req, res) => {
 
 | Week | Tasks |
 |------|-------|
-| 7–8 | Mentor onboarding: profile creation, ID doc upload to S3, admin verification panel. IIT email check (send OTP to @iitX.ac.in). |
+| 7–8 | Mentor onboarding: profile creation, ID doc upload to Supabase, admin verification panel. |
 | 9–10 | Post-call rating flow. Mentor average score calculation. Auto-flag mentors below 3.0. |
 | 11–12 | Partner dashboard (coaching centre login, referral code tracking, commission display). |
 | 13–14 | FCM push notifications: mentor online alerts, low balance warning, post-call rating prompt. |
@@ -898,20 +889,9 @@ router.post('/:id/rate', auth, async (req, res) => {
 | Week | Tasks |
 |------|-------|
 | 15–16 | Razorpay X payout integration. Weekly BullMQ batch job. TDS deduction logic. Mentor earnings screen. |
-| 17–18 | Balance watcher job: poll active sessions every 60s, end call via Exotel if wallet < ₹10. |
-| 19 | Sentry error monitoring. CloudFront for S3 assets. Load testing with k6. |
+| 17–18 | Quality monitoring: monitor call drops, Agora quality logs, student feedback. |
+| 19 | Sentry error monitoring. Supabase CDN for assets. Load testing with k6. |
 | 20 | Play Store submission. Soft launch with first coaching partner batch. |
-
----
-
-### Phase 4 — Scale + online GTM (Month 5+)
-**Goal:** Growth channels, premium tiers, adjacent exam verticals.
-
-- Premium mentor tier (₹15–20/min) with separate listing
-- Bookable scheduled sessions (calendar-based)
-- Creator referral UTM tracking (Instagram, YouTube, Telegram)
-- NEET vertical: new mentor category, separate onboarding
-- Mentivo-Tuition: small-batch scheduled classes by IITians
 
 ---
 
@@ -924,40 +904,35 @@ API_BASE_URL=https://api.mentivo.in
 ALLOWED_ORIGINS=https://mentivo.in,exp://
 
 # Database
-DATABASE_URL=postgresql://user:pass@your-rds-host:5432/mentivo
+DATABASE_URL=postgresql://user:pass@db.supabase.co:5432/postgres
 
 # Redis
-REDIS_URL=redis://your-elasticache-host:6379
+REDIS_URL=redis://your-redis-host:6379
 
 # Firebase
 FIREBASE_PROJECT_ID=mentivo-app
 FIREBASE_CLIENT_EMAIL=firebase-adminsdk@mentivo-app.iam.gserviceaccount.com
 FIREBASE_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n..."
 
-# Exotel
-EXOTEL_SID=your_sid
-EXOTEL_API_KEY=your_api_key
-EXOTEL_API_TOKEN=your_api_token
-EXOTEL_VIRTUAL_NUMBER=+91XXXXXXXXXX
+# Agora
+AGORA_APP_ID=your_app_id
+AGORA_APP_CERTIFICATE=your_app_certificate
 
 # Razorpay
 RAZORPAY_KEY_ID=rzp_live_XXXX
 RAZORPAY_KEY_SECRET=your_secret
 RAZORPAY_X_ACCOUNT=4564563214567654   # Razorpay X account number
 
-# AWS
-AWS_REGION=ap-south-1
-AWS_ACCESS_KEY_ID=AKIA...
-AWS_SECRET_ACCESS_KEY=...
-S3_BUCKET=mentivo-assets
-CLOUDFRONT_DOMAIN=d1234abcd.cloudfront.net
+# Supabase
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your_service_role_key
 ```
 
 ---
 
 ## 11. App Scaffolding Prompt
 
-Use this prompt with any capable AI coding assistant (Claude, GPT-4, Cursor, etc.) to scaffold the full Mentivo application.
+Use this prompt with any capable AI coding assistant to scaffold the full Mentivo application.
 
 ---
 
@@ -966,127 +941,49 @@ Build a full-stack per-minute mentorship marketplace app called Mentivo.
 Here is the complete specification:
 
 === PRODUCT ===
-Mentivo connects JEE aspirants in Tier-2/3 India with verified, current IIT students
-via on-demand, per-minute voice calls. Students pay ₹10/min. Mentors keep 70%.
-First 5 minutes are free for new users. No subscriptions — pure wallet-based.
+Mentivo connects JEE aspirants with verified IIT students via in-app VoIP calls.
+Students pay ₹10/min. Mentors keep 70%. First 5 minutes are free for new users.
+No phone number required; login via Email/Password (verified) or Google.
 
 === BACKEND (Node.js + Express + PostgreSQL + Redis) ===
 
 Build a REST API with the following:
 
 1. AUTH
-   - Firebase Admin SDK for verifying phone-based OTP tokens
-   - Middleware: extract Firebase ID token from Authorization header,
-     verify it, attach req.user to every protected route
+   - Firebase Admin SDK for verifying ID tokens (Email/Google)
+   - Middleware: extract token, verify, attach req.user (id, email, etc.)
 
-2. DATABASE (PostgreSQL via Prisma)
-   Tables: users, mentor_profiles, wallets, mentor_balances,
-   wallet_transactions, call_sessions, ratings, payouts, referrals
-   Full schema is provided below — implement it exactly.
-   [Insert the schema from Section 4 of this document]
+2. DATABASE (PostgreSQL via Prisma on Supabase)
+   Tables: users (email, phone?, role, is_email_verified), mentor_profiles,
+   wallets, mentor_balances, wallet_transactions, call_sessions (agora_channel_id),
+   ratings, payouts, referrals
 
-3. REDIS
-   - Mentor online/offline presence: key = "presence:{mentorId}",
-     TTL = 60s, mentor heartbeats every 30s to stay listed as online
-   - BullMQ queues: payout_batch, balance_watcher
+3. AGORA INTEGRATION (VoIP & Chat)
+   - POST /calls/initiate: generate Agora RTC tokens for student/mentor
+   - POST /calls/:id/start: mark started_at
+   - POST /calls/:id/end: call settleBilling(duration)
+   - Initial chat feature using Agora Chat
 
-4. EXOTEL INTEGRATION (masked calling)
-   - POST /calls/initiate: check student wallet ≥ ₹10, check mentor online
-     in Redis, call Exotel Calls/connect.json, store call_session {status: pending}
-   - POST /webhooks/exotel: handle Status = in-progress (set session active)
-     and Status = completed (call settleBilling atomically)
-   - settleBilling: atomic Prisma transaction — debit student wallet,
-     credit mentor pending_payout, update call_session to settled
-   - Billing: billable minutes = ceil((durationSecs - 300) / 60), rate = ₹10/min,
-     mentor share = 70%, round up to the next minute, first 5 min free
+4. BILLING (settleBilling)
+   - Atomic Prisma transaction: debit student wallet, credit mentor, update session.
+   - Ceil minutes, subtract 5 min free for first-timers.
 
-5. RAZORPAY INTEGRATION (wallet top-up + mentor payouts)
-   - POST /wallet/topup: create Razorpay order, store pending transaction
-   - POST /wallet/topup/confirm: verify HMAC signature, credit wallet atomically
-   - POST /payouts/trigger (admin): BullMQ job, iterate mentors with pending_payout > 0,
-     deduct 10% TDS on amounts above threshold, call Razorpay X payout API,
-     record in payouts table, zero out pending_payout
+5. RAZORPAY
+   - Wallet top-up (Standard) and Mentor Payouts (Razorpay X).
 
-6. FIREBASE FCM (push notifications)
-   - Send "Mentor is online" to students who favourited that mentor
-   - Send "Low balance" alert when wallet drops below ₹20
-   - Send "Rate your call" prompt 10 seconds after call ends
-
-7. ROUTES TO BUILD
-   POST   /auth/verify
-   GET    /mentors                (list online mentors, filter by IIT/rating)
-   GET    /mentors/:id            (single mentor profile)
-   PATCH  /mentors/me/online      (mentor heartbeat — set presence in Redis)
-   PATCH  /mentors/me/offline     (mentor goes offline)
-   POST   /calls/initiate         (start masked call)
-   GET    /calls/:id              (get session status)
-   POST   /calls/:id/rate         (submit 1–5 star rating + recalculate mentor avg)
-   GET    /wallet/balance         (student wallet)
-   POST   /wallet/topup           (create Razorpay order)
-   POST   /wallet/topup/confirm   (verify + credit)
-   POST   /webhooks/exotel        (Exotel status callbacks — respond 200 immediately)
-   POST   /webhooks/razorpay      (Razorpay payment webhooks)
+6. ROUTES
+   /auth/verify, /mentors, /mentors/:id, /calls/initiate, /calls/:id/start,
+   /calls/:id/end, /calls/:id/rate, /wallet/balance, /wallet/topup
 
 === FRONTEND (React Native + Expo) ===
 
-Build two apps in one codebase (role-based navigation):
+1. LOGIN: Google Sign-In or Email/Password with verification.
+2. MENTOR LIST: Filter by IIT, rating, online status.
+3. CALL SCREEN: Agora RTC integration, live timer, running cost, End Call.
+4. CHAT: First-step chat via Agora Chat.
+5. WALLET: Razorpay integration for top-up.
 
-STUDENT APP screens:
-1. OTP Login — phone number entry + 6-digit OTP (Firebase phone auth)
-2. Mentor List — scrollable list of online mentors with:
-   name, IIT name, branch, year, avg rating (stars), ₹10/min badge,
-   "Call Now" button (green), "Favourite" heart icon
-3. Mentor Profile — full profile, call history with this mentor, ratings
-4. Call Screen — shown during active call: mentor name, live timer (mm:ss),
-   running cost display (₹X.XX), "End Call" button
-5. Post-Call Rating — 1–5 stars + optional text comment
-6. Wallet — current balance, top-up button (₹50 / ₹100 / ₹200 / custom),
-   transaction history
-7. Call History — list of past sessions with duration, cost, mentor name
-
-MENTOR APP screens:
-1. OTP Login (same as student)
-2. Go Online toggle — prominent toggle on home screen; sets Redis presence
-3. Earnings Dashboard — pending payout, total earned, next payout date
-4. Call History — incoming calls, durations, earnings per call
-5. Profile — edit bio, photo (upload to S3 signed URL), IIT details
-
-SHARED:
-- Bottom tab navigator (role-based tabs)
-- Auth state: store Firebase ID token in SecureStore
-- Send token in every API request: Authorization: Bearer <token>
-- Handle 402 (insufficient balance) — redirect to Wallet screen
-- FCM: request notification permissions on first login, store token in backend
-
-=== BUSINESS RULES TO ENFORCE ===
-- Students must have ≥ ₹10 wallet balance to initiate a call
-- Mentors must be verified (mentor_profiles.verified = true) to appear in list
-- Billing rounds up to the next full minute
-- First 5 minutes (300 seconds) are free — subtract before billing
-- If a call produces 0 billable minutes, no wallet debit occurs
-- Mentor average rating is recalculated after every rating submission
-- Mentors with avg_rating < 2.5 after 10+ calls are auto-flagged (set flagged = true)
-- Payout TDS: deduct 10% TDS on payouts exceeding ₹5,000 cumulative per quarter
-
-=== PROJECT STRUCTURE ===
-mentivo-api/      (Node.js backend — structure per the Mentivo tech doc)
-mentivo-app/      (React Native Expo app)
-
-=== ENVIRONMENT ===
-Backend runs on Node 20. Use Prisma for DB. Use ioredis for Redis.
-Use BullMQ for background jobs. Use Zod for request validation.
-All routes use async/await with express-async-errors for clean error handling.
-
-Generate:
-1. Complete backend with all routes, services, middleware, and DB schema
-2. React Native app with all screens and navigation
-3. Prisma schema matching the DB schema above
-4. package.json files for both projects with all required dependencies
-5. .env.example files for both projects
-6. README.md with setup instructions for both projects
-
-Make the code production-quality: proper error handling, input validation,
-idempotent webhook handlers, atomic DB transactions for all billing operations.
+Generate complete code for backend and frontend, Prisma schema, and setup docs.
 ```
 
 ---

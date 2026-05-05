@@ -13,24 +13,32 @@ app.use(cors({
 }));
 app.set('trust proxy', 1);
 
+function getClientIp(req: express.Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    if (typeof forwarded === 'string') {
+      return forwarded.split(',')[0].trim();
+    }
+    return forwarded[0].trim();
+  }
+  return req.ip || 'unknown';
+}
 
 app.use((req, res, next) => {
   const start = Date.now();
-  const { method, url, ip } = req;
+  const { method, url } = req;
+  const ip = getClientIp(req);
 
-  // 1. IMMEDIATE LOG: Log as soon as the request hits the server
-  console.log(`>>> [INCOMING] ${method} ${url} | IP: ${ip}`);
+  console.log(`>>> ${method} ${url} | IP: ${ip}`);
 
-  // 2. FINISH LOG: Log the outcome once the system is done with it
   res.on('finish', () => {
     const duration = Date.now() - start;
-    console.log(`<<< [OUTCOME] ${method} ${url} | Status: ${res.statusCode} | ${duration}ms`);
+    console.log(`<<< ${method} ${url} | Status: ${res.statusCode} | ${duration}ms`);
   });
 
-  // 3. ERROR LOG: Log if the connection is closed abruptly without finishing
   res.on('close', () => {
     if (!res.writableEnded) {
-      console.log(`!!! [ABORTED] ${method} ${url} | Connection closed prematurely`);
+      console.log(`!!! ${method} ${url} | Connection closed prematurely`);
     }
   });
 
@@ -39,14 +47,14 @@ app.use((req, res, next) => {
 
 // Routes
 
-app.get('/health', async (req,res) => {
-  // console.log(req.body);
-  return res.status(200).json({
-    message: "Server is running",
-  })
-})
+// app.get('/health', async (req,res) => {
+//   // console.log(req.body);
+//   return res.status(200).json({
+//     message: "Server is running",
+//   })
+// })
 
-app.get('/api/health-check', async (req, res) => {
+app.get('/api/health', async (req, res) => {
   try {
     // Prove the DB is active using Prisma
     await prisma.user.findFirst({
