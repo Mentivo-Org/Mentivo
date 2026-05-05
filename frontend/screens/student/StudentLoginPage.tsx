@@ -17,6 +17,7 @@ import { useAuth } from "../../services/retrieveKeys";
 import { LoginEndpoints } from "../../constants/endpoint";
 import api from "../../services/api";
 import { ActivityIndicator } from "react-native";
+import { usePasswordMask } from "../../hooks/usePasswordMask";
 
 interface LoginPageProps {
   navigation?: any;
@@ -26,6 +27,7 @@ const StudentLoginPage: React.FC<LoginPageProps> = ({ navigation }) => {
   const {setIsSignedIn} = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const { displayValue: passwordDisplay, handleChange: handlePasswordChange } = usePasswordMask(password, setPassword);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setLoading] = useState(false);
 
@@ -65,23 +67,33 @@ const handleGoogleSignIn = async () => {
       prompt: 'select_account'
     });
     
-    // This is the 'credential' we send to our backend
     const idToken = userInfo?.data?.idToken; 
-    // console.log(idToken);
 
-    // Call your Node.js API
-    const response = await api.post(LoginEndpoints.googleLogin, {idToken, mode: "sign-in"})
+    // Call Node.js API
+    const response = await api.post(LoginEndpoints.googleLogin, { idToken, mode: "sign-in" })
     
-    const data = await response.data;
-    // console.log(data);
-    if(response.status==200) {
-      await AsyncStorage.setItem('access_token', data?.access_token);
-      await AsyncStorage.setItem('refresh_token', data?.refresh_token);
-      await AsyncStorage.setItem('user', JSON.stringify(data?.user));
+    if (response.status === 202) {
+      // First time Google user, need to complete profile
+      navigation.replace("CompleteProfile", {
+        full_name: response.data.name,
+        email: response.data.email,
+        idToken: idToken,
+        role: "student"
+      });
+      return;
+    }
+
+    if (response.status === 200) {
+      const { accessToken, refreshToken, user } = response.data;
+      await AsyncStorage.setItem('accessToken', accessToken);
+      await AsyncStorage.setItem('refreshToken', refreshToken);
+      await AsyncStorage.setItem('user', JSON.stringify(user));
       setIsSignedIn(true);
     }
   } catch (error) {
     console.log("Native Sign-In Cancelled or Failed", error);
+    const errorMsg = error.response?.data?.error || "Google sign-in failed";
+    Alert.alert("Error", errorMsg);
   };
 };
 
@@ -188,11 +200,15 @@ const handleGoogleSignIn = async () => {
                 <View style={styles.passwordInputContainer}>
                   <TextInput
                     style={styles.passwordInput}
-                    placeholder="••••••••"
+                    placeholder="∗∗∗∗∗∗∗∗"
                     placeholderTextColor="#757684"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
+                    value={showPassword ? password : passwordDisplay}
+                    onChangeText={showPassword ? setPassword : handlePasswordChange}
+                    secureTextEntry={false}
+                    autoCapitalize="none"
+                    selection={!showPassword ? { start: passwordDisplay.length, end: passwordDisplay.length } : undefined}
+                    autoCorrect={false}
+                    spellCheck={false}
                   />
                   <TouchableOpacity
                     onPress={() => setShowPassword(!showPassword)}

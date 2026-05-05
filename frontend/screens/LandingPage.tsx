@@ -107,7 +107,7 @@ const LandingPage = () => {
 
         <View style={styles.footer}> 
           <Text style={styles.footerBrand}>IIT MENTORS</Text>
-          <Text style={styles.footerText}>© 2024 IIT Mentorship Platform. All excellence reserved.</Text>
+          <Text style={styles.footerText}>© 2026 IIT Mentorship Platform. All excellence reserved.</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

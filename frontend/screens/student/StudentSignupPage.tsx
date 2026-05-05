@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@react-native-vector-icons/ionicons";
@@ -13,6 +14,8 @@ import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import api from "../../services/api";
 import { LoginEndpoints } from "../../constants/endpoint";
 import { useAuth } from "../../services/retrieveKeys";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { usePasswordMask } from "../../hooks/usePasswordMask";
 
 interface SignupPageProps {
   navigation?: any;
@@ -23,11 +26,42 @@ const StudentSignupPage: React.FC<SignupPageProps> = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const { displayValue: passwordDisplay, handleChange: handlePasswordChange } = usePasswordMask(password, setPassword);
   const [showPassword, setShowPassword] = useState(false);
   const {setIsSignedIn} = useAuth();
 
-  const handleCreateAccount = () => {
-    console.log("Create account", { fullName, email, phone, password });
+  const handleCreateAccount = async () => {
+    if (!fullName || !email || !password) return Alert.alert("Error", "Please fill in all required fields");
+    
+    try {
+      const response = await api.post(LoginEndpoints.signup, {
+        email,
+        password,
+        name: fullName,
+        phone: phone || undefined,
+        role: "student"
+      });
+
+      const { data } = response;
+
+      if (data.requiresVerification) {
+        // Redirect to OTP verification screen for email-password signup
+        navigation.navigate("SendOtp", { email: email });
+      } else {
+        // Success without verification (e.g., Google or already verified)
+        const { accessToken, refreshToken, user } = data;
+        await AsyncStorage.setItem('accessToken', accessToken);
+        await AsyncStorage.setItem('refreshToken', refreshToken);
+        await AsyncStorage.setItem('user', JSON.stringify(user));
+
+        Alert.alert("Success", "Account created successfully!");
+        setIsSignedIn(true);
+      }
+    } catch (error) {
+      console.error("Signup error:", error);
+      const errorMsg = error.response?.data?.error || "Signup failed";
+      Alert.alert("Error", errorMsg);
+    }
   };
 
 // const handleGoogleSignUp = async () => {
@@ -68,32 +102,32 @@ const StudentSignupPage: React.FC<SignupPageProps> = ({ navigation }) => {
       prompt: 'select_account'
     });
     
-    // This is the 'credential' we send to our backend
     const idToken = userInfo?.data?.idToken; 
-    // console.log(idToken);
 
-    // Call your Node.js API
+    // Call Node.js API
     const response = await api.post(LoginEndpoints.googleLogin, {idToken, mode: "sign-up"})
     
-    const data = await response.data;
-    console.log(data);
-    if(data.email&&data.name) {
-      navigation.replace("CompleteProfile", {
-        full_name: data.name,
-        email: data.email,
+    if (response.status === 202) {
+      navigation.replace("SendOtp", {
+        full_name: response.data.name,
+        email: response.data.email,
         idToken: idToken,
         role: "student"
-      })
+      });
+      return;
     }
-    // // console.log(data);
-    // if(response.status==200) {
-    //   await AsyncStorage.setItem('access_token', data?.access_token);
-    //   await AsyncStorage.setItem('refresh_token', data?.refresh_token);
-    //   await AsyncStorage.setItem('user', JSON.stringify(data?.user));
-    //   setIsSignedIn(true);
-    // }
+
+    if (response.status === 200 || response.status === 201) {
+      const { accessToken, refreshToken, user } = response.data;
+      await AsyncStorage.setItem('accessToken', accessToken);
+      await AsyncStorage.setItem('refreshToken', refreshToken);
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+      setIsSignedIn(true);
+    }
   } catch (error) {
     console.log("Native Sign-In Cancelled or Failed", error);
+    const errorMsg = error.response?.data?.error || "Google sign-up failed";
+    Alert.alert("Error", errorMsg);
   };
 };
 
@@ -183,12 +217,15 @@ const StudentSignupPage: React.FC<SignupPageProps> = ({ navigation }) => {
             <View style={styles.passwordInputContainer}>
               <TextInput
                 style={styles.passwordInput}
-                placeholder="••••••••"
+                placeholder="∗∗∗∗∗∗∗∗"
                 placeholderTextColor="#7a849d"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
+                value={showPassword ? password : passwordDisplay}
+                onChangeText={showPassword ? setPassword : handlePasswordChange}
+                secureTextEntry={false}
                 autoCapitalize="none"
+                selection={!showPassword ? { start: passwordDisplay.length, end: passwordDisplay.length } : undefined}
+                autoCorrect={false}
+                spellCheck={false}
               />
               <TouchableOpacity
                 onPress={() => setShowPassword(!showPassword)}
@@ -223,7 +260,7 @@ const StudentSignupPage: React.FC<SignupPageProps> = ({ navigation }) => {
 
         <View style={styles.footer}>
           <Text style={styles.footerBrand}>IITian Mentor</Text>
-          <Text style={styles.footerCopy}>© 2024 IITian Mentor. Excellence in Guidance.</Text>
+          <Text style={styles.footerCopy}>© 2026 IITian Mentor. Excellence in Guidance.</Text>
           <View style={styles.footerLinks}>
             <Text style={styles.footerLink}>Privacy Policy</Text>
             <Text style={styles.footerLink}>Terms of Service</Text>

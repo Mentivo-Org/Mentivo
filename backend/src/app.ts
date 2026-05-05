@@ -6,11 +6,33 @@ import { supabaseAdmin } from './lib/supabaseAdmin.ts';
 import prisma from './config/db.ts';
 
 const app = express();
-app.use(express.json());
+
+// Move CORS to the top
 app.use(cors({
-  origin: ['https://mentivo.in', 'http://localhost:8081'], 
-  credentials: true
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'https://mentivo.in',
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001'
+    ];
+
+    if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+app.use(express.json());
 app.set('trust proxy', 1);
 
 function getClientIp(req: express.Request): string {

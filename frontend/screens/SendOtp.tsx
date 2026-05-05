@@ -27,7 +27,6 @@ interface SendOtpScreenProps {
 export const SendOtpScreen: React.FC<SendOtpScreenProps> = ({ route, navigation }) => {
   const {setIsSignedIn} = useAuth();
     const router = useRoute<any>();
-    const {phone} = router.params;
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
@@ -68,22 +67,29 @@ export const SendOtpScreen: React.FC<SendOtpScreenProps> = ({ route, navigation 
 
     setLoading(true);
     try {
-      // TODO: Call backend API to verify OTP
-      const response = await api.post(LoginEndpoints.verifyOtp, {phone, token: otpCode});
+      const response = await api.post(LoginEndpoints.verifyOtp, {
+        email, 
+        token: otpCode,
+        type: 'signup'
+      });
 
-      if (response.status>=200 && response.status<300) {
-        const data = await response.data;
-        // Navigate to appropriate next screen based on user type
-              // if(response.status==200) {
-        await AsyncStorage.setItem('user', JSON.stringify(data?.user));
-        await AsyncStorage.setItem('verified_phone', "true");
+      if (response.status >= 200 && response.status < 300) {
+        const { accessToken, refreshToken, user } = response.data;
+        
+        // Store tokens and user info
+        await AsyncStorage.setItem('accessToken', accessToken);
+        await AsyncStorage.setItem('refreshToken', refreshToken);
+        await AsyncStorage.setItem('user', JSON.stringify(user));
+        await AsyncStorage.setItem('verifiedPhone', "true");
+        
         setIsSignedIn(true);
       } else {
         alert('Invalid OTP. Please try again.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('OTP verification failed:', error);
-      alert('Failed to verify OTP. Please try again.');
+      const errorMsg = error.response?.data?.error || 'Failed to verify OTP. Please try again.';
+      alert(errorMsg);
     } finally {
       setLoading(false);
     }

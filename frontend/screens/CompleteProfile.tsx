@@ -35,30 +35,32 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ navigation }) => {
     const route = useRoute<any>();
     const {full_name, email, idToken, role} = route.params;
   const handleSignUp = async () => {
-    console.log("Sign up with Google");
+    console.log("Completing profile with Google");
     try {
-        //We already have the idToken
-      console.log(idToken);
-  
-      // Call your Node.js API
-      const response = await api.post(LoginEndpoints.googleLogin, {idToken, mode: "sign-up", phone: phoneNumber, role})
+      // Call Node.js API
+      const response = await api.post(LoginEndpoints.googleLogin, {
+        idToken,
+        mode: "sign-up",
+        phone: phoneNumber,
+        role
+      });
       
-      const data = await response.data;
-      // console.log(data);
-      if(response.status==200) {
-        await AsyncStorage.setItem('access_token', data?.access_token);
-        await AsyncStorage.setItem('refresh_token', data?.refresh_token);
-        await AsyncStorage.setItem('user', JSON.stringify(data?.user));
-        //Send OTP to phone number by backend
-        //Forward to OTP verification page
+      if (response.status === 200) {
+        const { accessToken, refreshToken, user } = response.data;
+        await AsyncStorage.setItem('accessToken', accessToken);
+        await AsyncStorage.setItem('refreshToken', refreshToken);
+        await AsyncStorage.setItem('user', JSON.stringify(user));
 
+        // After completing profile, we could go to Home or OTP
+        // Assuming OTP for now as per original code
         navigation.navigate("SendOtp", {
           phone: phoneNumber
         });
-
       }
     } catch (error) {
-      console.log("Native Sign-In Cancelled or Failed", error);
+      console.log("Complete Profile Failed", error);
+      const errorMsg = error.response?.data?.error || "Profile completion failed";
+      Alert.alert("Error", errorMsg);
     };
   };
 

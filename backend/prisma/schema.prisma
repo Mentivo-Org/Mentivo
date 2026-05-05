@@ -17,6 +17,7 @@ model User {
   phone           String?   @unique
   isEmailVerified Boolean   @default(false)
   isPhoneVerified Boolean   @default(false)
+  authProvider    String    @default("email")
   name            String?
   role            UserRole
   created_at      DateTime  @default(now())

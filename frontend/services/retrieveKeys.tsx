@@ -19,27 +19,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 const checkLoginStatus = async () => {
   console.log("Checking login status...");
   try {
-    const access = await AsyncStorage.getItem('access_token');
-    const refresh = await AsyncStorage.getItem('refresh_token');
-    const verifiedPhone = await AsyncStorage.getItem('verified_phone')
+    const access = await AsyncStorage.getItem('accessToken');
+    const refresh = await AsyncStorage.getItem('refreshToken');
     
     console.log("Tokens found:", { access: !!access, refresh: !!refresh });
 
-    // Explicitly set to true or false. NEVER leave it as null.
-    setIsSignedIn(!!(access && refresh && verifiedPhone));
-    console.log("Logged in status: ",!!(access && refresh && verifiedPhone)?"ACTIVE":"LOGGED OUT")
+    setIsSignedIn(!!(access && refresh));
+    console.log("Logged in status: ", !!(access && refresh) ? "ACTIVE" : "LOGGED OUT")
   } catch (e) {
     console.error("AsyncStorage Error:", e);
-    setIsSignedIn(false); // If it fails, default to logged out
+    setIsSignedIn(false); 
   }
 };
 
 const handleLogout = async ()=> {
-
   try {
-    await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user', 'verified_phone']);
-    const isSignedIn = await GoogleSignin.hasPreviousSignIn();
-    if(isSignedIn) {
+    await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
+    const isGoogleSignedIn = await GoogleSignin.hasPreviousSignIn();
+    if(isGoogleSignedIn) {
       await GoogleSignin.signOut();
     }
     setIsSignedIn(false);
@@ -54,12 +51,11 @@ const handleLogout = async ()=> {
   useEffect(() => {
     checkLoginStatus();
   }, []);
+
   useEffect(() => {
   GoogleSignin.configure({
-    // IMPORTANT: This must be a "Web Client ID", 
-    // NOT an Android or iOS Client ID.
     webClientId: '456108214629-ddj51krdofouhptf81ar6f0h8tb8gsu8.apps.googleusercontent.com', 
-    offlineAccess: true, // Required if you want a refresh_token for your backend
+    offlineAccess: true, 
     forceCodeForRefreshToken: true,
   });
 }, []);
