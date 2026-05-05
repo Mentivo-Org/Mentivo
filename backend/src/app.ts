@@ -13,17 +13,26 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
     
+    // Normalize origin by removing trailing slash if present
+    const normalizedOrigin = origin.endsWith('/') ? origin.slice(0, -1) : origin;
+
     const allowedOrigins = [
       'https://mentivo.in',
+      'https://www.mentivo.in',
       'http://localhost:3000',
       'http://localhost:3001',
       'http://127.0.0.1:3000',
       'http://127.0.0.1:3001'
     ];
 
-    if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+    if (
+      allowedOrigins.includes(normalizedOrigin) || 
+      normalizedOrigin.endsWith('.mentivo.in') || 
+      process.env.NODE_ENV !== 'production'
+    ) {
       callback(null, true);
     } else {
+      console.warn(`[CORS Blocked] Origin attempting to connect: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
