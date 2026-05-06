@@ -16,14 +16,16 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const isMaintenanceMode = process.env.PRODUCTION_MODE === 'true';
+
   return (
     <html lang="en" className="scroll-smooth">
       <body className={`${inter.className} bg-[#f8fafc] text-slate-900 antialiased`}>
-        <Navbar />
-        <main className="min-h-screen pt-16">
+        {!isMaintenanceMode && <Navbar />}
+        <main className={isMaintenanceMode ? "" : "min-h-screen pt-16"}>
           {children}
         </main>
-        <Footer />
+        {!isMaintenanceMode && <Footer />}
       </body>
     </html>
   );
