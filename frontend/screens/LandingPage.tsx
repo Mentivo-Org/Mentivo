@@ -1,423 +1,377 @@
 import React from 'react';
-import { ScrollView, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Dimensions,
+} from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Ionicons from '@react-native-vector-icons/ionicons';
 import { useNavigation } from '@react-navigation/native';
-const LandingPage = () => {
 
-    const navigation = useNavigation();
+const { width } = Dimensions.get('window');
+
+const imgLine1 = "https://www.figma.com/api/mcp/asset/1ea4a1ec-b101-47ab-a3bd-58924504a1fc";
+const imgContainer = "https://www.figma.com/api/mcp/asset/1ac9faec-22e5-4230-80dc-02350e0c1f6c";
+const imgEllipse7 = "https://www.figma.com/api/mcp/asset/f0c4c0fe-c5c3-4c22-b1ac-e14a740a0258";
+const imgIconstackIoHeart = "https://www.figma.com/api/mcp/asset/d044bb49-e83f-4717-9e72-9c282df68f08";
+const imgIconstackIoStar = "https://www.figma.com/api/mcp/asset/f7552578-f33e-4001-92b5-492d06504a77";
+const imgIconstackIoLogin1 = "https://www.figma.com/api/mcp/asset/0d3bd481-870d-482c-b25f-cc1bc3eec5da";
+const imgIconstackIoSearch = "https://www.figma.com/api/mcp/asset/cb6db1db-1210-4521-bd0c-4d298c0de1f4";
+const imgIconstackIoBook = "https://www.figma.com/api/mcp/asset/d46e39b6-ce52-45bf-a9b3-bdf40ec9081d";
+const imgFrame22 = "https://www.figma.com/api/mcp/asset/b27abc95-b6a0-425a-b467-a237d149eaba";
+
+const LandingPage = () => {
+  const navigation = useNavigation<any>();
 
   return (
-    <SafeAreaView style={styles.root}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.brand}>Mentivo</Text>
-
-            {/* No profile photo, because you are logged out */}
-          {/* <TouchableOpacity style={styles.profileButton} activeOpacity={0.8}>
-            <Ionicons name="person-circle-outline" size={28} color="#00288e" />
-          </TouchableOpacity> */}
+          <View style={styles.logoContainer}>
+            <Image source={require('../logo.svg')} style={styles.logoIcon} />
+            <Text style={styles.logoText}>entivo</Text>
+          </View>
+          <View style={styles.navLinks}>
+            <Text style={styles.navText}>MENTORS</Text>
+            <Text style={styles.navText}>REVIEW</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('StudentLogin')}>
+              <Text style={styles.navText}>LOGIN</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
+        {/* Hero Section */}
         <View style={styles.heroCard}>
-          <View style={styles.heroTag}>
-            <Text style={styles.heroTagText}>Academic Excellence Awaits</Text>
+          <Text style={styles.heroTitle}>IITian Guidance,</Text>
+          <Text style={[styles.heroTitle, { color: '#1d459c' }]}>Real Results</Text>
+          
+          <View style={styles.heroDescriptionContainer}>
+            <View style={styles.verticalLineContainer}>
+              <Image source={{ uri: imgLine1 }} style={styles.verticalLine} contentFit='fill' />
+            </View>
+            <Text style={styles.heroDescription}>
+              Unlock your potential with personalized mentorship from IITians. Turn ambition into achievement with expert guidance.
+            </Text>
           </View>
-          <Text style={styles.heroTitle}>Learn from IITians</Text>
-          <Text style={styles.heroText}>
-            Unlock your potential with personalized mentorship from the prestigious IIT community. Bridge the gap between ambition and achievement with expert guidance.
-          </Text>
-          <View style={styles.buttonGroup}>
-            <TouchableOpacity style={styles.primaryButton} activeOpacity={0.8} onPress={()=> navigation.navigate('StudentLogin')}>
-              <Text style={styles.primaryButtonText}>I am a Student</Text>
-              <Ionicons name="arrow-forward" size={18} color="#fff" style={styles.buttonIcon} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryButton} activeOpacity={0.8}>
-              <Text style={styles.secondaryButtonText}>I am a Mentor</Text>
-            </TouchableOpacity>
-          </View>
+
+          <TouchableOpacity 
+            style={styles.getStartedButton}
+            onPress={() => navigation.navigate('RoleSelection')}
+          >
+            <Text style={styles.getStartedText}>Get Started</Text>
+            <Image source={{ uri: imgContainer }} style={styles.arrowIcon} />
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.section}>
-          <View style={[styles.card, styles.featureCard]}>
-            <View style={styles.cardHeader}>
-              <View>
-                <Text style={styles.featureTitle}>Direct Access</Text>
-                <Text style={styles.featureText}>Connect directly with students and alumni from India's top engineering institutes.</Text>
+        {/* Top Mentors */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Top mentors</Text>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mentorScroll}>
+          {[
+            { name: 'Suraj Jain', college: 'IIT Guwahati', rating: '4.6' },
+            { name: 'Abhirajya Yadav', college: 'IIT Guwahati', rating: '4.8' },
+            { name: 'Suraj Jain', college: 'IIT Guwahati', rating: '4.0' },
+          ].map((mentor, index) => (
+            <View key={index} style={styles.mentorCard}>
+              <View style={styles.mentorHeader}>
+                <Image source={{ uri: imgEllipse7 }} style={styles.mentorAvatar} />
+                <Image source={{ uri: imgIconstackIoHeart }} style={styles.heartIcon} />
               </View>
-              <Ionicons name="share-social-outline" size={26} color="#00288e" />
+              <Text style={styles.mentorName}>{mentor.name}</Text>
+              <View style={styles.mentorFooter}>
+                <Text style={styles.mentorCollege}>{mentor.college}</Text>
+                <View style={styles.ratingContainer}>
+                  <Text style={styles.ratingText}>{mentor.rating}</Text>
+                  <Image source={{ uri: imgIconstackIoStar }} style={styles.starIcon} />
+                </View>
+              </View>
             </View>
-            <View style={styles.tagsRow}>
-              <View style={styles.chip}><Text style={styles.chipText}>JEE Prep</Text></View>
-              <View style={styles.chip}><Text style={styles.chipText}>Career Growth</Text></View>
-              <View style={styles.chip}><Text style={styles.chipText}>Research</Text></View>
+          ))}
+        </ScrollView>
+
+        {/* How it works */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>How it works?</Text>
+        </View>
+        <View style={styles.howItWorksGrid}>
+          {[
+            { label: 'login', icon: imgIconstackIoLogin1 },
+            { label: 'Explore Mentor', icon: imgIconstackIoSearch },
+            { label: 'Contact', icon: imgIconstackIoHeart }, // Replacing with phone if needed
+            { label: 'Learn', icon: imgIconstackIoBook },
+          ].map((item, index) => (
+            <View key={index} style={styles.howItWorksItem}>
+              <View style={styles.iconWrapper}>
+                <Image source={{ uri: item.icon }} style={styles.gridIcon} />
+              </View>
+              <Text style={styles.gridLabel}>{item.label}</Text>
             </View>
+          ))}
+        </View>
+
+        {/* Features */}
+        <View style={styles.featureSection}>
+          <Text style={styles.featureTitle}>Smart Scheduling</Text>
+          <View style={styles.featureCard}>
+             <View style={styles.featureBlueLine} />
+             <Text style={styles.featureDescription}>
+               Seamlessly book sessions that fit both your schedules perfectly
+             </Text>
           </View>
 
-          <View style={[styles.card, styles.darkCard]}>
-            <Text style={styles.darkCardTitle}>Smart Scheduling</Text>
-            <Text style={styles.darkCardText}>Seamlessly book sessions that fit both your schedules perfectly.</Text>
+          <Text style={styles.featureTitle}>Personalized</Text>
+          <View style={styles.featureCard}>
+             <View style={styles.featureBlueLine} />
+             <Text style={styles.featureDescription}>
+               Curated mentorship plans tailored to your specific academic goals.
+             </Text>
           </View>
 
-          <View style={[styles.card, styles.paleCard]}> 
-            <View style={styles.iconCircle}>
-              <Ionicons name="person-outline" size={24} color="#00288e" />
-            </View>
-            <Text style={styles.paleCardTitle}>Personalized</Text>
-            <Text style={styles.paleCardText}>Curated mentorship plans tailored to your specific academic goals.</Text>
-          </View>
-
-          <View style={[styles.card, styles.imageCard]}> 
-            <View style={styles.cardOverlay} />
-            <Text style={styles.imageCardTitle}>Trust & Prestige</Text>
-            <Text style={styles.imageCardText}>Experience the academic rigor and professional standards of the IIT community.</Text>
+          <Text style={styles.featureTitle}>Our Connections</Text>
+          <View style={styles.featureCard}>
+             <View style={styles.featureBlueLine} />
+             <Text style={styles.featureDescription}>
+               We have mentors across all 23 IITs.
+             </Text>
           </View>
         </View>
 
-        <View style={[styles.card, styles.progressCard]}> 
-          <Text style={styles.progressHeading}>Mentorship Progress</Text>
-          <Text style={styles.progressSubtitle}>Helping thousands of students reach their dream campus.</Text>
-
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>12K+</Text>
-              <Text style={styles.statLabel}>SESSIONS</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>98%</Text>
-              <Text style={styles.statLabel}>SUCCESS RATE</Text>
-            </View>
-          </View>
-
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>450</Text>
-              <Text style={styles.statLabel}>IIT MENTORS</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>23</Text>
-              <Text style={styles.statLabel}>IIT CAMPUSES</Text>
-            </View>
-          </View>
-
-          <View style={styles.progressBarBackground}>
-            <View style={styles.progressBarFill} />
-          </View>
-        </View>
-
-        <View style={styles.footer}> 
-          <Text style={styles.footerBrand}>IIT MENTORS</Text>
-          <Text style={styles.footerText}>© 2026 IIT Mentorship Platform. All excellence reserved.</Text>
-        </View>
+        {/* Spacer for bottom */}
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  root: {
+  safeArea: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#f5f5f5',
   },
-  content: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 40,
+  container: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 20,
   },
-  brand: {
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: -0.4,
-    color: '#0b1c30',
-  },
-  profileButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 999,
-    backgroundColor: '#ffffff',
-    justifyContent: 'center',
+  logoContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 3,
-    elevation: 2,
+  },
+  logoIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 4,
+  },
+  logoText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'black',
+  },
+  navLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  navText: {
+    fontSize: 12,
+    marginLeft: 16,
+    color: 'black',
+    fontWeight: '500',
   },
   heroCard: {
-    backgroundColor: '#eff4ff',
-    borderRadius: 20,
+    backgroundColor: 'white',
+    margin: 16,
     padding: 24,
-    marginBottom: 24,
+    borderRadius: 8,
+    elevation: 4,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  heroTag: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#dce9ff',
-    borderRadius: 999,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    marginBottom: 18,
-  },
-  heroTagText: {
-    color: '#004666',
-    fontSize: 14,
-    fontWeight: '600',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
   heroTitle: {
-    color: '#0b1c30',
-    fontSize: 40,
-    fontWeight: '800',
-    lineHeight: 48,
-    letterSpacing: -0.8,
-    marginBottom: 18,
+    fontSize: 32,
+    fontWeight: 'bold',
+    lineHeight: 40,
+    letterSpacing: -1,
   },
-  heroText: {
-    color: '#444653',
-    fontSize: 16,
-    lineHeight: 28,
-    marginBottom: 24,
+  heroDescriptionContainer: {
+    flexDirection: 'row',
+    marginTop: 20,
+    alignItems: 'center',
   },
-  buttonGroup: {
+  verticalLineContainer: {
+    width: 2,
+    height: 60,
+    marginRight: 12,
+  },
+  verticalLine: {
     width: '100%',
+    height: '100%',
   },
-  primaryButton: {
-    backgroundColor: '#00288e',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+  heroDescription: {
+    flex: 1,
+    fontSize: 14,
+    color: '#444653',
+    lineHeight: 22,
+  },
+  getStartedButton: {
+    backgroundColor: '#2563eb',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 32,
   },
-  primaryButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
+  getStartedText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '500',
+    marginRight: 10,
   },
-  buttonIcon: {
-    marginLeft: 8,
+  arrowIcon: {
+    width: 20,
+    height: 12,
   },
-  secondaryButton: {
-    borderWidth: 2,
-    borderColor: '#00288e',
-    borderRadius: 12,
-    paddingVertical: 16,
+  sectionHeader: {
     paddingHorizontal: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ffffff',
+    marginTop: 24,
+    marginBottom: 12,
   },
-  secondaryButtonText: {
-    color: '#00288e',
-    fontSize: 16,
-    fontWeight: '600',
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'black',
   },
-  section: {
-    marginBottom: 24,
+  mentorScroll: {
+    paddingLeft: 20,
+    paddingBottom: 10,
   },
-  card: {
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 16,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+  mentorCard: {
+    backgroundColor: 'white',
+    width: 150,
+    padding: 12,
+    borderRadius: 8,
+    marginRight: 12,
+    elevation: 3,
     shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
-  featureCard: {
-    backgroundColor: '#ffffff',
-  },
-  cardHeader: {
+  mentorHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  featureTitle: {
-    color: '#00288e',
-    fontSize: 24,
-    fontWeight: '700',
-    lineHeight: 32,
     marginBottom: 10,
   },
-  featureText: {
-    color: '#444653',
-    fontSize: 16,
-    lineHeight: 24,
-    maxWidth: '92%',
+  mentorAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
   },
-  tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  heartIcon: {
+    width: 15,
+    height: 15,
   },
-  chip: {
-    backgroundColor: '#dce9ff',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  chipText: {
-    color: '#1e40af',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  darkCard: {
-    backgroundColor: '#00288e',
-    borderColor: '#00288e',
-  },
-  darkCardTitle: {
-    color: '#a8b8ff',
-    fontSize: 24,
-    fontWeight: '700',
-    lineHeight: 34,
-    marginBottom: 12,
-  },
-  darkCardText: {
-    color: 'rgba(255,255,255,0.9)',
+  mentorName: {
     fontSize: 14,
-    lineHeight: 20,
+    fontWeight: 'bold',
+    marginBottom: 4,
   },
-  paleCard: {
-    backgroundColor: '#d3e4fe',
-  },
-  iconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 999,
-    backgroundColor: '#ffffff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 18,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  paleCardTitle: {
-    color: '#0b1c30',
-    fontSize: 24,
-    fontWeight: '700',
-    lineHeight: 34,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  paleCardText: {
-    color: '#444653',
-    fontSize: 16,
-    lineHeight: 24,
-    textAlign: 'center',
-  },
-  imageCard: {
-    backgroundColor: '#1f2937',
-    borderColor: '#1f2937',
-    overflow: 'hidden',
-  },
-  cardOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.22)',
-  },
-  imageCardTitle: {
-    color: '#ffffff',
-    fontSize: 24,
-    fontWeight: '700',
-    lineHeight: 34,
-    marginBottom: 12,
-  },
-  imageCardText: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  progressCard: {
-    backgroundColor: '#ffffff',
-  },
-  progressHeading: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#0b1c30',
-    lineHeight: 42,
-    marginBottom: 8,
-  },
-  progressSubtitle: {
-    color: '#444653',
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-  statsRow: {
+  mentorFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    marginBottom: 18,
-  },
-  statItem: {
-    width: '47%',
-    marginBottom: 16,
-  },
-  statValue: {
-    fontSize: 40,
-    fontWeight: '800',
-    color: '#00288e',
-    lineHeight: 48,
-  },
-  statLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    color: '#444653',
-    marginTop: 4,
-  },
-  progressBarBackground: {
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: '#c9e6ff',
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    width: '75%',
-    height: '100%',
-    backgroundColor: '#39b8fd',
-  },
-  footer: {
-    marginTop: 8,
-    paddingVertical: 24,
     alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
   },
-  footerBrand: {
-    color: '#1e3a8a',
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.9,
-    textTransform: 'uppercase',
+  mentorCollege: {
+    fontSize: 10,
+    color: '#444653',
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingText: {
+    fontSize: 10,
+    marginRight: 2,
+  },
+  starIcon: {
+    width: 10, height: 10,
+  },
+  howItWorksGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginTop: 8,
+  },
+  howItWorksItem: {
+    alignItems: 'center',
+    width: (width - 40) / 4,
+  },
+  iconWrapper: {
+    backgroundColor: 'white',
+    padding: 8,
+    borderRadius: 4,
     marginBottom: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
   },
-  footerText: {
-    color: '#64748b',
-    fontSize: 14,
-    lineHeight: 20,
+  gridIcon: {
+    width: 24,
+    height: 24,
+  },
+  gridLabel: {
+    fontSize: 10,
     textAlign: 'center',
-    maxWidth: 320,
+    color: 'black',
+  },
+  featureSection: {
+    paddingHorizontal: 20,
+    marginTop: 32,
+  },
+  featureTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  featureCard: {
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  featureBlueLine: {
+    width: 2,
+    height: 40,
+    backgroundColor: '#2563eb',
+    marginRight: 12,
+  },
+  featureDescription: {
+    flex: 1,
+    fontSize: 14,
+    color: '#444653',
+    lineHeight: 20,
   },
 });
 

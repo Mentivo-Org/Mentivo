@@ -6,15 +6,15 @@ import {
   Image,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
-const imgIconstackIoBrandGoogle = "https://www.figma.com/api/mcp/asset/f680833a-6d2f-4a42-886e-46e3cf0fa0b3";
-const imgCheckCircle = "https://www.figma.com/api/mcp/asset/c017f2dd-241a-42d4-bde6-ac3cc557a83b";
+const imgIconstackIoBrandGoogle = "https://www.figma.com/api/mcp/asset/b00d40b7-c6d0-4270-be40-41602389a9f2";
+const imgCheckCircle = "https://www.figma.com/api/mcp/asset/52d1a7f3-0c6f-43e4-bab1-8076ae5b8c7e";
 
-const StudentSignupPage = () => {
+const MentorSignupPage = () => {
   const navigation = useNavigation<any>();
 
   return (
@@ -75,14 +75,14 @@ const StudentSignupPage = () => {
 
           <TouchableOpacity 
             style={styles.createButton}
-            onPress={() => navigation.navigate('SendOtp', { role: 'student' })}
+            onPress={() => navigation.navigate('SendOtp', { role: 'mentor' })}
           >
             <Text style={styles.createText}>Create Account</Text>
           </TouchableOpacity>
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('StudentLogin')}>
+            <TouchableOpacity onPress={() => navigation.navigate('MentorLogin')}>
               <Text style={styles.signInText}>Sign In</Text>
             </TouchableOpacity>
           </View>
@@ -260,4 +260,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default StudentSignupPage;
+export default MentorSignupPage;

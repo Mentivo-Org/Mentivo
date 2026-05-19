@@ -11,10 +11,10 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
-const imgIconstackIoBrandGoogle = "https://www.figma.com/api/mcp/asset/0ec27363-4c52-4ae1-b7c9-56a5cf15c01b";
-const imgPhoneIcon = "https://www.figma.com/api/mcp/asset/d3444ff8-ca6d-4a8f-ac05-257c06a5575a";
+const imgIconstackIoBrandGoogle = "https://www.figma.com/api/mcp/asset/4e71d5f4-e460-4edd-a008-99e09ee7f96d";
+const imgPhoneIcon = "https://www.figma.com/api/mcp/asset/fe9c9903-3895-406b-b868-ef794369f62e";
 
-const StudentLoginPage = () => {
+const MentorLoginPage = () => {
   const navigation = useNavigation<any>();
 
   return (
@@ -35,7 +35,7 @@ const StudentLoginPage = () => {
 
           <TouchableOpacity 
             style={styles.socialButton}
-            onPress={() => navigation.navigate('SendOtp', { role: 'student' })}
+            onPress={() => navigation.navigate('SendOtp', { role: 'mentor' })}
           >
             <Image source={{ uri: imgPhoneIcon }} style={styles.socialIcon} />
             <Text style={styles.socialButtonText}>Sign in with Phone Number</Text>
@@ -73,14 +73,14 @@ const StudentLoginPage = () => {
 
           <TouchableOpacity 
             style={styles.signInButton}
-            onPress={() => navigation.navigate('SendOtp', { role: 'student' })}
+            onPress={() => navigation.navigate('SendOtp', { role: 'mentor' })}
           >
             <Text style={styles.signInText}>Sign In</Text>
           </TouchableOpacity>
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('StudentSignUp')}>
+            <TouchableOpacity onPress={() => navigation.navigate('MentorSignUp')}>
               <Text style={styles.signUpText}>Sign Up</Text>
             </TouchableOpacity>
           </View>
@@ -228,4 +228,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default StudentLoginPage;
+export default MentorLoginPage;

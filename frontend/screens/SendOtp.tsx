@@ -1,358 +1,222 @@
 import React, { useState, useRef } from 'react';
 import {
+  StyleSheet,
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
+  SafeAreaView,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { RouteProp, useRoute } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { LoginEndpoints } from '../constants/endpoint';
-import api from '../services/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from '../services/retrieveKeys';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
-type SendOtpScreenRouteProp = RouteProp<any, 'SendOtp'>;
-type SendOtpScreenNavigationProp = NativeStackNavigationProp<any, 'SendOtp'>;
+const imgShieldIcon = "https://www.figma.com/api/mcp/asset/ca0cc608-9615-4191-bf72-ef341f546fe1";
+const imgArrowRight = "https://www.figma.com/api/mcp/asset/52d1a7f3-0c6f-43e4-bab1-8076ae5b8c7e";
 
-interface SendOtpScreenProps {
-  route: SendOtpScreenRouteProp;
-  navigation: SendOtpScreenNavigationProp;
-}
-
-export const SendOtpScreen: React.FC<SendOtpScreenProps> = ({ route, navigation }) => {
-  const {setIsSignedIn} = useAuth();
-    const router = useRoute<any>();
+const SendOtpScreen = () => {
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const { role } = route.params || { role: 'student' };
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [loading, setLoading] = useState(false);
-  const [resendTimer, setResendTimer] = useState(0);
-  const inputRefs = useRef<Array<TextInput | null>>([null, null, null, null, null, null]);
+  const inputs = useRef<any>([]);
 
-  const email = route?.params?.email || '';
-
-  const handleOtpChange = (text: string, index: number) => {
+  const handleOtpChange = (value: string, index: number) => {
     const newOtp = [...otp];
-    newOtp[index] = text.slice(-1); // Only take the last character
+    newOtp[index] = value;
     setOtp(newOtp);
 
-    // Auto-focus next input if a digit is entered
-    if (text && index < 5) {
-      inputRefs.current[index + 1]?.focus();
+    // Auto-focus next input
+    if (value && index < 5) {
+      inputs.current[index + 1].focus();
     }
   };
 
-  const handleOtpBackspace = (index: number) => {
-    if (otp[index] === '' && index > 0) {
-      // Move to previous input if current is empty
-      inputRefs.current[index - 1]?.focus();
-    } else if (otp[index] !== '') {
-      // Clear current input
-      const newOtp = [...otp];
-      newOtp[index] = '';
-      setOtp(newOtp);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    const otpCode = otp.join('');
-    
-    if (otpCode.length !== 6) {
-      alert('Please enter all 6 digits');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await api.post(LoginEndpoints.verifyOtp, {
-        email, 
-        token: otpCode,
-        type: 'signup'
-      });
-
-      if (response.status >= 200 && response.status < 300) {
-        const { accessToken, refreshToken, user } = response.data;
-        
-        // Store tokens and user info
-        await AsyncStorage.setItem('accessToken', accessToken);
-        await AsyncStorage.setItem('refreshToken', refreshToken);
-        await AsyncStorage.setItem('user', JSON.stringify(user));
-        await AsyncStorage.setItem('verifiedPhone', "true");
-        
-        setIsSignedIn(true);
-      } else {
-        alert('Invalid OTP. Please try again.');
-      }
-    } catch (error: any) {
-      console.error('OTP verification failed:', error);
-      const errorMsg = error.response?.data?.error || 'Failed to verify OTP. Please try again.';
-      alert(errorMsg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    try {
-      setLoading(true);
-      // TODO: Call backend API to resend OTP
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3000'}/auth/resend-otp`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      });
-
-      if (response.ok) {
-        setResendTimer(30); // 30 second cooldown
-        alert('OTP resent successfully!');
-      } else {
-        alert('Failed to resend OTP');
-      }
-    } catch (error) {
-      console.error('Resend OTP failed:', error);
-      alert('Failed to resend OTP. Please try again.');
-    } finally {
-      setLoading(false);
+  const handleKeyPress = (e: any, index: number) => {
+    if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
+      inputs.current[index - 1].focus();
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Send OTP</Text>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.flex}
       >
-        {/* Illustration Section */}
-        <View style={styles.illustrationSection}>
-          <View style={styles.illustrationBackground}>
-            <Text style={styles.illustrationIcon}>📧</Text>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>OTP Verification</Text>
+        </View>
+
+        <View style={styles.container}>
+          <View style={styles.illustrationContainer}>
+            <View style={styles.iconCircle}>
+              <Image source={{ uri: imgShieldIcon }} style={styles.shieldIcon} />
+            </View>
           </View>
-        </View>
 
-        {/* Typography Header */}
-        <View style={styles.typographyHeader}>
-          <Text style={styles.heading}>Verify Your Email</Text>
-          <Text style={styles.subtitle}>
-            Enter the 6-digit code sent to {email}
-          </Text>
-        </View>
+          <Text style={styles.title}>Verify Your Phone</Text>
+          <Text style={styles.subtitle}>Enter the 6-digit code sent to +917980*******</Text>
 
-        {/* OTP Input Grid */}
-        <View style={styles.otpInputContainer}>
-          {otp.map((digit, index) => (
-            <TextInput
-              key={index}
-              ref={(ref) => (inputRefs.current[index] = ref)}
-              style={[styles.otpInput, digit && styles.otpInputFilled]}
-              placeholder="0"
-              placeholderTextColor="#D0D0D0"
-              maxLength={1}
-              keyboardType="number-pad"
-              value={digit}
-              onChangeText={(text) => handleOtpChange(text, index)}
-              onKeyPress={({ nativeEvent }) => {
-                if (nativeEvent.key === 'Backspace') {
-                  handleOtpBackspace(index);
-                }
-              }}
-            />
-          ))}
-        </View>
+          <View style={styles.otpContainer}>
+            {otp.map((digit, index) => (
+              <TextInput
+                key={index}
+                ref={(ref) => (inputs.current[index] = ref)}
+                style={styles.otpInput}
+                value={digit}
+                onChangeText={(value) => handleOtpChange(value, index)}
+                onKeyPress={(e) => handleKeyPress(e, index)}
+                keyboardType="number-pad"
+                maxLength={1}
+                textAlign="center"
+              />
+            ))}
+          </View>
 
-        {/* Helper Text & Resend */}
-        <View style={styles.helperSection}>
-          <Text style={styles.helperText}>Didn't receive code?</Text>
-          <TouchableOpacity
-            onPress={handleResendOtp}
-            disabled={resendTimer > 0 || loading}
+          <View style={styles.resendContainer}>
+            <Text style={styles.resendText}>Didn't receive the code? </Text>
+            <TouchableOpacity>
+              <Text style={styles.resendAction}>Resend in 0:45</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.brandContainer}>
+            <Text style={styles.brandText}>IITIAN MENTOR NETWORK SECURE LOGIN</Text>
+          </View>
+
+          <TouchableOpacity 
+            style={styles.verifyButton}
+            onPress={() => navigation.navigate('CompleteProfile', { role })}
           >
-            <Text
-              style={[
-                styles.resendButton,
-                (resendTimer > 0 || loading) && styles.resendButtonDisabled,
-              ]}
-            >
-              {resendTimer > 0 ? `Resend (${resendTimer}s)` : 'Resend Code'}
-            </Text>
+            <Text style={styles.verifyText}>Verify & Continue</Text>
+            <Image source={{ uri: imgArrowRight }} style={styles.arrowIcon} />
           </TouchableOpacity>
         </View>
-
-        {/* Action Button */}
-        <TouchableOpacity
-          style={[styles.verifyButton, loading && styles.verifyButtonDisabled]}
-          onPress={handleVerifyOtp}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <>
-              <Text style={styles.verifyButtonText}>Verify OTP</Text>
-              <Text style={styles.verifyButtonIcon}>→</Text>
-            </>
-          )}
-        </TouchableOpacity>
-
-        {/* Academic Brand Element */}
-        <View style={styles.brandElement}>
-          <Text style={styles.brandText}>Mentivo - Your Learning Companion</Text>
-        </View>
-      </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#f5f5f5',
+  },
+  flex: {
+    flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 11.5,
-    height: 64,
+    height: 50,
+    backgroundColor: 'white',
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
+    borderBottomColor: '#e2e8f0',
     justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backIcon: {
-    fontSize: 20,
-    color: '#1A1A1A',
+    paddingHorizontal: 16,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 16,
-    color: '#1A1A1A',
+    color: '#2563eb',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
-  scrollContent: {
-    padding: 24,
-    paddingBottom: 40,
-  },
-  illustrationSection: {
-    marginVertical: 16,
+  container: {
+    flex: 1,
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 40,
   },
-  illustrationBackground: {
-    width: 96,
-    height: 96,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 48,
+  illustrationContainer: {
+    marginBottom: 20,
+  },
+  iconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#e5eeff',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  illustrationIcon: {
-    fontSize: 48,
+  shieldIcon: {
+    width: 40,
+    height: 40,
   },
-  typographyHeader: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  heading: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1A1A1A',
+  title: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#0b1c30',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: '#666666',
+    color: '#444653',
     textAlign: 'center',
-    lineHeight: 20,
+    marginBottom: 40,
   },
-  otpInputContainer: {
+  otpContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 32,
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 10,
+    marginBottom: 30,
   },
   otpInput: {
-    width: 56,
-    height: 56,
-    borderWidth: 2,
-    borderColor: '#E0E0E0',
+    width: 45,
+    height: 55,
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#c4c5d5',
     borderRadius: 8,
-    textAlign: 'center',
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1A1A1A',
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#0b1c30',
   },
-  otpInputFilled: {
-    borderColor: '#007AFF',
-    backgroundColor: '#F0F8FF',
-  },
-  helperSection: {
+  resendContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 40,
+    marginBottom: 20,
   },
-  helperText: {
+  resendText: {
     fontSize: 14,
-    color: '#666666',
+    color: '#444653',
   },
-  resendButton: {
+  resendAction: {
     fontSize: 14,
-    color: '#007AFF',
+    color: '#00288e',
     fontWeight: '600',
   },
-  resendButtonDisabled: {
-    color: '#CCCCCC',
-  },
-  verifyButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    height: 56,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
+  brandContainer: {
+    opacity: 0.5,
     marginBottom: 40,
-  },
-  verifyButtonDisabled: {
-    opacity: 0.6,
-  },
-  verifyButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  verifyButtonIcon: {
-    fontSize: 16,
-    color: '#FFFFFF',
-  },
-  brandElement: {
-    alignItems: 'center',
-    marginTop: 24,
   },
   brandText: {
     fontSize: 12,
-    color: '#999999',
-    textAlign: 'center',
+    fontWeight: 'bold',
+    color: '#757684',
+    letterSpacing: 1,
+  },
+  verifyButton: {
+    backgroundColor: '#2563eb',
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 1.75,
+  },
+  verifyText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '500',
+    marginRight: 10,
+  },
+  arrowIcon: {
+    width: 12,
+    height: 12,
   },
 });
 
