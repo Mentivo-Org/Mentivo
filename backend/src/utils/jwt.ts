@@ -6,7 +6,8 @@ const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your_refresh_token
 
 export interface TokenPayload {
   userId: string;
-  email: string;
+  phone: string;
+  email?: string | null;
 }
 
 export const generateAccessToken = (payload: TokenPayload): string => {
@@ -21,7 +22,7 @@ export const generateRefreshToken = async (payload: TokenPayload): Promise<strin
     data: {
       token,
       userId: payload.userId,
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days
     },
   });
 

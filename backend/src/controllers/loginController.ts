@@ -1,5 +1,5 @@
-import type { Request, Response, NextFunction } from "express";
-import { supabaseAdmin } from "../lib/supabaseAdmin.ts";
+import type { Request, Response } from "express";
+import admin from "../config/firebase.ts";
 import prisma from "../config/db.ts";
 import {
   generateAccessToken,
@@ -7,233 +7,109 @@ import {
   verifyRefreshToken,
 } from "../utils/jwt.ts";
 
-export const signUpWithEmail = async (req: Request, res: Response) => {
-  const { email, password, name, role, phone } = req.body;
+export const handlePhoneLogin = async (req: Request, res: Response) => {
+  const { idToken, name, role, email, coachingCenterCode } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email and password are required" });
+  if (!idToken) {
+    return res.status(400).json({ error: "Firebase ID token is required" });
   }
-
-  if(!name) {
-    return res.status(400).json({ error: "Please enter your name"});
-  }
-
-  // 2. Create user in our DB
-  let user = await prisma.user.findUnique({ where: { email } });
-  if (!user) {
-    user = await prisma.user.create({
-      data: {
-        email: email,
-        name: name,
-        phone: phone || null,
-        role: role || "student",
-        isEmailVerified: false,
-        authProvider: "email",
-      },
-    });
-  }
-  else if(user.isEmailVerified===true) {
-      return res.status(400).json({ error: "Please log in"});
-  }
-
-  // 3. Send OTP via Supabase
-  const { error: otpError } = await supabaseAdmin.auth.signInWithOtp({
-    email,
-    options: {
-      shouldCreateUser: true,
-    },
-  });
-
-  if (otpError)
-    return res
-      .status(400)
-      .json({ error: "Failed to send verification OTP: " + otpError.message });
-
-  return res.status(201).json({
-    message: "Signup successful. Please verify your email with the OTP sent.",
-    email: user.email,
-    requiresVerification: true,
-  });
-};
-
-export const loginWithEmail = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email and password are required" });
-  }
-
-  // Pre-check the authProvider in our database
-  let user = await prisma.user.findUnique({
-    where: { email },
-  });
-
-  if (user && user.authProvider !== "email") {
-    return res.status(400).json({
-      error: `This account was created with ${user.authProvider}. Please sign in using that method.`,
-    });
-  }
-
-  const { data: sbData, error: sbError } =
-    await supabaseAdmin.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-  if (sbError) return res.status(401).json({ error: sbError.message });
-  if (!sbData.user)
-    return res.status(401).json({ error: "Invalid credentials" });
-
-  if (!user) {
-    user = await prisma.user.findUnique({
-      where: { id: sbData.user.id },
-    });
-    
-    if (!user)
-      return res.status(404).json({ error: "User not found in our database" });
-  }
-
-  const payload = { userId: user.id, email: user.email };
-  const accessToken = generateAccessToken(payload);
-  const refreshToken = await generateRefreshToken(payload);
-
-    return res.json({
-      accessToken,
-      refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        phone: user.phone,
-        authProvider: user.authProvider,
-      },
-    });
-};
-
-export const handleNativeGoogle = async (req: Request, res: Response) => {
-  const { idToken, role, mode, phone } = req.body;
-
-  const { data: sbData, error: sbError } =
-    await supabaseAdmin.auth.signInWithIdToken({
-      provider: "google",
-      token: idToken,
-    });
-
-  if (sbError) return res.status(401).json({ error: sbError.message });
-  if (!sbData.user?.email)
-    return res.status(400).json({ error: "Google account missing email" });
-
-  let user = await prisma.user.findUnique({
-    where: { email: sbData.user.email },
-  });
-
-  if (!user) {
-    // If signup mode and no phone, return 202 to trigger frontend CompleteProfile
-    if (mode === "sign-up") {
-      user = await prisma.user.create({
-        data: {
-          id: sbData.user.id,
-          email: sbData.user.email,
-          name: sbData.user.user_metadata.full_name,
-          role: role || "student",
-          phone: null,
-          isEmailVerified: true,
-          authProvider: "google",
-        },
-      });
-
-      const payload = { userId: user.id, email: user.email };
-      const accessToken = generateAccessToken(payload);
-      const refreshToken = await generateRefreshToken(payload);
-
-      return res.status(200).json({
-        accessToken,
-        refreshToken,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          phone: user.phone,
-          authProvider: user.authProvider,
-        },
-      });
-    }
-  }
-  else {
-    if (user.authProvider !== "google") {
-      return res.status(400).json({
-        error: `This account was created with ${user.authProvider}. Please sign in using that method.`,
-      });
-    }
-
-    const payload = { userId: user.id, email: user.email };
-    const accessToken = generateAccessToken(payload);
-    const refreshToken = await generateRefreshToken(payload);
-  
-    return res.status(200).json({
-      accessToken,
-      refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        phone: user.phone,
-        authProvider: user.authProvider,
-      },
-    });
-  }
-};
-
-export const verifyOtp = async (req: Request, res: Response) => {
-  const { email, token } = req.body;
 
   try {
-    let result;
-    if (email) {
-      result = await supabaseAdmin.auth.verifyOtp({
-        email,
-        token,
-        type: "signup",
-      });
-    } else {
-      return res.status(400).json({ error: "Email is required" });
+    // 1. Verify the ID token with Firebase Admin
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const phone = decodedToken.phone_number;
+
+    if (!phone) {
+      return res.status(400).json({ error: "No phone number found in token. Ensure you used Phone Auth." });
     }
 
-    if (result.error)
-      return res.status(401).json({ error: result.error.message });
-
-    // Update verification status in our DB
-    const user = await prisma.user.update({
-      where: { email: email },
-      data: {
-        isEmailVerified: !!email,
-      },
+    // 2. Find or Create User strictly by Phone
+    let user = await prisma.user.findUnique({
+      where: { phone },
+      include: {
+        wallet: true,
+        mentorProfile: true,
+      }
     });
 
-    // Generate tokens to log the user in immediately after verification
-    const payload = { userId: user.id, email: user.email };
+    if (!user) {
+      // New User - Registration required
+      if (!name || !role) {
+        return res.status(400).json({ 
+          error: "Name and role are required for new users", 
+          requiresRegistration: true,
+          phone 
+        });
+      }
+
+      // Optional: Find coaching center if code provided
+      let coachingCenterId = null;
+      if (coachingCenterCode) {
+        const center = await prisma.coachingCenter.findUnique({ where: { code: coachingCenterCode } });
+        if (center) coachingCenterId = center.id;
+      }
+
+      // Create User with atomic transaction to ensure related entities are created
+      user = await prisma.$transaction(async (tx) => {
+        const newUser = await tx.user.create({
+          data: {
+            phone,
+            name,
+            role: role as "student" | "mentor",
+            email: email || null,
+            isPhoneVerified: true,
+            authProvider: "phone",
+            coachingCenterId,
+          },
+          include: {
+            wallet: true,
+            mentorProfile: true,
+          }
+        });
+
+        // Initialize role-specific data
+        if (role === "student") {
+          await tx.wallet.create({
+            data: { userId: newUser.id, balance: 0 }
+          });
+        } else if (role === "mentor") {
+          await tx.mentorBalance.create({
+            data: { mentorId: newUser.id }
+          });
+          await tx.mentorProfile.create({
+            data: { 
+              mentorId: newUser.id,
+              iit_name: "TBD", // To be filled by mentor later
+              isOnline: false
+            }
+          });
+        }
+
+        return newUser;
+      });
+    }
+
+    // 3. Issue Tokens
+    const payload = { userId: user.id, phone: user.phone, email: user.email };
     const accessToken = generateAccessToken(payload);
     const refreshToken = await generateRefreshToken(payload);
 
     return res.json({
-      message: "Successfully verified",
       accessToken,
       refreshToken,
       user: {
         id: user.id,
-        email: user.email,
+        phone: user.phone,
         name: user.name,
         role: user.role,
-        phone: user.phone,
+        email: user.email,
         authProvider: user.authProvider,
       },
     });
-  } catch (error) {
-    console.error("OTP verification error:", error);
-    return res.status(500).json({ error: "Verification failed" });
+
+  } catch (error: any) {
+    console.error("Phone auth error:", error);
+    return res.status(401).json({ error: "Invalid or expired Firebase token" });
   }
 };
 
@@ -251,40 +127,35 @@ export const refreshUserToken = async (req: Request, res: Response) => {
     });
 
     if (!tokenInDb || tokenInDb.expiresAt < new Date()) {
-      if (tokenInDb) {
+      // Security: If token not in DB but valid, might be a reuse/theft attempt
+      if (!tokenInDb) {
+        console.warn(`Potential refresh token reuse detected for user ${payload.userId}`);
+        await prisma.refreshToken.deleteMany({ where: { userId: payload.userId } });
+      } else {
         await prisma.refreshToken.delete({ where: { id: tokenInDb.id } });
       }
-      return res
-        .status(401)
-        .json({ error: "Invalid or expired refresh token" });
+      return res.status(401).json({ error: "Session expired. Please login again." });
     }
 
+    // Rotate refresh token
     await prisma.refreshToken.delete({ where: { id: tokenInDb.id } });
 
-    const newPayload = { userId: payload.userId, email: payload.email };
+    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+    if (!user) return res.status(404).json({ error: "User no longer exists" });
+
+    const newPayload = { userId: user.id, phone: user.phone, email: user.email };
     const accessToken = generateAccessToken(newPayload);
     const refreshToken = await generateRefreshToken(newPayload);
-
-    const user = await prisma.user.findUnique({
-      where: { id: payload.userId },
-    });
 
     return res.json({
       accessToken,
       refreshToken,
-      user: user
-        ? {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            phone: user.phone,
-            authProvider: user.authProvider,
-          }
-        : {
-            id: payload.userId,
-            email: payload.email,
-          },
+      user: {
+        id: user.id,
+        phone: user.phone,
+        name: user.name,
+        role: user.role,
+      },
     });
   } catch (error) {
     return res.status(401).json({ error: "Invalid refresh token" });

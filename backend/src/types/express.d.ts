@@ -1,12 +1,9 @@
-import { Request } from 'express';
+import { User } from '@prisma/client';
 
 declare global {
   namespace Express {
     interface Request {
-      user?: {
-        id: string; // This will hold the Supabase UUID
-        full_name: string;
-      };
+      user?: User;
     }
   }
 }

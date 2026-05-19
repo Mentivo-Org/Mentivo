@@ -13,11 +13,11 @@ enum UserRole {
 
 model User {
   id              String    @id @default(uuid()) @db.Uuid
-  email           String    @unique
-  phone           String?   @unique
+  email           String?   @unique
+  phone           String    @unique
   isEmailVerified Boolean   @default(false)
   isPhoneVerified Boolean   @default(false)
-  authProvider    String    @default("email")
+  authProvider    String    @default("phone")
   name            String?
   role            UserRole
   coachingCenterId String?   @db.Uuid
@@ -83,6 +83,7 @@ model MentorProfile {
   year           Int?
   verified       Boolean   @default(false)
   id_doc_url     String?
+  upiId          String?   @map("upi_id")
   bio            String?
   photo_url      String?
   rate_per_min   Decimal   @default(10.00) @db.Decimal(6, 2)
@@ -139,6 +140,7 @@ model CallSession {
   startedAt       DateTime? @map("started_at")
   endedAt         DateTime? @map("ended_at")
   durationSecs    Int       @default(0) @map("duration_secs")
+  lastHeartbeatAt DateTime? @map("last_heartbeat_at")
   amountCharged   Decimal   @default(0) @db.Decimal(10, 2) @map("amount_charged")
   mentorEarning   Decimal   @default(0) @db.Decimal(10, 2) @map("mentor_earning")
   platformFee     Decimal   @default(0) @db.Decimal(10, 2) @map("platform_fee")

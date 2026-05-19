@@ -1,0 +1,169 @@
+import { Router } from 'express';
+import { authenticateUser } from '../auth/authenticateUser.ts';
+import { generateToken } from '../services/agora.ts';
+import { lockToBusy, getPresenceState, setAvailable } from '../services/presence.ts';
+import { settleBilling } from '../services/billing.ts';
+import prisma from '../config/db.ts';
+
+const router = Router();
+
+// POST /api/calls/initiate
+router.post('/initiate', authenticateUser, async (req, res) => {
+  const { mentorId } = req.body;
+  const studentId = req.user.id;
+
+  try {
+    // 1. Check Mentor Availability
+    const mentorState = await getPresenceState(mentorId);
+    if (mentorState !== 'available') {
+      return res.status(400).json({ error: 'Mentor is currently offline or busy' });
+    }
+
+    // 2. Validate student wallet balance (min ₹10)
+    const wallet = await prisma.wallet.findUnique({ where: { userId: studentId } });
+    if (!wallet || Number(wallet.balance) < 10) {
+      return res.status(402).json({ error: 'Insufficient wallet balance (Minimum ₹10)' });
+    }
+
+    // 3. Check if first call (free)
+    const pastCalls = await prisma.callSession.count({ where: { student_id: studentId } });
+    const isFree = pastCalls === 0;
+
+    // 4. Lock Mentor
+    await lockToBusy(mentorId);
+
+    // 5. Create Session
+    const channelName = `call_${Date.now()}_${studentId}`;
+    const session = await prisma.callSession.create({
+      data: {
+        student_id: studentId,
+        mentor_id: mentorId,
+        agoraChannelId: channelName,
+        status: 'pending',
+        is_free: isFree
+      }
+    });
+
+    // 6. Calculate Max Affordable Duration (INR 10/min)
+    const affordableMinutes = Math.floor(Number(wallet.balance) / 10);
+    // Buffer for first free call (if applicable) or standard call
+    // We add 300s (5min) if it is free, and set the token to expire 60s after their max money runs out
+    const bufferSeconds = 60;
+    const maxAllowedSeconds = (affordableMinutes * 60) + (isFree ? 300 : 0) + bufferSeconds;
+
+    // 7. Generate Agora Tokens with Dynamic Expiry
+    const studentToken = generateToken(channelName, studentId, maxAllowedSeconds);
+    const mentorToken = generateToken(channelName, mentorId, 3600); // Mentor can stay 1hr
+
+    res.json({
+      sessionId: session.id,
+      channelName,
+      studentToken,
+      mentorToken,
+      isFree,
+      maxDurationSeconds: maxAllowedSeconds
+    });
+  } catch (error) {
+    console.error('Call initiation error:', error);
+    res.status(500).json({ error: 'Failed to initiate call' });
+  }
+});
+
+// POST /api/calls/:id/start
+router.post('/:id/start', authenticateUser, async (req, res) => {
+  try {
+    await prisma.callSession.update({
+      where: { id: req.params.id },
+      data: { status: 'active', startedAt: new Date(), lastHeartbeatAt: new Date() }
+    });
+    res.sendStatus(200);
+  } catch (e) {
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+// PATCH /api/calls/:id/heartbeat
+router.patch('/:id/heartbeat', authenticateUser, async (req, res) => {
+  try {
+    await prisma.callSession.update({
+      where: { id: req.params.id },
+      data: { lastHeartbeatAt: new Date() }
+    });
+    res.sendStatus(200);
+  } catch (e) {
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+// POST /api/calls/:id/end
+router.post('/:id/end', authenticateUser, async (req, res) => {
+  try {
+    const session = await prisma.callSession.findUnique({ where: { id: req.params.id } });
+    if (!session || session.status !== 'active') {
+      return res.status(400).json({ error: 'Call is not active' });
+    }
+
+    const endedAt = new Date();
+    const durationSecs = session.startedAt ? Math.floor((endedAt.getTime() - session.startedAt.getTime()) / 1000) : 0;
+
+    await prisma.callSession.update({
+      where: { id: req.params.id },
+      data: { endedAt }
+    });
+
+    // Release mentor
+    await setAvailable(session.mentor_id);
+
+    // Atomic billing
+    await settleBilling(session.id, durationSecs);
+
+    res.sendStatus(200);
+  } catch (e) {
+    console.error('Call end error:', e);
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+// POST /api/calls/:id/rate
+router.post('/:id/rate', authenticateUser, async (req, res) => {
+  const { score, comment } = req.body;
+  if (!score || score < 1 || score > 5) {
+    return res.status(400).json({ error: 'Score must be between 1 and 5' });
+  }
+
+  try {
+    const session = await prisma.callSession.findUnique({ where: { id: req.params.id } });
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.rating.create({
+        data: {
+          sessionId: session.id,
+          studentId: req.user.id,
+          mentorId: session.mentor_id,
+          score,
+          comment
+        }
+      });
+
+      const avg = await tx.rating.aggregate({
+        where: { mentorId: session.mentor_id },
+        _avg: { score: true }
+      });
+
+      await tx.mentorProfile.update({
+        where: { mentorId: session.mentor_id },
+        data: {
+          avg_rating: avg._avg.score || 0,
+          total_calls: { increment: 1 }
+        }
+      });
+    });
+    
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+export default router;

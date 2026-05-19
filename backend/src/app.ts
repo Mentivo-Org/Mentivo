@@ -3,7 +3,12 @@ import express from 'express';
 import cors from 'cors';
 import authrouter from './routes/auth.ts';
 import coachingRouter from './routes/coaching.ts';
+import mentorRouter from './routes/mentors.ts';
+import callsRouter from './routes/calls.ts';
+import walletRouter from './routes/wallet.ts';
+import webhookRouter from './routes/webhooks.ts';
 import prisma from './config/db.ts';
+import { startJobs } from './jobs/index.ts';
 
 const app = express();
 
@@ -38,8 +43,10 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-razorpay-signature']
 }));
+
+app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRouter);
 
 app.use(express.json());
 app.set('trust proxy', 1);
@@ -78,13 +85,6 @@ app.use((req, res, next) => {
 
 // Routes
 
-// app.get('/health', async (req,res) => {
-//   // console.log(req.body);
-//   return res.status(200).json({
-//     message: "Server is running",
-//   })
-// })
-
 app.get('/api/health', async (req, res) => {
   try {
     // Prove the DB is active using Prisma
@@ -101,11 +101,23 @@ app.get('/api/health', async (req, res) => {
 
 app.use('/api/auth', authrouter);
 app.use('/api/coaching', coachingRouter);
+app.use('/api/mentors', mentorRouter);
+app.use('/api/calls', callsRouter);
+app.use('/api/wallet', walletRouter);
 
-app.use((err, req, res, next) => {
+// Global Error Handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err);
   res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Mentivo API running on port ${PORT}`));
+app.listen(PORT, async () => {
+  console.log(`Mentivo API running on port ${PORT}`);
+  try {
+    await startJobs();
+    console.log('Background jobs started successfully');
+  } catch (err) {
+    console.error('Failed to start background jobs:', err);
+  }
+});

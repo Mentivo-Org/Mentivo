@@ -75,4 +75,32 @@ model AdminPayoutRequest {
        - Link `User.referralCodeUsed` to the referral record.
 
 ## Integration
-The frontend utilizes a bottom tab navigator for primary pages (Home, Discovery, Mentor Dashboard) and nested stack screens for Book Session, Audio Call, and Session Chat to emulate practical app flow. The backend Express API runs concurrently with Prisma/PostgreSQL (Supabase) to test auth flows.
+## 11. Backend Core Implementation (May 2026)
+
+### Authentication (Phone-Only Architecture)
+- **Primary Identifier:** Switched from Email to Phone Number as the mandatory unique identifier for all accounts.
+- **Firebase Phone Auth:** Integrated Firebase Admin SDK to verify frontend-generated `idToken` at `POST /api/auth/phone-login`.
+- **Session Management:** Implemented JWT Access Token rotation and secure Refresh Token reuse detection/revocation.
+- **User Initialization:** Automated atomic creation of `Wallet` (Students) and `MentorProfile/Balance` (Mentors) during signup.
+
+### Call & Billing Engine (Server-Validated)
+- **Agora Security:** Implemented dynamic token expiration capped by student wallet balance (`balance / rate_per_min`).
+- **Heartbeat System:** Added `PATCH /api/calls/:id/heartbeat` and `CallSession.last_heartbeat_at` for resilient session tracking.
+- **Atomic Billing:** Implemented race-condition-free `settleBilling` using Prisma `updateMany` as a state-lock (Active -> Settling).
+- **Abandoned Call Sweeper:** BullMQ job runs every minute to close crashed calls at the last recorded heartbeat timestamp, preventing overcharging.
+
+### Presence & Real-time
+- **3-State Presence:** Redis-backed mentor states: `offline`, `available`, `busy`.
+- **Atomic Locks:** `lockToBusy()` ensures no two students can initiate a call with the same mentor concurrently.
+
+### Payment Gateway (Hardened Razorpay)
+- **Webhooks First:** `POST /api/webhooks/razorpay` acts as the primary source of truth for wallet top-ups with signature verification.
+- **Race Condition Prevention:** Atomic updates prevent double-crediting if the client and webhook confirm simultaneously.
+- **Amount Verification:** Added sanity checks to ensure captured amounts match the original order request.
+- **Manual Payout Mode:** Added `ENABLE_RAZORPAY_X` toggle to support manual UPI payouts via console logging for initial phases.
+
+### Infrastructure & Background Jobs
+- **Redis (Upstash):** Optimized `ioredis` configuration with `family: 0` for reliable TLS routing.
+- **BullMQ Workers:** Initialized queues for `AbandonedCallSweeper` and `WeeklyPayouts`.
+- **Graceful Shutdown:** Configured `SIGTERM` listeners to ensure workers finish tasks before process exit.
+
