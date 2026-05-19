@@ -13,13 +13,15 @@ Mentivo is a per-minute voice mentorship marketplace connecting JEE aspirants wi
   - Always use **Prisma** for database operations in the backend. 
   - Schema is defined in `backend/prisma/schema.prisma`.
   - Enforce atomic transactions for billing and wallet operations.
+  - Implement 5% revenue sharing logic for coaching centers in `settleBilling`.
 - **Backend**:
   - Use `express-async-errors` for global error handling.
-  - Authentication is handled via Firebase ID tokens or Google Login.
+  - Authentication: Firebase ID tokens (Students/Mentors) or Unique Code (Coaching Centers).
   - Webhook handlers (Razorpay) must be idempotent.
 - **Frontend**:
   - Use **Zustand** for lightweight state management.
   - Follow the role-based navigation (Student vs. Mentor).
+  - Web dashboard (Next.js) for Coaching Partners.
   - Calls are VoIP (in-app) using **Agora SDK**.
   - Call timer is maintained on the app screen.
 - **Real-time**:
@@ -28,8 +30,10 @@ Mentivo is a per-minute voice mentorship marketplace connecting JEE aspirants wi
 
 ## Core Workflows
 1. **Call Initiation**: Validate wallet balance (min ₹10), check mentor presence, initiate Agora VoIP call session.
-2. **Billing**: Atomic debit of student wallet and credit of mentor pending payout upon call completion (first 5 min free).
-3. **Payouts**: Weekly batch jobs for mentor payouts via Razorpay X, deducting TDS if applicable.
+2. **Billing**: Atomic debit of student wallet and credit of mentor pending payout upon call completion (first 5 min free). Calculate and credit 5% revenue share to the linked coaching center if applicable.
+3. **Coaching Partner Login**: Coaching centers login using their unique referral code to access their student aggregation dashboard.
+4. **Telegram Admin Referrals**: Students generate personalized codes on the website using an admin's master code. Upon first-time signup in the app with this code, the student gets a wallet credit (variable ₹) and the admin gets a commission (variable ₹).
+5. **Payouts**: Weekly batch jobs for mentor and coaching center payouts via Razorpay X, deducting TDS if applicable. Manual processing for Telegram admin payout requests via UPI.
 
 ## Project Structure
 - `/backend`: API server, Prisma schema, services (Agora, Razorpay, Firebase).

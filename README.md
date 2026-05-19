@@ -7,7 +7,7 @@ Mentivo is a per-minute voice mentorship marketplace connecting JEE aspirants (a
 - **Core Mechanic**: ₹10/min VoIP call, wallet-based, no subscription.
 - **Supply**: Verified current IIT students across all IITs.
 - **Demand**: JEE aspirants (Class 11/12), droppers, and their parents.
-- **Revenue Model**: 30% platform commission; 70% mentor share (~₹7/min).
+- **Revenue Model**: 30% platform commission; 70% mentor share (~₹7/min); 5% coaching center revenue share on their students' usage.
 - **Free Tier**: First 5 minutes free for new users.
 
 ## 🛠 Tech Stack
@@ -90,8 +90,9 @@ Mentivo is a per-minute voice mentorship marketplace connecting JEE aspirants (a
 ## 🔄 Core Workflows
 
 1. **Call Initiation**: Validate student wallet balance (min ₹10), check mentor presence via Redis, generate Agora tokens, and initiate the in-app VoIP call.
-2. **Billing**: Atomic transaction upon call completion to debit the student's wallet and credit the mentor's pending payout (accounting for the 5-minute free tier).
-3. **Payouts**: Weekly batch jobs triggered via BullMQ to process mentor payouts through Razorpay X.
+2. **Billing**: Atomic transaction upon call completion to debit the student's wallet and credit the mentor's pending payout (accounting for the 5-minute free tier). Calculate and credit 5% revenue share to the linked coaching center if applicable.
+3. **Coaching Partner Login**: Coaching centers login using their unique referral code to access their student aggregation dashboard.
+4. **Payouts**: Weekly batch jobs triggered via BullMQ to process mentor and coaching center payouts through Razorpay X.
 
 ## 👥 Team
 - **Abhiraj**: CEO

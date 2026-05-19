@@ -34,9 +34,10 @@ Mentivo is a **per-minute voice mentorship marketplace** connecting JEE aspirant
 | Core mechanic | ₹10/min VoIP call, wallet-based, no subscription |
 | Supply | Verified current IIT students across all IITs |
 | Demand | JEE aspirants Class 11/12, droppers, parents |
-| GTM | Offline-first via coaching institutes, then schools, then creators |
+| GTM | Offline-first via coaching institutes (Partners), then schools, then creators |
 | Revenue | 30% platform commission on every call |
 | Mentor share | 70% — ~₹7/min, ~₹70 per 10-min call |
+| Coaching share | 5% revenue share for partner coaching centers on their students' usage |
 | Free tier | First 5 minutes free for new users |
 
 ---
@@ -47,6 +48,7 @@ Mentivo is a **per-minute voice mentorship marketplace** connecting JEE aspirant
 | Layer | Technology | Reason |
 |-------|-----------|--------|
 | Mobile app | React Native (Expo → bare) | Single codebase for Android + iOS; Android-first |
+| Partner Dashboard | Next.js (Website) | Web-based dashboard for coaching centers |
 | State management | Zustand | Lightweight, no boilerplate |
 | Navigation | React Navigation v6 | De-facto standard |
 | HTTP client | Axios | Interceptors for auth tokens |
@@ -62,7 +64,7 @@ Mentivo is a **per-minute voice mentorship marketplace** connecting JEE aspirant
 | Database | PostgreSQL (Supabase) | ACID transactions for billing |
 | Cache / presence | Redis (Upstash or Supabase) | Mentor online/offline status, rate limiting |
 | ORM | Prisma | Type-safe queries, easy migrations |
-| Auth | Firebase Auth / Google Login | Supports Email/Password and Social login |
+| Auth | Firebase Auth / Custom Code | Student/Mentor: Firebase; Coaching Center: Unique Code |
 | File storage | Supabase Storage | Mentor profile photos, call recordings |
 | Background jobs | BullMQ + Redis | Payout batch jobs, low-balance watchers |
 | CDN | Supabase CDN | Asset delivery |
@@ -272,20 +274,28 @@ CREATE TABLE payouts (
 );
 
 -- Coaching partner referrals
-CREATE TABLE referrals (
+CREATE TABLE coaching_centers (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  referrer_code   TEXT NOT NULL,                     -- coaching centre code
-  referred_user_id UUID REFERENCES users(id),
-  commission_paid NUMERIC(10,2) DEFAULT 0,
+  name            TEXT NOT NULL,
+  code            TEXT UNIQUE NOT NULL,              -- unique login code
+  commission_rate NUMERIC(3,2) DEFAULT 0.05,        -- 5% revenue share
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Coaching center earnings ledger
+CREATE TABLE coaching_center_balances (
+  center_id       UUID PRIMARY KEY REFERENCES coaching_centers(id),
+  pending_payout  NUMERIC(10,2) DEFAULT 0,
+  total_earned    NUMERIC(10,2) DEFAULT 0,
+  total_withdrawn NUMERIC(10,2) DEFAULT 0
+);
+
+-- Update users to link to coaching centers
+ALTER TABLE users ADD COLUMN coaching_center_id UUID REFERENCES coaching_centers(id);
+
 -- Indexes
-CREATE INDEX idx_call_sessions_student   ON call_sessions(student_id);
-CREATE INDEX idx_call_sessions_mentor    ON call_sessions(mentor_id);
-CREATE INDEX idx_call_sessions_agora     ON call_sessions(agora_channel_id);
-CREATE INDEX idx_mentor_profiles_online  ON mentor_profiles(is_online) WHERE is_online = TRUE;
-CREATE INDEX idx_ratings_mentor          ON ratings(mentor_id);
+CREATE INDEX idx_users_coaching_center ON users(coaching_center_id);
+CREATE INDEX idx_coaching_centers_code ON coaching_centers(code);
 ```
 
 ---
@@ -838,6 +848,8 @@ router.post('/:id/rate', auth, async (req, res) => {
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | POST | `/auth/verify` | — | Exchange Firebase/Google token for user record |
+| POST | `/auth/coaching/login` | — | Login for coaching centers via unique code |
+| GET | `/coaching/dashboard` | Center | Aggregated data of students for coaching center |
 | GET | `/mentors` | Required | List online mentors with filters |
 | GET | `/mentors/:id` | Required | Single mentor profile |
 | PATCH | `/mentors/me/online` | Mentor | Set online status + heartbeat |
@@ -878,7 +890,7 @@ router.post('/:id/rate', auth, async (req, res) => {
 |------|-------|
 | 7–8 | Mentor onboarding: profile creation, ID doc upload to Supabase, admin verification panel. |
 | 9–10 | Post-call rating flow. Mentor average score calculation. Auto-flag mentors below 3.0. |
-| 11–12 | Partner dashboard (coaching centre login, referral code tracking, commission display). |
+| 11–12 | Coaching Partner Portal: Unique code login, student aggregation dashboard, 5% revenue share logic. |
 | 13–14 | FCM push notifications: mentor online alerts, low balance warning, post-call rating prompt. |
 
 ---
@@ -926,6 +938,10 @@ RAZORPAY_X_ACCOUNT=4564563214567654   # Razorpay X account number
 # Supabase
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_KEY=your_service_role_key
+
+# Incentives & Referrals
+REFERRAL_STUDENT_INCENTIVE=50
+REFERRAL_ADMIN_INCENTIVE=20
 ```
 
 ---
@@ -978,6 +994,34 @@ Build a REST API with the following:
 === FRONTEND (React Native + Expo) ===
 
 1. LOGIN: Google Sign-In or Email/Password with verification.
+2. MENTOR LIST: Filter by IIT, rating, online status.
+3. CALL SCREEN: Agora RTC integration, live timer, running cost, End Call.
+4. CHAT: First-step chat via Agora Chat.
+5. WALLET: Razorpay integration for top-up.
+
+Generate complete code for backend and frontend, Prisma schema, and setup docs.
+```
+
+---
+
+*Document version 1.0 — Mentivo internal technical reference*
+*Founders: Abhiraj (CEO) · Ayan (CTO)*## 8. API Endpoints Generated
+- **POST /auth/verify:** Receives phone, role, name, uid. Finds or creates the user in the database. Returns user object. Used as a mock authentication setup.
+- **General Notes:**
+   - The Exotel setup was intentionally bypassed as per instructions.
+   - Additional routing scaffolds for calls, wallets, etc are set up but only basic Auth is actively wired for immediate UI integration.
+
+## 9. Screens Generated
+- LandingPage (`src/screens/LandingPage.js`): Homepage for discovery
+- FindAMentor (`src/screens/FindAMentor.js`): Discovery page for viewing available mentors
+- BookYourSession (`src/screens/BookYourSession.js`): Calendar/Slot selection flow
+- MentorDashboard (`src/screens/MentorDashboard.js`): Analytics and session tracking for mentors
+- SessionChat (`src/screens/SessionChat.js`): In-session messaging view
+- AudioCall (`src/screens/AudioCall.js`): Live mentor-student call view.
+
+## Integration
+The frontend utilizes a bottom tab navigator for primary pages (Home, Discovery, Mentor Dashboard) and nested stack screens for Book Session, Audio Call, and Session Chat to emulate practical app flow. The backend Express API runs concurrently with Prisma/PostgreSQL to test auth flows.
+Google Sign-In or Email/Password with verification.
 2. MENTOR LIST: Filter by IIT, rating, online status.
 3. CALL SCREEN: Agora RTC integration, live timer, running cost, End Call.
 4. CHAT: First-step chat via Agora Chat.

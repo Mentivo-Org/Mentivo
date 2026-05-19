@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import authrouter from './routes/auth.ts';
-import { supabaseAdmin } from './lib/supabaseAdmin.ts';
+import coachingRouter from './routes/coaching.ts';
 import prisma from './config/db.ts';
 
 const app = express();
@@ -100,6 +100,7 @@ app.get('/api/health', async (req, res) => {
 });
 
 app.use('/api/auth', authrouter);
+app.use('/api/coaching', coachingRouter);
 
 app.use((err, req, res, next) => {
   console.error(err);

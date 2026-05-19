@@ -20,11 +20,13 @@ model User {
   authProvider    String    @default("email")
   name            String?
   role            UserRole
+  coachingCenterId String?   @db.Uuid
   created_at      DateTime  @default(now())
   
   mentorProfile  MentorProfile?
   wallet         Wallet?
   mentorBalance  MentorBalance?
+  coachingCenter CoachingCenter? @relation(fields: [coachingCenterId], references: [id])
   
   callSessionsStudent CallSession[] @relation("StudentCalls")
   callSessionsMentor  CallSession[] @relation("MentorCalls")
@@ -36,6 +38,30 @@ model User {
   refreshTokens  RefreshToken[]
 
   @@map("users")
+}
+
+model CoachingCenter {
+  id              String    @id @default(uuid()) @db.Uuid
+  name            String
+  code            String    @unique
+  commission_rate Decimal   @default(0.05) @db.Decimal(3, 2)
+  created_at      DateTime  @default(now())
+
+  students        User[]
+  balance         CoachingCenterBalance?
+
+  @@map("coaching_centers")
+}
+
+model CoachingCenterBalance {
+  centerId       String    @id @db.Uuid
+  pendingPayout  Decimal   @default(0) @db.Decimal(10, 2)
+  totalEarned    Decimal   @default(0) @db.Decimal(10, 2)
+  totalWithdrawn Decimal   @default(0) @db.Decimal(10, 2)
+
+  coachingCenter CoachingCenter @relation(fields: [centerId], references: [id])
+
+  @@map("coaching_center_balances")
 }
 
 model RefreshToken {
