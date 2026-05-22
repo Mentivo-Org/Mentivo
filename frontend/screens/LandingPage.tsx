@@ -13,16 +13,6 @@ import { useNavigation } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
-const imgLine1 = "https://www.figma.com/api/mcp/asset/1ea4a1ec-b101-47ab-a3bd-58924504a1fc";
-const imgContainer = "https://www.figma.com/api/mcp/asset/1ac9faec-22e5-4230-80dc-02350e0c1f6c";
-const imgEllipse7 = "https://www.figma.com/api/mcp/asset/f0c4c0fe-c5c3-4c22-b1ac-e14a740a0258";
-const imgIconstackIoHeart = "https://www.figma.com/api/mcp/asset/d044bb49-e83f-4717-9e72-9c282df68f08";
-const imgIconstackIoStar = "https://www.figma.com/api/mcp/asset/f7552578-f33e-4001-92b5-492d06504a77";
-const imgIconstackIoLogin1 = "https://www.figma.com/api/mcp/asset/0d3bd481-870d-482c-b25f-cc1bc3eec5da";
-const imgIconstackIoSearch = "https://www.figma.com/api/mcp/asset/cb6db1db-1210-4521-bd0c-4d298c0de1f4";
-const imgIconstackIoBook = "https://www.figma.com/api/mcp/asset/d46e39b6-ce52-45bf-a9b3-bdf40ec9081d";
-const imgFrame22 = "https://www.figma.com/api/mcp/asset/b27abc95-b6a0-425a-b467-a237d149eaba";
-
 const LandingPage = () => {
   const navigation = useNavigation<any>();
 
@@ -32,7 +22,7 @@ const LandingPage = () => {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Image source={require('../logo.svg')} style={styles.logoIcon} />
+            <Image source={require('../app-assets/logo.svg')} style={styles.logoIcon} />
             <Text style={styles.logoText}>entivo</Text>
           </View>
           <View style={styles.navLinks}>
@@ -51,7 +41,7 @@ const LandingPage = () => {
           
           <View style={styles.heroDescriptionContainer}>
             <View style={styles.verticalLineContainer}>
-              <Image source={{ uri: imgLine1 }} style={styles.verticalLine} contentFit='fill' />
+              <Image source={require('../app-assets/vertical-line.svg')} style={styles.verticalLine} contentFit='fill' />
             </View>
             <Text style={styles.heroDescription}>
               Unlock your potential with personalized mentorship from IITians. Turn ambition into achievement with expert guidance.
@@ -63,7 +53,11 @@ const LandingPage = () => {
             onPress={() => navigation.navigate('RoleSelection')}
           >
             <Text style={styles.getStartedText}>Get Started</Text>
-            <Image source={{ uri: imgContainer }} style={styles.arrowIcon} />
+            <Image 
+              source={require('../app-assets/arrow-right.svg')} 
+              style={styles.arrowIcon} 
+              tintColor="white"
+            />
           </TouchableOpacity>
         </View>
 
@@ -79,15 +73,15 @@ const LandingPage = () => {
           ].map((mentor, index) => (
             <View key={index} style={styles.mentorCard}>
               <View style={styles.mentorHeader}>
-                <Image source={{ uri: imgEllipse7 }} style={styles.mentorAvatar} />
-                <Image source={{ uri: imgIconstackIoHeart }} style={styles.heartIcon} />
+                <Image source={require('../app-assets/avatar-placeholder.svg')} style={styles.mentorAvatar} />
+                <Image source={require('../app-assets/heart-icon.svg')} style={styles.heartIcon} />
               </View>
               <Text style={styles.mentorName}>{mentor.name}</Text>
               <View style={styles.mentorFooter}>
                 <Text style={styles.mentorCollege}>{mentor.college}</Text>
                 <View style={styles.ratingContainer}>
                   <Text style={styles.ratingText}>{mentor.rating}</Text>
-                  <Image source={{ uri: imgIconstackIoStar }} style={styles.starIcon} />
+                  <Image source={require('../app-assets/star-icon.svg')} style={styles.starIcon} />
                 </View>
               </View>
             </View>
@@ -100,14 +94,14 @@ const LandingPage = () => {
         </View>
         <View style={styles.howItWorksGrid}>
           {[
-            { label: 'login', icon: imgIconstackIoLogin1 },
-            { label: 'Explore Mentor', icon: imgIconstackIoSearch },
-            { label: 'Contact', icon: imgIconstackIoHeart }, // Replacing with phone if needed
-            { label: 'Learn', icon: imgIconstackIoBook },
+            { label: 'login', icon: require('../app-assets/login-icon.svg') },
+            { label: 'Explore Mentor', icon: require('../app-assets/search-icon.svg') },
+            { label: 'Contact', icon: require('../app-assets/phone-icon.svg') },
+            { label: 'Learn', icon: require('../app-assets/book-icon.svg') },
           ].map((item, index) => (
             <View key={index} style={styles.howItWorksItem}>
               <View style={styles.iconWrapper}>
-                <Image source={{ uri: item.icon }} style={styles.gridIcon} />
+                <Image source={item.icon} style={styles.gridIcon} />
               </View>
               <Text style={styles.gridLabel}>{item.label}</Text>
             </View>
@@ -141,8 +135,105 @@ const LandingPage = () => {
           </View>
         </View>
 
+        {/* Network Section */}
+        <View style={styles.networkSection}>
+          <View style={styles.networkHeader}>
+            <Image source={require('../app-assets/logo.svg')} style={styles.networkLogo} tintColor="white" />
+            <Text style={styles.networkLogoText}>entivo</Text>
+          </View>
+          
+          <View style={styles.networkContent}>
+            <View style={styles.socialCard}>
+              <TouchableOpacity style={styles.socialIconWrapper}>
+                <Image source={require('../app-assets/instagram-icon.svg')} style={styles.socialIcon} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.socialIconWrapper}>
+                <Image source={require('../app-assets/meta-icon.svg')} style={styles.socialIcon} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.socialIconWrapper}>
+                <Image source={require('../app-assets/x-icon.svg')} style={styles.socialIcon} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.socialIconWrapper}>
+                <Image source={require('../app-assets/linkedin-icon.svg')} style={styles.socialIcon} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.networkInfo}>
+              <Text style={styles.networkInfoTitle}>Our Networks</Text>
+              <Image source={require('../app-assets/network-circles.svg')} style={styles.networkCircles} />
+              
+              <View style={styles.networkAboutContainer}>
+                <Image source={require('../app-assets/network-line.svg')} style={styles.networkLine} />
+                <Text style={styles.networkAboutText}>About Us</Text>
+              </View>
+            </View>
+          </View>
+
+          <TouchableOpacity style={styles.fillFormButton}>
+            <Text style={styles.fillFormText}>Fill Form</Text>
+          </TouchableOpacity>
+
+          <Image source={require('../app-assets/tie-shape.svg')} style={styles.tieShape} />
+        </View>
+
+        {/* Collaboration Banner */}
+        <View style={styles.collabBanner}>
+          <Text style={styles.collabText}>Ready For Collaboration</Text>
+        </View>
+
+        {/* Footer Section */}
+        <View style={styles.footerSection}>
+          <View style={styles.footerBrand}>
+            <View style={styles.logoContainer}>
+              <Image source={require('../app-assets/logo.svg')} style={styles.logoIcon} />
+              <Text style={styles.logoText}>entivo</Text>
+            </View>
+            <Text style={styles.footerDesc}>
+              Mentivo is online JEE mentoring platform facilitating students personalized mentoring by IITian across most of the IITs.
+            </Text>
+          </View>
+
+          <View style={styles.footerLinksContainer}>
+            <View style={styles.footerColumn}>
+              <Text style={styles.footerColumnTitle}>Quick Links</Text>
+              {['About Us', 'Our Services', 'FAQ', 'Our Pricing'].map((link) => (
+                <Text key={link} style={styles.footerLink}>{link}</Text>
+              ))}
+            </View>
+            <View style={styles.footerColumn}>
+              <Text style={styles.footerColumnTitle}>Information</Text>
+              {['Contact Us', 'Privacy Policy', 'Terms of Services', 'Disclaimer'].map((link) => (
+                <Text key={link} style={styles.footerLink}>{link}</Text>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.contactInfo}>
+            <View style={styles.contactItem}>
+              <View style={styles.contactIconWrapper}>
+                <Image source={require('../app-assets/phone-icon.svg')} style={styles.contactIcon} />
+              </View>
+              <View>
+              <Text style={styles.contactText}>+91 7047911509</Text>
+              <Text style={styles.contactText}>+91 9477840107</Text>
+              </View>
+            </View>
+            <View style={styles.contactItem}>
+              <View style={styles.contactIconWrapper}>
+                <Image source={require('../app-assets/mail-icon.svg')} style={styles.contactIcon} />
+              </View>
+              <View>
+                <Text style={styles.contactText}>developer@mentivo.in</Text>
+                <Text style={styles.contactText}>y.abhirajya@iitg.ac.in , ceo@mentivo.in</Text>
+                <Text style={styles.contactText}>ayan.bain@iitg.ac.in , cto@mentivo.in</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
         {/* Spacer for bottom */}
         <View style={{ height: 40 }} />
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -372,6 +463,192 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#444653',
     lineHeight: 20,
+  },
+  networkSection: {
+    backgroundColor: '#1a365d',
+    margin: 16,
+    padding: 24,
+    borderRadius: 8,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  networkHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  networkLogo: {
+    width: 20,
+    height: 20,
+    marginRight: 4,
+  },
+  networkLogoText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  networkContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  socialCard: {
+    backgroundColor: '#f5f5f5',
+    width: 70,
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    gap: 12,
+  },
+  socialIconWrapper: {
+    backgroundColor: 'white',
+    padding: 6,
+    borderRadius: 4,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  socialIcon: {
+    width: 24,
+    height: 24,
+  },
+  networkInfo: {
+    flex: 1,
+    marginLeft: 40,
+    marginTop: 10,
+  },
+  networkInfoTitle: {
+    color: 'white',
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  networkCircles: {
+    width: 45,
+    height: 20,
+    marginBottom: 20,
+  },
+  networkAboutContainer: {
+    marginTop: 10,
+  },
+  networkLine: {
+    width: 55,
+    height: 1,
+    marginBottom: 8,
+  },
+  networkAboutText: {
+    color: 'white',
+    fontSize: 14,
+  },
+  fillFormButton: {
+    backgroundColor: 'white',
+    alignSelf: 'center',
+    paddingHorizontal: 32,
+    paddingVertical: 10,
+    borderRadius: 50,
+    marginTop: 32,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  fillFormText: {
+    color: '#444653',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  tieShape: {
+    position: 'absolute',
+    right: 10,
+    top: 0,
+    width: 48,
+    height: 182,
+    opacity: 0.9,
+  },
+  collabBanner: {
+    backgroundColor: 'white',
+    marginHorizontal: 40,
+    marginVertical: 24,
+    paddingVertical: 12,
+    borderRadius: 40,
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  collabText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: 'black',
+  },
+  footerSection: {
+    backgroundColor: 'white',
+    margin: 16,
+    padding: 24,
+    borderRadius: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  footerBrand: {
+    marginBottom: 24,
+  },
+  footerDesc: {
+    fontSize: 12,
+    color: '#444653',
+    lineHeight: 18,
+    marginTop: 12,
+    width: '70%',
+  },
+  footerLinksContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 32,
+  },
+  footerColumn: {
+    flex: 1,
+  },
+  footerColumnTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    color: 'black',
+  },
+  footerLink: {
+    fontSize: 12,
+    color: '#444653',
+    lineHeight: 28,
+  },
+  contactInfo: {
+    gap: 16,
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  contactIconWrapper: {
+    backgroundColor: 'white',
+    padding: 4,
+    borderRadius: 4,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  contactIcon: {
+    width: 30,
+    height: 30,
+  },
+  contactText: {
+    fontSize: 12,
+    color: '#444653',
   },
 });
 
