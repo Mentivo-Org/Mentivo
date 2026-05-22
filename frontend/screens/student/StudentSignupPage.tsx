@@ -1,101 +1,247 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
-  Image,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-
-const imgIconstackIoBrandGoogle = "https://www.figma.com/api/mcp/asset/f680833a-6d2f-4a42-886e-46e3cf0fa0b3";
-const imgCheckCircle = "https://www.figma.com/api/mcp/asset/c017f2dd-241a-42d4-bde6-ac3cc557a83b";
+import { Image } from 'expo-image';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import api from '../../services/api';
+import { LoginEndpoints } from '../../constants/endpoint';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useLoading } from '../../context/LoadingContext';
+import DialogBox from '../../components/DialogBox';
 
 const StudentSignupPage = () => {
   const navigation = useNavigation<any>();
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [alertData, setAlertData] = useState({title:'', message: ''})
+  const [alertVisible, setAlertVisible] = useState<boolean>(false);
+  const {showLoading, hideLoading} = useLoading();
+
+  const handleCreateAccount = async () => {
+    if (!fullName || !email || !password || !phone) {
+      setAlertData({title: 'Error', message: 'Please fill in all the required fields'});
+      setAlertVisible(true);
+      return;
+    }
+
+    if(Number(phone)<1000000000) {
+      setAlertData({title: 'Invalid Phone Number', message: 'Please input a valid phone number'});
+      setAlertVisible(true);
+    }
+    
+    try {
+      showLoading();
+      const response = await api.post(LoginEndpoints.signup, {
+        email,
+        password,
+        name: fullName,
+        phone: phone,
+        role: "student"
+      });
+
+      const { data } = response;
+      hideLoading();
+      if (data.requiresVerification) {
+        // const { accessToken, refreshToken, user } = data;
+        // await AsyncStorage.setItem('accessToken', accessToken);
+        // await AsyncStorage.setItem('refreshToken', refreshToken);
+        // await AsyncStorage.setItem('user', JSON.stringify(user));
+        // await AsyncStorage.setItem('verifiedEmail', 'false');
+
+        navigation.navigate("SendOtp", { email: email, name: fullName, role: "student" , phone});
+      }
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      const errorMsg = error.response?.data?.error || "Signup failed";
+      setAlertData({title:"Error", message: errorMsg});
+      setAlertVisible(true);
+    }
+    finally {
+      hideLoading();
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    try {
+      await GoogleSignin.hasPlayServices();
+      await GoogleSignin.signOut();
+      const userInfo = await GoogleSignin.signIn({
+        prompt: 'select_account'
+      });
+      
+      const idToken = userInfo?.data?.idToken; 
+      if(idToken) {
+        showLoading();
+        const response = await api.post(LoginEndpoints.googleLogin, { idToken, mode: "sign-up" })
+        hideLoading();
+        if (response.status === 202) {
+          await AsyncStorage.setItem('accessToken', response.data.accessToken);
+          await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
+          await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+        navigation.replace("CompleteProfile", {
+          full_name: response.data.user?.name,
+          email: response.data.user?.email,
+          role: "student"
+        });
+        return;
+      }
+    }
+    } catch (error: any) {
+      console.log("Native Sign-In Cancelled or Failed", error);
+      const errorMsg = error.response?.data?.error || "Google sign-up failed";
+      setAlertData({message: errorMsg, title: 'Google sign in failed'});
+      setAlertVisible(true)
+    }
+    finally {
+      hideLoading();
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.header}>
-           <Image source={require('../../logo.svg')} style={styles.logo} />
-        </View>
-
-        <View style={styles.topSection}>
-          <Text style={styles.mainTitle}>Create Account</Text>
-          <Text style={styles.mainSubtitle}>Join the community of expert mentors and students</Text>
-        </View>
-
-        <View style={styles.card}>
-          <TouchableOpacity style={styles.socialButton}>
-            <Image source={{ uri: imgIconstackIoBrandGoogle }} style={styles.socialIcon} />
-            <Text style={styles.socialButtonText}>Sign up with Google</Text>
-          </TouchableOpacity>
-
-          <View style={styles.dividerContainer}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>OR</Text>
-            <View style={styles.divider} />
+      <KeyboardAvoidingView 
+        behavior="padding"
+        style={{ flex: 1 }}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.container} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.header}>
+             <Image source={require('../../app-assets/logo.svg')} style={styles.logo} />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="Your full name" 
-              placeholderTextColor="rgba(68,70,83,0.5)"
-            />
+          <View style={styles.topSection}>
+            <Text style={styles.mainTitle}>Create Account</Text>
+            <Text style={styles.mainSubtitle}>Join the community of expert mentors and students</Text>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="name@domain.com" 
-              placeholderTextColor="rgba(68,70,83,0.5)"
-            />
-          </View>
+          <View style={styles.card}>
+            <TouchableOpacity 
+              style={styles.socialButton}
+              onPress={handleGoogleSignUp}
+            >
+              <Image source={require('../../app-assets/google-icon.svg')} style={styles.socialIcon} />
+              <Text style={styles.socialButtonText}>Sign up with Google</Text>
+            </TouchableOpacity>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="••••••••" 
-              placeholderTextColor="rgba(68,70,83,0.5)"
-              secureTextEntry
-            />
-            <View style={styles.hintContainer}>
-              <Image source={{ uri: imgCheckCircle }} style={styles.hintIcon} />
-              <Text style={styles.hintText}>At least 8 characters</Text>
+            <View style={styles.dividerContainer}>
+              <View style={styles.divider} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.divider} />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Full Name</Text>
+              <TextInput 
+                style={styles.input} 
+                placeholder="Your full name" 
+                placeholderTextColor="rgba(68,70,83,0.5)"
+                value={fullName}
+                onChangeText={setFullName}
+                autoCapitalize="words"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput 
+                style={styles.input} 
+                placeholder="name@domain.com" 
+                placeholderTextColor="rgba(68,70,83,0.5)"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Phone Number</Text>
+              <Text style={styles.required}>* Required</Text>
+              <TextInput 
+                style={styles.input} 
+                placeholder="98765 12345" 
+                placeholderTextColor="rgba(68,70,83,0.5)"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Password</Text>
+              <View style={styles.passwordContainer}>
+                <TextInput 
+                  style={styles.passwordInput} 
+                  placeholder="••••••••" 
+                  secureTextEntry={!showPassword}
+                  placeholderTextColor="rgba(68,70,83,0.5)"
+                  // value={password}
+                  onChangeText={(text)=>setPassword(text)}
+                  autoCapitalize="none"
+                  // selection={!showPassword ? { start: passwordDisplay.length, end: passwordDisplay.length } : undefined}
+                  autoCorrect={false}
+                  spellCheck={false}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeButton}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye" : "eye-off"}
+                    size={20}
+                    color="#2563eb"
+                  />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.hintContainer}>
+                <Image source={require('../../app-assets/info-dot.svg')} style={styles.hintIcon} />
+                <Text style={styles.hintText}>At least 8 characters</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.createButton}
+              onPress={handleCreateAccount}
+            >
+              <Text style={styles.createText}>Create Account</Text>
+            </TouchableOpacity>
+
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Already have an account? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('StudentLogin')}>
+                <Text style={styles.signInText}>Sign In</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
-          <TouchableOpacity 
-            style={styles.createButton}
-            onPress={() => navigation.navigate('SendOtp', { role: 'student' })}
-          >
-            <Text style={styles.createText}>Create Account</Text>
-          </TouchableOpacity>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('StudentLogin')}>
-              <Text style={styles.signInText}>Sign In</Text>
-            </TouchableOpacity>
+          <View style={styles.legalFooter}>
+            <Text style={styles.legalText}>
+              By clicking Create Account, you agree to our{' '}
+              <Text style={styles.underline}>Terms of Service</Text> and{' '}
+              <Text style={styles.underline}>Privacy Policy</Text>.
+            </Text>
           </View>
-        </View>
-
-        <View style={styles.legalFooter}>
-          <Text style={styles.legalText}>
-            By clicking Create Account, you agree to our{' '}
-            <Text style={styles.underline}>Terms of Service</Text> and{' '}
-            <Text style={styles.underline}>Privacy Policy</Text>.
-          </Text>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+      <DialogBox title={alertData.title} message={alertData.message} visible={alertVisible} onClose={()=> setAlertVisible(false)}/>
     </SafeAreaView>
   );
 };
@@ -116,12 +262,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   logo: {
-    width: 26,
-    height: 28,
+    width: 40,
+    height: 42,
   },
   topSection: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 14,
+    marginTop: -10
   },
   mainTitle: {
     fontSize: 32,
@@ -185,7 +332,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.64,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 12,
   },
   label: {
     fontSize: 17,
@@ -199,6 +346,27 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     fontSize: 17,
     color: '#0b1c30',
+  },
+  required: {
+    fontSize: 12,
+    color: '#00288e',
+    fontWeight: '500',
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eff4ff',
+    borderRadius: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+  },
+  passwordInput: {
+    flex: 1,
+    fontSize: 17,
+    color: '#0b1c30',
+  },
+  eyeButton: {
+    marginLeft: 10,
   },
   hintContainer: {
     flexDirection: 'row',

@@ -8,19 +8,19 @@ const { width } = Dimensions.get('window');
 const SplashScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
+      <Image 
+        source={require('../app-assets/bg-pattern.svg')} 
+        style={StyleSheet.absoluteFillObject}
+        contentFit="cover"
+      />
       <View style={styles.content}>
         <View style={styles.logoContainer}>
           <Image 
-            source={require('../logo.svg')} 
+            source={require('../app-assets/logo.svg')} 
             style={styles.logo}
             contentFit="contain"
           />
-          <Text style={styles.logoText}>Mentivo</Text>
         </View>
-        <Text style={styles.tagline}>IITian Guidance, Real Results</Text>
-      </View>
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Loading your mentorship experience...</Text>
       </View>
     </SafeAreaView>
   );
@@ -29,7 +29,7 @@ const SplashScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#2563eb', // Fallback blue
   },
   content: {
     flex: 1,
@@ -37,35 +37,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoContainer: {
-    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
   },
   logo: {
-    width: 60,
-    height: 60,
-    marginRight: 12,
-  },
-  logoText: {
-    fontSize: 48,
-    fontWeight: '900',
-    color: '#00288e',
-    letterSpacing: -1,
-  },
-  tagline: {
-    fontSize: 16,
-    color: '#444653',
-    fontWeight: '500',
-    marginTop: 8,
-  },
-  footer: {
-    paddingBottom: 40,
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: 12,
-    color: '#a1a1aa',
-    fontWeight: '400',
+    width: 100,
+    height: 100,
   },
 });
 
