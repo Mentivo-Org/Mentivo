@@ -41,15 +41,18 @@ export async function getPresenceState(mentorId: string): Promise<'available' | 
 
 export async function getAvailableMentors(): Promise<string[]> {
   const keys = await redis.keys('presence:*');
+  if (keys.length === 0) return [];
+
+  const values = await redis.mget(...keys);
   const availableMentors: string[] = [];
-  
-  for (const key of keys) {
-    const data = await redis.get(key);
+
+  for (let i = 0; i < keys.length; i++) {
+    const data = values[i];
     if (data) {
       try {
         const parsed = JSON.parse(data);
         if (parsed.state === 'available') {
-          availableMentors.push(key.replace('presence:', ''));
+          availableMentors.push(keys[i].replace('presence:', ''));
         }
       } catch (e) {
         // ignore
