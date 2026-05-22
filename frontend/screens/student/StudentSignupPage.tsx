@@ -93,6 +93,7 @@ const StudentSignupPage = () => {
           await AsyncStorage.setItem('accessToken', response.data.accessToken);
           await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
           await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+          await AsyncStorage.setItem('verifiedEmail', 'true');
         navigation.replace("CompleteProfile", {
           full_name: response.data.user?.name,
           email: response.data.user?.email,
