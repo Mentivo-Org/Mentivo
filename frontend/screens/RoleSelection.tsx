@@ -3,14 +3,11 @@ import {
   StyleSheet,
   View,
   Text,
-  Image,
   TouchableOpacity,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
-
-const imgArrowRightWhite = "https://www.figma.com/api/mcp/asset/540c48da-fbe4-4ef1-98e5-e8a180978224";
-const imgArrowRightBlue = "https://www.figma.com/api/mcp/asset/b4bfd74e-29b3-43e5-a24a-27522df1a823";
 
 const RoleSelection = () => {
   const navigation = useNavigation<any>();
@@ -19,7 +16,7 @@ const RoleSelection = () => {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <View style={styles.logoContainer}>
-          <Image source={require('../logo.svg')} style={styles.logoIcon} />
+          <Image source={require('../app-assets/logo.svg')} style={styles.logoIcon} />
           <Text style={styles.logoText}>entivo</Text>
         </View>
       </View>
@@ -30,7 +27,11 @@ const RoleSelection = () => {
           onPress={() => navigation.navigate('StudentSignUp')}
         >
           <Text style={styles.studentButtonText}>As Student</Text>
-          <Image source={{ uri: imgArrowRightWhite }} style={styles.arrowIcon} />
+          <Image 
+            source={require('../app-assets/arrow-right-white.svg')} 
+            style={styles.arrowIcon} 
+            tintColor="white"
+          />
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -38,7 +39,11 @@ const RoleSelection = () => {
           onPress={() => navigation.navigate('MentorSignUp')}
         >
           <Text style={styles.mentorButtonText}>As Mentor</Text>
-          <Image source={{ uri: imgArrowRightBlue }} style={styles.arrowIcon} />
+          <Image 
+            source={require('../app-assets/arrow-right.svg')} 
+            style={styles.arrowIcon} 
+            tintColor="#444653"
+          />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -58,8 +63,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoIcon: {
-    width: 13,
-    height: 14,
+    width: 18,
+    height: 18,
     marginRight: 4,
   },
   logoText: {

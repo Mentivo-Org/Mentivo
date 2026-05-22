@@ -1,26 +1,57 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
-  Image,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-
-const imgShieldIcon = "https://www.figma.com/api/mcp/asset/ca0cc608-9615-4191-bf72-ef341f546fe1";
-const imgArrowRight = "https://www.figma.com/api/mcp/asset/52d1a7f3-0c6f-43e4-bab1-8076ae5b8c7e";
+import { Image } from 'expo-image';
+import api from '../services/api';
+import { LoginEndpoints } from '../constants/endpoint';
+import { useLoading } from '../context/LoadingContext';
+import DialogBox from '../components/DialogBox';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SendOtpScreen = () => {
+  const { showLoading, hideLoading } = useLoading();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { role } = route.params || { role: 'student' };
+  const { email, name, role, phone } = route.params;
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const inputs = useRef<any>([]);
+  const [secondsLeft, setSecondsLeft] = useState<number>(60);
+  const [resend, setResend] = useState<boolean>(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [alertData, setAlertData] = useState({title: '', message: ''});
+  const [alertVisible, setAlertVisible] = useState<boolean>(false);
+
+  const maskEmail = (email: string) => {
+  if (!email || !email.includes('@')) return email;
+
+  const [localPart, domain] = email.split('@');
+  
+  let maskedLocal;
+  
+  if (localPart.length <= 2) {
+    // For short names like "ab@domain.com" -> "a*@domain.com"
+    maskedLocal = localPart[0] + '*';
+  } else {
+    // Keeps the first and last character, masks everything in between
+    const firstChars = localPart[0] + localPart[1];
+    const lastChars = localPart[localPart.length - 2] + localPart[localPart.length - 1];
+    const maskLength = localPart.length - 4;
+    
+    maskedLocal = firstChars + '*'.repeat(maskLength) + lastChars;
+  }
+  
+  return `${maskedLocal}@${domain}`;
+};
 
   const handleOtpChange = (value: string, index: number) => {
     const newOtp = [...otp];
@@ -39,6 +70,76 @@ const SendOtpScreen = () => {
     }
   };
 
+  const handleSubmit = async () => {
+    const otpString = otp.join('');
+    if(otpString.length<6) {
+      setAlertData({title: 'OTP Error', message: 'Fill all the fields'});
+      setAlertVisible(true);
+      return;
+    }
+    showLoading();
+    try {
+      const response = await api.post(LoginEndpoints.verifyOtp, {email, token: otpString});
+      if(response.status === 200) {
+        await AsyncStorage.setItem('acccessToken', response.data.accessToken);
+        await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
+        //will be set after completeprofile
+        // await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+        await  AsyncStorage.setItem('verifiedEmail', 'true')
+        navigation.navigate("CompleteProfile", {full_name: name, role, email, phone})
+      }
+    } catch (error) {
+      setAlertData({title: 'Verification Failed', message: 'Please check your OTP and try again.'});
+      setAlertVisible(true);
+    } finally {
+      hideLoading();
+    }
+  };
+
+  const handleResend = async () => {
+    if(secondsLeft===0) {
+      await resendOtp();
+    }
+  }
+
+  const resendOtp = async () => {
+    showLoading();
+    try {
+      const response = await api.post(LoginEndpoints.resendOtp, {email});
+      if(response.status===201) {
+        setSecondsLeft(60);
+        setResend(false);
+        setOtp(['','','','','',''])
+        inputs.current[0].focus();
+      }
+      else {
+        setAlertData({title:'Resend OTP Failed', message: response.data?.error});
+        setAlertVisible(true);
+      }
+    } catch (error) {
+      setAlertData({title:'Resend Failed', message: 'Could not resend OTP. Please try again.'});
+      setAlertVisible(true);
+    } finally {
+      hideLoading();
+    }
+  }
+
+  useEffect(() => {
+  if (resend === false && secondsLeft > 0) {
+    timerRef.current = setInterval(() => {
+      setSecondsLeft((prev) => prev - 1);
+    }, 1000);
+  } else if (secondsLeft === 0) {
+    if (timerRef.current !== null) {
+      clearInterval(timerRef.current);
+    }
+    setResend(false);
+  }
+  return () => {
+    if (timerRef.current !== null) clearInterval(timerRef.current);
+  };
+}, [resend, secondsLeft]);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView 
@@ -52,12 +153,12 @@ const SendOtpScreen = () => {
         <View style={styles.container}>
           <View style={styles.illustrationContainer}>
             <View style={styles.iconCircle}>
-              <Image source={{ uri: imgShieldIcon }} style={styles.shieldIcon} />
+              <Image source={require('../app-assets/shield-icon.svg')} style={styles.shieldIcon} />
             </View>
           </View>
 
-          <Text style={styles.title}>Verify Your Phone</Text>
-          <Text style={styles.subtitle}>Enter the 6-digit code sent to +917980*******</Text>
+          <Text style={styles.title}>Verify Your Email</Text>
+          <Text style={styles.subtitle}>Enter the 6-digit code sent to {maskEmail(email)}</Text>
 
           <View style={styles.otpContainer}>
             {otp.map((digit, index) => (
@@ -77,24 +178,29 @@ const SendOtpScreen = () => {
 
           <View style={styles.resendContainer}>
             <Text style={styles.resendText}>Didn't receive the code? </Text>
-            <TouchableOpacity>
-              <Text style={styles.resendAction}>Resend in 0:45</Text>
+            <TouchableOpacity onPress={() => handleResend()}>
+              <Text style={[styles.resendAction, (secondsLeft==0)?{color: 'blue'}:{}]}>Resend {(secondsLeft!==0)?`in ${secondsLeft}`:'code'}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.brandContainer}>
-            <Text style={styles.brandText}>IITIAN MENTOR NETWORK SECURE LOGIN</Text>
+            <Text style={styles.brandText}>NETWORK SECURE LOGIN</Text>
           </View>
 
           <TouchableOpacity 
             style={styles.verifyButton}
-            onPress={() => navigation.navigate('CompleteProfile', { role })}
+            onPress={() => handleSubmit()}
           >
             <Text style={styles.verifyText}>Verify & Continue</Text>
-            <Image source={{ uri: imgArrowRight }} style={styles.arrowIcon} />
+            <Image 
+              source={require('../app-assets/arrow-right-white.svg')} 
+              style={styles.arrowIcon} 
+              tintColor="white"
+            />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      <DialogBox title={alertData.title} message={alertData.message} onClose={() => setAlertVisible(false)} visible={alertVisible}/>
     </SafeAreaView>
   );
 };
