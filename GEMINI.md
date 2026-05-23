@@ -44,3 +44,8 @@ Mentivo is a per-minute voice mentorship marketplace connecting JEE aspirants wi
 - Always refer to `VISION.md` for detailed product requirements and business logic.
 - Keep `IMPLEMENTATION_NOTES.md` updated with technical changes.
 - Ensure all new API endpoints are documented in the API Reference section of `VISION.md`.
+
+## SVG & Asset Guidelines
+- **Component**: Always use `Image` from `expo-image` for rendering SVG assets in the frontend. The standard `Image` component from `react-native` does not support SVGs natively.
+- **Preparation**: Ensure SVG files do not contain CSS variables (e.g., `var(--fill-0, #color)`). Use standard hex codes for colors.
+- **Styling**: For monochromatic icons (like arrows), use the `tintColor` prop on the `Image` component to ensure proper contrast against different background colors.

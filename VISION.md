@@ -179,7 +179,7 @@ POST /calls/:id/rate (student submits 1–5 star rating)
 CREATE TABLE users (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email             TEXT UNIQUE NOT NULL,
-  phone             TEXT UNIQUE,                       -- optional
+  phone             TEXT UNIQUE NOT NULL,              -- collected but unverified
   is_email_verified BOOLEAN DEFAULT FALSE,
   name              TEXT,
   role              TEXT NOT NULL CHECK (role IN ('student', 'mentor', 'admin')),
@@ -959,7 +959,7 @@ Here is the complete specification:
 === PRODUCT ===
 Mentivo connects JEE aspirants with verified IIT students via in-app VoIP calls.
 Students pay ₹10/min. Mentors keep 70%. First 5 minutes are free for new users.
-No phone number required; login via Email/Password (verified) or Google.
+Phone number is mandatory (collected but unverified); login via Email/Password (verified) or Google.
 
 === BACKEND (Node.js + Express + PostgreSQL + Redis) ===
 
@@ -970,7 +970,7 @@ Build a REST API with the following:
    - Middleware: extract token, verify, attach req.user (id, email, etc.)
 
 2. DATABASE (PostgreSQL via Prisma on Supabase)
-   Tables: users (email, phone?, role, is_email_verified), mentor_profiles,
+   Tables: users (email, phone, role, is_email_verified), mentor_profiles,
    wallets, mentor_balances, wallet_transactions, call_sessions (agora_channel_id),
    ratings, payouts, referrals
 
@@ -1006,7 +1006,7 @@ Generate complete code for backend and frontend, Prisma schema, and setup docs.
 
 *Document version 1.0 — Mentivo internal technical reference*
 *Founders: Abhiraj (CEO) · Ayan (CTO)*## 8. API Endpoints Generated
-- **POST /auth/verify:** Receives phone, role, name, uid. Finds or creates the user in the database. Returns user object. Used as a mock authentication setup.
+- **POST /auth/verify:** Receives email, role, name, uid. Finds or creates the user in the database. Returns user object. Used as a mock authentication setup.
 - **General Notes:**
    - The Exotel setup was intentionally bypassed as per instructions.
    - Additional routing scaffolds for calls, wallets, etc are set up but only basic Auth is actively wired for immediate UI integration.
@@ -1034,7 +1034,7 @@ Generate complete code for backend and frontend, Prisma schema, and setup docs.
 
 *Document version 1.0 — Mentivo internal technical reference*
 *Founders: Abhiraj (CEO) · Ayan (CTO)*## 8. API Endpoints Generated
-- **POST /auth/verify:** Receives phone, role, name, uid. Finds or creates the user in the database. Returns user object. Used as a mock authentication setup.
+- **POST /auth/verify:** Receives email, role, name, uid. Finds or creates the user in the database. Returns user object. Used as a mock authentication setup.
 - **General Notes:**
    - The Exotel setup was intentionally bypassed as per instructions.
    - Additional routing scaffolds for calls, wallets, etc are set up but only basic Auth is actively wired for immediate UI integration.

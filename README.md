@@ -7,17 +7,24 @@ Mentivo is a per-minute voice mentorship marketplace connecting JEE aspirants (a
 - **Core Mechanic**: ₹10/min VoIP call, wallet-based, no subscription.
 - **Supply**: Verified current IIT students across all IITs.
 - **Demand**: JEE aspirants (Class 11/12), droppers, and their parents.
-- **Revenue Model**: 30% platform commission; 70% mentor share (~₹7/min); 5% coaching center revenue share on their students' usage.
+- **Revenue Model**: 
+  - 70% Mentor share (~₹7/min).
+  - 30% Platform commission.
+  - 5% Revenue share for coaching centers on their students' usage.
 - **Free Tier**: First 5 minutes free for new users.
 
 ## 🛠 Tech Stack
 
-### Frontend
+### Frontend & Mobile
 - **Framework**: React Native (Expo)
 - **State Management**: Zustand
 - **UI & Styling**: NativeWind (Tailwind CSS for React Native)
 - **Communication**: Agora SDK (VoIP Voice Calls & Chat)
 - **Push Notifications**: Firebase Cloud Messaging (FCM)
+
+### Web (Dashboards)
+- **Framework**: Next.js
+- **Purpose**: Coaching Partner Dashboard, Telegram Admin Referrals, and System Admin Management.
 
 ### Backend
 - **Runtime**: Node.js (20 LTS)
@@ -26,13 +33,13 @@ Mentivo is a per-minute voice mentorship marketplace connecting JEE aspirants (a
 - **ORM**: Prisma
 - **Cache & Presence**: Redis (ioredis)
 - **Job Queue**: BullMQ
-- **Authentication**: Firebase Auth / Google Login
+- **Authentication**: Firebase Admin SDK (Google/Email ID tokens) & Unique Codes (Coaching Centers).
 
 ### Services
-- **Agora**: In-app VoIP calling, on-screen call timer, and chat.
+- **Agora**: In-app VoIP calling with live on-screen timer.
 - **Razorpay Standard**: Student wallet top-ups (UPI, Cards, Netbanking).
 - **Razorpay X**: Automated weekly payouts to mentor bank accounts.
-- **Supabase Storage**: Mentor profile photos and call recordings.
+- **Supabase Storage**: Mentor profile photos, university ID cards, and call recordings.
 
 ## 📂 Project Structure
 
@@ -40,10 +47,11 @@ Mentivo is a per-minute voice mentorship marketplace connecting JEE aspirants (a
 /
 ├── backend/            # Express API, Prisma schema, services, and jobs
 ├── frontend/           # React Native Expo application
+├── website/            # Next.js web dashboards for partners and admins
 ├── supabase/           # Supabase configuration and database migrations
 ├── GEMINI.md           # Project-specific AI guidance
 ├── VISION.md           # Comprehensive product and technical roadmap
-└── IMPLEMENTATION_NOTES.md # Technical implementation details and API logs
+└── IMPLEMENTATION_NOTES.md # Detailed technical logs and API reference
 ```
 
 ## ⚙️ Getting Started
@@ -51,8 +59,8 @@ Mentivo is a per-minute voice mentorship marketplace connecting JEE aspirants (a
 ### Prerequisites
 - Node.js 20+
 - Expo CLI
-- Docker (optional, for local Postgres/Redis)
-- Supabase account & project
+- Docker (for local development)
+- Supabase Project & Redis Instance
 
 ### Backend Setup
 1. Navigate to the backend directory:
@@ -63,14 +71,14 @@ Mentivo is a per-minute voice mentorship marketplace connecting JEE aspirants (a
    ```bash
    npm install
    ```
-3. Set up your `.env` file (refer to `VISION.md` for required variables).
-4. Run Prisma migrations:
+3. Configure your `.env` file (see `VISION.md` for required keys).
+4. Run migrations:
    ```bash
    npx prisma migrate dev
    ```
-5. Start the development server:
+5. Start the server:
    ```bash
-   npm run dev
+   npm run run
    ```
 
 ### Frontend Setup
@@ -82,17 +90,18 @@ Mentivo is a per-minute voice mentorship marketplace connecting JEE aspirants (a
    ```bash
    npm install
    ```
-3. Start the Expo development server:
+3. Start the Expo server:
    ```bash
    npx expo start
    ```
 
 ## 🔄 Core Workflows
 
-1. **Call Initiation**: Validate student wallet balance (min ₹10), check mentor presence via Redis, generate Agora tokens, and initiate the in-app VoIP call.
-2. **Billing**: Atomic transaction upon call completion to debit the student's wallet and credit the mentor's pending payout (accounting for the 5-minute free tier). Calculate and credit 5% revenue share to the linked coaching center if applicable.
-3. **Coaching Partner Login**: Coaching centers login using their unique referral code to access their student aggregation dashboard.
-4. **Payouts**: Weekly batch jobs triggered via BullMQ to process mentor and coaching center payouts through Razorpay X.
+1. **Call Initiation**: Server-side validation of student wallet (min ₹10), mentor presence check in Redis, and generation of dynamic Agora tokens.
+2. **Billing Engine**: Atomic transaction upon call completion (Active -> Settling) to debit student wallet and credit mentor pending payout, accounting for the 5-minute free tier and coaching center commission.
+3. **Referral System**: Telegram Admins share master codes. Students generate personal codes on the website. Signups with these codes trigger automated wallet credits for students and commission for admins.
+4. **Coaching Partner Integration**: Institutes login via unique codes to track their students' progress and platform usage via a dedicated Next.js dashboard.
+5. **Presence System**: Mentors maintain an "Available" state via Redis heartbeats (60s TTL). An automated sweeper handles abandoned calls to ensure fair billing.
 
 ## 👥 Team
 - **Abhiraj**: CEO

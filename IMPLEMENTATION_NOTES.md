@@ -77,9 +77,11 @@ model AdminPayoutRequest {
 ## Integration
 ## 11. Backend Core Implementation (May 2026)
 
-### Authentication (Phone-Only Architecture)
-- **Primary Identifier:** Switched from Email to Phone Number as the mandatory unique identifier for all accounts.
-- **Firebase Phone Auth:** Integrated Firebase Admin SDK to verify frontend-generated `idToken` at `POST /api/auth/phone-login`.
+### Authentication (Email/Google Architecture)
+- **Primary Identifier:** Email is the primary unique identifier for all accounts. Phone numbers are mandatory to collect during registration but remain unverified in the initial phase.
+- **Firebase Auth:** Integrated Firebase Admin SDK to verify frontend-generated `idToken` (Email/Google) at `POST /api/auth/verify`.
+- **Phone Collection:** Phone numbers are required for all users but are currently not verified.
+- **Future Roadmap: WhatsApp Verification:** Phone verification will be implemented at a later stage via the Meta WhatsApp Business API. Users will initiate a message containing a unique code to the Mentivo backend, which will then verify the sender's phone number.
 - **Session Management:** Implemented JWT Access Token rotation and secure Refresh Token reuse detection/revocation.
 - **User Initialization:** Automated atomic creation of `Wallet` (Students) and `MentorProfile/Balance` (Mentors) during signup.
 
