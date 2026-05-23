@@ -162,7 +162,7 @@ export const loginWithEmail = async (req: Request, res: Response) => {
 
   let user = await prisma.user.findUnique({ where: { email } });
 
-  console.log("User in DB", user);
+  // console.log("User in DB", user);
 
   if (user && user.authProvider !== "email") {
     return res.status(400).json({
@@ -176,7 +176,7 @@ export const loginWithEmail = async (req: Request, res: Response) => {
       password,
     });
 
-  console.log(sbData);
+  // console.log(sbData);
 
   if (sbError) return res.status(401).json({ error: sbError.message });
   if (!sbData.user)
