@@ -14,6 +14,11 @@ const RoleSelection = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <Image 
+        source={require('../app-assets/bg-pattern-inverted.svg')} 
+        style={StyleSheet.absoluteFillObject}
+        contentFit="cover"
+      />
       <View style={styles.header}>
         <View style={styles.logoContainer}>
           <Image source={require('../app-assets/logo.svg')} style={styles.logoIcon} />
@@ -61,14 +66,15 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginLeft: 5
   },
   logoIcon: {
-    width: 18,
-    height: 18,
+    width: 28,
+    height: 28,
     marginRight: 4,
   },
   logoText: {
-    fontSize: 12,
+    fontSize: 20,
     fontWeight: 'bold',
     color: 'black',
   },
