@@ -175,7 +175,7 @@ const StudentSignupPage = () => {
 
             <View style={styles.inputGroup}>
               <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5}}>
-              <Text style={styles.label}>Phone Number</Text>
+              <Text style={styles.label}>Phone Number (Whatsapp)</Text>
               <Text style={styles.required}>* Required</Text>
               </View>
               <TextInput 

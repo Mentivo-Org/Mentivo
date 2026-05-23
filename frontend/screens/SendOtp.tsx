@@ -79,14 +79,28 @@ const SendOtpScreen = () => {
     }
     showLoading();
     try {
-      const response = await api.post(LoginEndpoints.verifyOtp, {email, token: otpString});
+      const response = await api.post(LoginEndpoints.verifyOtp, {email, token: otpString, name, phone, role});
       if(response.status === 200) {
         await AsyncStorage.setItem('acccessToken', response.data.accessToken);
         await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
         //will be set after completeprofile
         // await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
         await  AsyncStorage.setItem('verifiedEmail', 'true')
-        navigation.navigate("CompleteProfile", {full_name: name, role, email, phone})
+
+        //if mentor, fetch IIT name using domain of email ID
+        if(role==="mentor") {
+          const iit = await api.post(LoginEndpoints.getIIT, {email});
+          if (iit.status===200) {
+            navigation.navigate("CompleteProfile", {full_name: name, role, email, phone, iit: iit.data?.name_of_iit})
+          }
+          else {
+            setAlertData({title: "Could not fetch IIT name", message: iit.data?.error});
+            setAlertVisible(true);
+          }
+        }
+        else {
+          navigation.navigate("CompleteProfile", {full_name: name, role, email, phone})
+        }
       }
     } catch (error) {
       setAlertData({title: 'Verification Failed', message: 'Please check your OTP and try again.'});
