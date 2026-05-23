@@ -77,7 +77,7 @@ const SendOtpScreen = () => {
       setAlertVisible(true);
       return;
     }
-    showLoading();
+    showLoading("Verifying OTP...");
     try {
       const response = await api.post(LoginEndpoints.verifyOtp, {email, token: otpString, name, phone, role});
       if(response.status === 200) {
@@ -117,7 +117,7 @@ const SendOtpScreen = () => {
   }
 
   const resendOtp = async () => {
-    showLoading();
+    showLoading("Resending OTP...");
     try {
       const response = await api.post(LoginEndpoints.resendOtp, {email});
       if(response.status===201) {

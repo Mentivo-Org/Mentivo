@@ -45,7 +45,7 @@ const StudentSignupPage = () => {
     }
     
     try {
-      showLoading();
+      showLoading("Signing you up...");
       const response = await api.post(LoginEndpoints.signup, {
         email,
         password,
@@ -86,7 +86,7 @@ const StudentSignupPage = () => {
       
       const idToken = userInfo?.data?.idToken; 
       if(idToken) {
-        showLoading();
+        showLoading("Fetching your profile info...");
         const response = await api.post(LoginEndpoints.googleLogin, { idToken, mode: "sign-up" })
         hideLoading();
         if (response.status === 202) {

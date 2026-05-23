@@ -58,7 +58,7 @@ const MentorSignupPage = () => {
       return;
     }
     try {
-      showLoading();
+      showLoading("Validating email ID...");
       const response = await api.post(LoginEndpoints.getIIT, {email});
       if(response.status!==200) {
         setAlertData({title: "Error fetching IIT Information", message: response.data?.error});
@@ -76,7 +76,7 @@ const MentorSignupPage = () => {
     }
 
     try {
-      showLoading();
+      showLoading("Signing you up...");
       const response = await api.post(LoginEndpoints.signup, {
         email,
         password,
