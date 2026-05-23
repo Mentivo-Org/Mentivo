@@ -6,7 +6,8 @@ const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your_refresh_token
 
 export interface TokenPayload {
   userId: string;
-  phone: string;
+  role: string;
+  phone?: string | null;
   email?: string | null;
 }
 

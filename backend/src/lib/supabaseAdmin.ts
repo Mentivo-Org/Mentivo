@@ -3,6 +3,7 @@ import 'dotenv/config'
 // Use non-null assertion (!) because we know these must exist for the app to run
 const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!;
 
 /**
  * WARNING: This client bypasses Row Level Security (RLS).
@@ -14,3 +15,5 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
     persistSession: false
   }
 });
+
+export const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey)

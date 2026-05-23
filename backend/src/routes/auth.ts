@@ -1,20 +1,41 @@
-import { Router } from 'express';
-import { handlePhoneLogin, refreshUserToken } from '../controllers/loginController.ts';
+import { Router } from "express";
+import {
+  CompleteProfileMentor,
+  CompleteProfileStudent,
+  handleNativeGoogle,
+  loginWithEmail,
+  refreshUserToken,
+  resendOtp,
+  signUpWithEmail,
+  verifyOtp,
+  whoAmI,
+} from "../controllers/loginController.ts";
+import { authenticateUser } from "../auth/authenticateUser.ts";
+import { iitNameExporter } from "../controllers/iitNameController.ts";
 
 const app = Router();
 
-/**
- * POST /api/auth/phone-login
- * Main entry point for both Signup and Login.
- * Expects { idToken, name?, role?, email?, coachingCenterCode? }
- */
-app.post('/phone-login', handlePhoneLogin);
+//whoami
+app.get('/whoami', authenticateUser, whoAmI)
 
-/**
- * POST /api/auth/refresh
- * Refresh access and refresh tokens.
- * Expects { refreshToken }
- */
-app.post('/refresh', refreshUserToken);
+// backend/routes/auth.js
+app.post("/signup", signUpWithEmail);
+app.post("/login", loginWithEmail);
+
+// OTP Verification
+app.post("/otp/verify", verifyOtp);
+app.post('/otp/resend', resendOtp)
+// Google Sign-in
+app.post("/google-native", handleNativeGoogle);
+
+// Refresh token
+app.post("/refresh", refreshUserToken);
+
+//Get name of IIT
+app.post("/get-iit", iitNameExporter);
+
+//Complete-profile
+app.post("/complete-profile/mentor", authenticateUser, CompleteProfileMentor);
+app.post("/complete-profile/student", authenticateUser, CompleteProfileStudent);
 
 export default app;
