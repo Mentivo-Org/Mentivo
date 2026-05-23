@@ -17,6 +17,9 @@ api.interceptors.request.use(async (config) => {
   console.log('--- [API REQUEST START] ---');
   console.log(`Method: ${config.method?.toUpperCase()}`);
   console.log(`URL: ${config.url}`);
+  if(config.headers) {
+    console.log('Headers: ', JSON.stringify(config.headers, null, 2))
+  }
   if (config.data) {
     console.log('Payload:', JSON.stringify(config.data, null, 2));
   }
@@ -62,7 +65,7 @@ api.interceptors.response.use(
         if (!refreshToken) return;
         
         // Call backend refresh endpoint
-        const { data } = await axios.post(`${baseUrl}${LoginEndpoints.refreshToken}`, {
+        const { data } = await axios.post(LoginEndpoints.refreshToken, {
           refreshToken,
         });
 
