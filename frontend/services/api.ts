@@ -57,7 +57,7 @@ api.interceptors.response.use(
     // Check if error is 401, we haven't retried yet, and it's not an auth route
     const isAuthRoute = originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/auth/signup');
 
-    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRoute) {
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRoute && error.response?.data?.error==="Invalid or expired token") {
       originalRequest._retry = true;
 
       try {

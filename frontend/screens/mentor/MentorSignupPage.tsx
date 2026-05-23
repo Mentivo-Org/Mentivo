@@ -6,16 +6,13 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
   KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import api from '../../services/api';
 import { LoginEndpoints } from '../../constants/endpoint';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLoading } from '../../context/LoadingContext';
 import DialogBox from '../../components/DialogBox';

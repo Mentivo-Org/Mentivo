@@ -1,91 +1,179 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
-  Image,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-
-const imgIconstackIoBrandGoogle = "https://www.figma.com/api/mcp/asset/4e71d5f4-e460-4edd-a008-99e09ee7f96d";
-const imgPhoneIcon = "https://www.figma.com/api/mcp/asset/fe9c9903-3895-406b-b868-ef794369f62e";
+import { Image } from 'expo-image';
+import api from '../../services/api';
+import { LoginEndpoints } from '../../constants/endpoint';
+import { useAuth } from '../../services/retrieveKeys';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useLoading } from '../../context/LoadingContext';
+import DialogBox from '../../components/DialogBox';
 
 const MentorLoginPage = () => {
   const navigation = useNavigation<any>();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const { setIsSignedIn } = useAuth();
+  const {showLoading, hideLoading}  = useLoading();
+
+  const [alertData, setAlertData] = useState({title: '', message: ''});
+  const [alertVisible, setAlertVisible] = useState<boolean>(false);
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setAlertData({title:"Error", message: "Please fill in all fields"});
+      setAlertVisible(true);
+      return;
+    } 
+
+    showLoading("Logging you in...");
+    try {
+      const response = await api.post(LoginEndpoints.login, {
+        email,
+        password,
+        role: "mentor"
+      });
+
+      const { data } = response;
+      const { accessToken, refreshToken, user } = data;
+
+      await AsyncStorage.setItem('accessToken', accessToken);
+      await AsyncStorage.setItem('refreshToken', refreshToken);
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+
+      if(user.isEmailVerified===false) {
+        const resendResponse = await api.post(LoginEndpoints.resendOtp, {
+          email: user.email
+        })
+        if(resendResponse.status===201) {
+          navigation.navigate("SendOtp", {email: user.email, name: user.name, role: "mentor", phone: user.phone});
+        }
+        else {
+          setAlertData({title: 'Error in sending OTP', message: resendResponse.data?.error})
+          setAlertVisible(true);
+        }
+      }
+      else {
+        if(user.profile_completed===false) {
+          // If it's a mentor, we need to fetch IIT name before navigating
+          const iitResponse = await api.post(LoginEndpoints.getIIT, { email: user.email });
+          navigation.navigate("CompleteProfile", {
+            full_name: user.name, 
+            email: user.email, 
+            phone: user.phone, 
+            role: "mentor",
+            iit: iitResponse.data?.name_of_iit
+          });
+        }
+        else {
+          await AsyncStorage.setItem('verifiedEmail', 'true')
+          setIsSignedIn(true);
+        }
+      }
+    } catch (error: any) {
+      console.error("Login error:", error);
+      const errorMsg = error.response?.data?.error || "Login failed";
+      setAlertData({title:"Error", message: errorMsg});
+      setAlertVisible(true);
+    }
+    finally {
+      hideLoading();
+    }
+  };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.header}>
-           <Image source={require('../../logo.svg')} style={styles.logo} />
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Access expert guidance from the IIT community</Text>
-
-          <TouchableOpacity style={styles.socialButton}>
-            <Image source={{ uri: imgIconstackIoBrandGoogle }} style={styles.socialIcon} />
-            <Text style={styles.socialButtonText}>Sign in with Google</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.socialButton}
-            onPress={() => navigation.navigate('SendOtp', { role: 'mentor' })}
-          >
-            <Image source={{ uri: imgPhoneIcon }} style={styles.socialIcon} />
-            <Text style={styles.socialButtonText}>Sign in with Phone Number</Text>
-          </TouchableOpacity>
-
-          <View style={styles.dividerContainer}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.divider} />
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'android' ? 70 : 0}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.container} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.header}>
+             <Image source={require('../../app-assets/logo.svg')} style={styles.logo} />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="name@domain.com" 
-              placeholderTextColor="#757684"
-            />
-          </View>
+          <View style={styles.card}>
+            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.subtitle}>Provide expert guidance from the IIT community</Text>
 
-          <View style={styles.inputGroup}>
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>Password</Text>
-              <TouchableOpacity>
-                <Text style={styles.forgotPassword}>Forgot Password?</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>College Email ID</Text>
+              <TextInput 
+                style={styles.input} 
+                placeholder="name@domain.com" 
+                placeholderTextColor="#757684"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>Password</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword', {role: "mentor"})}>
+                  <Text style={styles.forgotPassword}>Forgot Password?</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.passwordContainer}>
+                <TextInput 
+                  style={styles.passwordInput} 
+                  placeholder="••••••••" 
+                  secureTextEntry={!showPassword}
+                  placeholderTextColor="rgba(68,70,83,0.5)"
+                  onChangeText={(text)=>setPassword(text)}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  spellCheck={false}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeButton}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye" : "eye-off"}
+                    size={20}
+                    color="#2563eb"
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.signInButton}
+              onPress={handleLogin}
+            >
+              <Text style={styles.signInText}>Sign In</Text>
+            </TouchableOpacity>
+
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Don't have an account? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('MentorSignUp')}>
+                <Text style={styles.signUpText}>Sign Up</Text>
               </TouchableOpacity>
             </View>
-            <TextInput 
-              style={styles.input} 
-              placeholder="••••••••" 
-              placeholderTextColor="#757684"
-              secureTextEntry
-            />
           </View>
-
-          <TouchableOpacity 
-            style={styles.signInButton}
-            onPress={() => navigation.navigate('SendOtp', { role: 'mentor' })}
-          >
-            <Text style={styles.signInText}>Sign In</Text>
-          </TouchableOpacity>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('MentorSignUp')}>
-              <Text style={styles.signUpText}>Sign Up</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+      <DialogBox visible={alertVisible} onClose={()=>setAlertVisible(false)} title={alertData.title} message={alertData.message}/>
     </SafeAreaView>
   );
 };
@@ -106,8 +194,8 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   logo: {
-    width: 26,
-    height: 28,
+    width: 40,
+    height: 42,
   },
   card: {
     backgroundColor: 'white',
@@ -142,7 +230,7 @@ const styles = StyleSheet.create({
     borderColor: '#c4c5d5',
     borderRadius: 8,
     paddingVertical: 12,
-    marginBottom: 12,
+    marginBottom: 2,
   },
   socialIcon: {
     width: 24,
@@ -190,6 +278,23 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     color: '#0b1c30',
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#c4c5d5',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  passwordInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#0b1c30',
+  },
+  eyeButton: {
+    marginLeft: 10,
   },
   forgotPassword: {
     color: '#006591',

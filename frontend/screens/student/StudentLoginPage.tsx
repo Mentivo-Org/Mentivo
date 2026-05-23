@@ -17,7 +17,6 @@ import api from '../../services/api';
 import { LoginEndpoints } from '../../constants/endpoint';
 import { useAuth } from '../../services/retrieveKeys';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { usePasswordMask } from '../../hooks/usePasswordMask';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLoading } from '../../context/LoadingContext';
 import DialogBox from '../../components/DialogBox';
@@ -26,7 +25,6 @@ const StudentLoginPage = () => {
   const navigation = useNavigation<any>();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { displayValue: passwordDisplay, handleChange: handlePasswordChange } = usePasswordMask(password, setPassword);
   const [showPassword, setShowPassword] = useState(false);
   const { setIsSignedIn } = useAuth();
   const {showLoading, hideLoading}  = useLoading();
@@ -40,7 +38,7 @@ const StudentLoginPage = () => {
       setAlertVisible(true);
     } 
 
-    showLoading();
+    showLoading("Logging you  in...");
     try {
       const response = await api.post(LoginEndpoints.login, {
         email,
@@ -174,7 +172,7 @@ const StudentLoginPage = () => {
             <View style={styles.inputGroup}>
               <View style={styles.labelRow}>
                 <Text style={styles.label}>Password</Text>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword', {role: "student"})}>
                   <Text style={styles.forgotPassword}>Forgot Password?</Text>
                 </TouchableOpacity>
               </View>

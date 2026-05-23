@@ -8,24 +8,29 @@ interface AuthContextType {
   setIsSignedIn: (value: boolean | null) => void;
   checkLoginStatus: () => Promise<void>;
   handleLogout: () => Promise<void>;
+  isLoading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isSignedIn, setIsSignedIn] = useState<boolean | null>(null);
-
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   // Inside AuthProvider
 const checkLoginStatus = async () => {
   console.log("Checking login status...");
   try {
     const access = await AsyncStorage.getItem('accessToken');
     const refresh = await AsyncStorage.getItem('refreshToken');
-    
-    console.log("Tokens found:", { access: !!access, refresh: !!refresh });
+    const user = await AsyncStorage.getItem('user');
+    var verifiedEmail = await AsyncStorage.getItem('verifiedEmail');
+    if(verifiedEmail !== 'true') {
+      verifiedEmail = null;
+    }
+    console.log("Tokens found:", { access: !!access, refresh: !!refresh, user: !!user,  verifiedEmail: !!verifiedEmail });
 
-    setIsSignedIn(!!(access && refresh));
-    console.log("Logged in status: ", !!(access && refresh) ? "ACTIVE" : "LOGGED OUT")
+    setIsSignedIn(!!(access && refresh && verifiedEmail && user));
+    console.log("Logged in status: ", !!(access && refresh && user && verifiedEmail) ? "ACTIVE" : "LOGGED OUT")
   } catch (e) {
     console.error("AsyncStorage Error:", e);
     setIsSignedIn(false); 
@@ -34,7 +39,7 @@ const checkLoginStatus = async () => {
 
 const handleLogout = async ()=> {
   try {
-    await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
+    await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user', 'verifiedEmail']);
     const isGoogleSignedIn = await GoogleSignin.hasPreviousSignIn();
     if(isGoogleSignedIn) {
       await GoogleSignin.signOut();
@@ -49,19 +54,19 @@ const handleLogout = async ()=> {
 
   // 2. Run this ONLY when the app starts
   useEffect(() => {
+    setIsLoading(true);
     checkLoginStatus();
+    GoogleSignin.configure({
+      webClientId: '456108214629-ddj51krdofouhptf81ar6f0h8tb8gsu8.apps.googleusercontent.com', 
+      offlineAccess: true, 
+      forceCodeForRefreshToken: true,
+    });
+    setIsLoading(false);
   }, []);
 
-  useEffect(() => {
-  GoogleSignin.configure({
-    webClientId: '456108214629-ddj51krdofouhptf81ar6f0h8tb8gsu8.apps.googleusercontent.com', 
-    offlineAccess: true, 
-    forceCodeForRefreshToken: true,
-  });
-}, []);
 
   return (
-    <AuthContext.Provider value={{ isSignedIn, setIsSignedIn, checkLoginStatus, handleLogout }}>
+    <AuthContext.Provider value={{ isSignedIn, setIsSignedIn, checkLoginStatus, handleLogout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

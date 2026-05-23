@@ -1,7 +1,5 @@
 import { Router } from "express";
 import {
-  CompleteProfileMentor,
-  CompleteProfileStudent,
   handleNativeGoogle,
   loginWithEmail,
   refreshUserToken,
@@ -12,6 +10,8 @@ import {
 } from "../controllers/loginController.ts";
 import { authenticateUser } from "../auth/authenticateUser.ts";
 import { iitNameExporter } from "../controllers/iitNameController.ts";
+import { forgotPassword, resetPassword, verifyForgotPasswordOtp } from "../controllers/forgotPassword.ts";
+import { CompleteProfileMentor, CompleteProfileStudent, uploadFile } from "../controllers/completeProfile.ts";
 
 const app = Router();
 
@@ -35,7 +35,12 @@ app.post("/refresh", refreshUserToken);
 app.post("/get-iit", iitNameExporter);
 
 //Complete-profile
-app.post("/complete-profile/mentor", authenticateUser, CompleteProfileMentor);
+app.post("/complete-profile/mentor", authenticateUser, uploadFile, CompleteProfileMentor);
 app.post("/complete-profile/student", authenticateUser, CompleteProfileStudent);
+
+//Forgot Password
+app.post('/forgot-password', forgotPassword);
+app.post('/verify-forgot-password', verifyForgotPasswordOtp);
+app.post('/reset-password', resetPassword)
 
 export default app;

@@ -76,6 +76,7 @@ const CompleteProfile = () => {
   };
 
   const mentorComplete = async () => {
+    console.log(formData);
     if(!formData.year || !formData.branch || !formData.expertise || !formData.idCard || (formData.phone==='' && !phone)) {
       setAlertData({title: 'Error', message: 'Please fill all the required fields and attach your ID card'});
       setAlertVisible(true);
@@ -248,7 +249,7 @@ const CompleteProfile = () => {
                     style={styles.input} 
                     placeholder="Best in Organic Chemistry" 
                     placeholderTextColor="#757684"
-                    onChangeText={(text) => setFormData((prev) => ({...prev, branch: text}))}
+                    onChangeText={(text) => setFormData((prev) => ({...prev, expertise: text}))}
                   />
                 </View>
               </>

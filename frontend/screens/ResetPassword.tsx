@@ -60,9 +60,9 @@ const ResetPassword = () => {
           message: "Password updated successfully. Please log in." 
         });
         setAlertVisible(true);
-        setInterval(() => {
+        setTimeout(() => {
           setAlertVisible(false);
-          navigation.replace(role==="mentor"?"MentorLoginPage":"StudentLoginPage")
+          navigation.replace(role==="mentor"?"MentorLoginPage":"StudentLogin")
         }, 1000);
       }
       else {
