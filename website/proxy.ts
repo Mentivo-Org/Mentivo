@@ -13,7 +13,7 @@ export function proxy(request: NextRequest) {
     const isStaticAsset = 
       pathname.startsWith('/_next') || 
       pathname.startsWith('/api') || 
-      pathname.startsWith('/favicon.ico') ||
+      pathname.startsWith('/logo.svg') ||
       pathname.includes('.'); // Usually files have extensions
 
     const isMaintenancePage = pathname.startsWith('/maintenance');
@@ -36,8 +36,8 @@ export const config = {
      * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * - logo.svg (logo file)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|logo.svg).*)',
   ],
 };

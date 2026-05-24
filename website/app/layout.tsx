@@ -13,6 +13,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Mentivo | Learn from IITians",
   description: "Unlock your potential with personalized mentorship from the prestigious IIT community.",
+  icons: {
+    icon: "/logo.svg",
+  },
 };
 
 export default function RootLayout({
@@ -23,7 +26,7 @@ export default function RootLayout({
   const isMaintenanceMode = process.env.PRODUCTION_MODE === 'true';
 
   return (
-    <html lang="en" className="scroll-smooth">
+    <html lang="en" className="scroll-smooth" data-scroll-behavior="smooth">
       <body className={`${inter.className} bg-[#f8fafc] text-slate-900 antialiased`}>
         <LoadingProvider>
           <ApiInterceptor>

@@ -46,6 +46,18 @@ router.post('/send', async (req: AuthRequest, res) => {
   }
 
   try {
+    const recipient = await prisma.user.findUnique({ where: { email: to } });
+    
+    // Log email to DB
+    await (prisma as any).emailLog.create({
+      data: {
+        sender: adminEmail,
+        received_by_id: recipient ? [recipient.id] : [],
+        subject,
+        body,
+      }
+    });
+
     const signature = await getSignature(adminEmail);
     await resend.emails.send({
       from: 'Mentivo Admin <admin@mentivo.in>',
@@ -70,17 +82,34 @@ router.post('/send-batch', async (req: AuthRequest, res) => {
   }
 
   try {
+    const recipients = await prisma.user.findMany({
+      where: { email: { in: emails } },
+      select: { id: true }
+    });
+    const recipientIds = recipients.map(r => r.id);
+
+    // Log to DB
+    await (prisma as any).emailLog.create({
+      data: {
+        sender: adminEmail,
+        received_by_id: recipientIds,
+        subject,
+        body,
+      }
+    });
+
     const signature = await getSignature(adminEmail);
-    const batchSize = 50;
+    const batchSize = 100;
     for (let i = 0; i < emails.length; i += batchSize) {
         const batch = emails.slice(i, i + batchSize);
-        await resend.emails.send({
-            from: 'Mentivo Admin <admin@mentivo.in>',
-            to: 'admin@mentivo.in',
-            bcc: batch,
-            subject,
-            text: body + signature,
-        });
+        await resend.batch.send(
+            batch.map(email => ({
+                from: 'Mentivo Admin <admin@mentivo.in>',
+                to: email,
+                subject,
+                text: body + signature,
+            }))
+        );
     }
     res.json({ message: `Emails sent to ${emails.length} users.` });
   } catch (err: any) {
@@ -122,27 +151,39 @@ router.post('/send-group', async (req: AuthRequest, res) => {
 
   const users = await prisma.user.findMany({
     where: buildUserFilter(filters),
-    select: { email: true },
+    select: { id: true, email: true },
   });
 
   const emails = users.map(u => u.email).filter(Boolean) as string[];
+  const recipientIds = users.filter(u => u.email).map(u => u.id);
 
   if (emails.length === 0) {
     return res.status(400).json({ error: 'No users match the selected filters.' });
   }
 
   try {
+    // Log to DB
+    await (prisma as any).emailLog.create({
+      data: {
+        sender: adminEmail,
+        received_by_id: recipientIds,
+        subject,
+        body,
+      }
+    });
+
     const signature = await getSignature(adminEmail);
-    const batchSize = 50;
+    const batchSize = 100;
     for (let i = 0; i < emails.length; i += batchSize) {
         const batch = emails.slice(i, i + batchSize);
-        await resend.emails.send({
-            from: 'Mentivo Admin <admin@mentivo.in>',
-            to: 'admin@mentivo.in', // Send to self
-            bcc: batch,           // BCC recipients
-            subject,
-            text: body + signature,
-        });
+        await resend.batch.send(
+            batch.map(email => ({
+                from: 'Mentivo Admin <admin@mentivo.in>',
+                to: email,
+                subject,
+                text: body + signature,
+            }))
+        );
     }
 
     res.json({ message: `Emails sent to ${emails.length} users.` });

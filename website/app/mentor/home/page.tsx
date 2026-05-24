@@ -12,14 +12,12 @@ export default function MentorHomePage() {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    if (!isSignedIn) {
+      router.push('/login');
+    }
+  }, [isSignedIn, router]);
 
-  if (!mounted) return null;
-
-  if (!isSignedIn) {
-    router.push('/login');
-    return null;
-  }
+  if (!mounted || !isSignedIn) return null;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">

@@ -9,7 +9,7 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <Link href="/" className="flex items-center gap-2 text-2xl font-extrabold tracking-tight text-slate-900">
-              <Image src="/favicon.ico" alt="Mentivo Logo" width={32} height={32} className="rounded-lg" />
+              <Image src="/logo.svg" alt="Mentivo Logo" width={32} height={32} className="rounded-lg" />
               Mentivo
             </Link>
           </div>

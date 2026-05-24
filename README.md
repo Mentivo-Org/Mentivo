@@ -13,6 +13,18 @@ Mentivo is a per-minute voice mentorship marketplace connecting JEE aspirants (a
   - 5% Revenue share for coaching centers on their students' usage.
 - **Free Tier**: First 5 minutes free for new users.
 
+## 🚀 Deployment
+
+The Mentivo platform is hosted across **Render** and **Vercel** to ensure high availability and performance.
+
+### User Platform
+- **Backend API**: Hosted on **Render**.
+- **Frontend (Website)**: Hosted on **Vercel**.
+
+### Administrative Platform
+- **Admin Backend**: Hosted on **Render** (separate dedicated account).
+- **Admin Dashboard**: Hosted on **Vercel**.
+
 ## 🛠 Tech Stack
 
 ### Frontend & Mobile

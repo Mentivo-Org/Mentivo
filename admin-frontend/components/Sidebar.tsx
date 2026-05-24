@@ -29,7 +29,7 @@ export default function Sidebar() {
   return (
     <aside className="w-64 bg-card border-r border-gray-200 flex flex-col h-full">
       <div className="p-6 border-b border-gray-100 flex items-center gap-3">
-        <div className="w-8 h-8 bg-primary rounded flex items-center justify-center text-white font-bold">M</div>
+        <img src="/logo.svg" alt="Mentivo Logo" className="w-8 h-8" />
         <span className="font-bold text-lg text-text">Admin</span>
       </div>
 
