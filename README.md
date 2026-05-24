@@ -47,6 +47,8 @@ Mentivo is a per-minute voice mentorship marketplace connecting JEE aspirants (a
 /
 ├── backend/            # Express API, Prisma schema, services, and jobs
 ├── frontend/           # React Native Expo application
+├── admin-backend/      # Admin-specific Express API with separate Prisma setup
+├── admin-frontend/     # Next.js Admin Dashboard for platform management
 ├── website/            # Next.js web dashboards for partners and admins
 ├── supabase/           # Supabase configuration and database migrations
 ├── GEMINI.md           # Project-specific AI guidance

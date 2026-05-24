@@ -28,6 +28,11 @@ Mentivo is a per-minute voice mentorship marketplace connecting JEE aspirants wi
   - Mentor presence is managed via Redis heartbeats (TTL: 60s).
   - Initial chat feature handled via **Agora Chat**.
 
+- **Admin Dashboard**:
+  - Purpose: Internal management for platform admins (@mentivo.in).
+  - Features: Student/Mentor CRUD, Mentor Verification (ID review), and Bulk Emailing.
+  - Authentication: OTP-based Work Email verification.
+
 ## Core Workflows
 1. **Call Initiation**: Validate wallet balance (min ₹10), check mentor presence, initiate Agora VoIP call session.
 2. **Billing**: Atomic debit of student wallet and credit of mentor pending payout upon call completion (first 5 min free). Calculate and credit 5% revenue share to the linked coaching center if applicable.

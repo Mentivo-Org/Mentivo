@@ -194,6 +194,8 @@ CREATE TABLE mentor_profiles (
   branch          TEXT,
   year            INT,
   verified        BOOLEAN DEFAULT FALSE,
+  verified_by     TEXT,                              -- admin email
+  verified_at     TIMESTAMPTZ,                       -- verification timestamp
   id_doc_url      TEXT,                              -- Supabase Storage URL
   bio             TEXT,
   photo_url       TEXT,

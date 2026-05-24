@@ -75,7 +75,25 @@ model AdminPayoutRequest {
        - Link `User.referralCodeUsed` to the referral record.
 
 ## Integration
-## 11. Backend Core Implementation (May 2026)
+### 11. Backend Core Implementation (May 2026)
+
+### 12. Admin Dashboard Implementation (May 2026)
+
+#### Admin Authentication (OTP-based)
+- **Email Restriction:** Strictly restricted to `@mentivo.in` domains.
+- **Flow:** User requests OTP → OTP generated and stored in Redis (10m expiry) → Sent via Resend → User verifies OTP → JWT Access (7d) and Refresh (30d) tokens issued.
+- **Session Persistence:** Tokens held in localStorage for browser persistence.
+
+#### Student & Mentor Management
+- **Student & Mentor Management:** Full CRUD operations for students (View, Search, Edit, Delete). Profile creation is blocked. Mentor management includes a dedicated verification portal.
+- **Mentor Verification:** Dedicated portal for unverified mentors. Review involves fetching identity documents proxied through the backend as a secure stream (using `GET /mentors/:id/document`) to prevent direct exposure of storage URLs to the frontend.
+- **Verification Logs:** Successfully verified mentors log the admin's email (`verified_by`) and the timestamp (`verified_at`).
+- **Security:** General update APIs explicitly exclude the `verified` field to prevent unauthorized status changes.
+
+#### Communication Hub (Resend)
+- **Flexible Recipient Modes:** Toggle between "Group" mode (using dynamic filters) and "Specific" mode. "Specific" mode allows selecting multiple individual users via a debounced autocomplete search and managing them as a list of recipients.
+- **Bulk Sending:** Group emails automatically use batching and BCC (50 recipients per batch) to protect user privacy.
+- **Compliance:** All outgoing emails automatically append the Mentivo Admin Team signature.
 
 ### Authentication (Email/Google Architecture)
 - **Primary Identifier:** Email is the primary unique identifier for all accounts. Phone numbers are mandatory to collect during registration but remain unverified in the initial phase.
