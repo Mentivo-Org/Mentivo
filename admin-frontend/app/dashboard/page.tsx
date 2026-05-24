@@ -16,14 +16,15 @@ export default function DashboardOverview() {
     // For now, we can fetch lists to get counts.
     const fetchStats = async () => {
       try {
-        const [studentsRes, unverifiedRes] = await Promise.all([
+        const [studentsRes, mentorsRes, unverifiedRes] = await Promise.all([
           api.get("/students"),
+          api.get("/mentors"),
           api.get("/mentors/unverified")
         ]);
 
         setStats({
           students: studentsRes.data.length,
-          mentors: 0, // Placeholder
+          mentors: mentorsRes.data.length,
           unverifiedMentors: unverifiedRes.data.length,
         });
       } catch (err) {
@@ -55,8 +56,8 @@ export default function DashboardOverview() {
             <UserCheck size={24} />
           </div>
           <div>
-            <p className="text-sm font-medium text-secondary">Active Mentors</p>
-            <p className="text-2xl font-bold text-text">--</p>
+            <p className="text-sm font-medium text-secondary">Total Mentors</p>
+            <p className="text-2xl font-bold text-text">{stats.mentors}</p>
           </div>
         </div>
 

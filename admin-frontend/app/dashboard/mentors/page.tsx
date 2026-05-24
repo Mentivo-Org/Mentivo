@@ -2,125 +2,107 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
-import { CheckCircle, XCircle, UserCheck } from "lucide-react";
-import dynamic from "next/dynamic";
+import { Search, ShieldCheck, ShieldAlert, CheckCircle2 } from "lucide-react";
 
-// Dynamically import the viewer with SSR disabled to prevent ReferenceError: DOMMatrix is not defined
-const MentorDocumentViewer = dynamic(
-  () => import("@/components/MentorDocumentViewer"),
-  { ssr: false }
-);
-
-export default function MentorVerificationPage() {
+export default function MentorsPage() {
   const [mentors, setMentors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    fetchUnverifiedMentors();
-  }, []);
+    const delayDebounceFn = setTimeout(() => {
+      fetchMentors(searchTerm);
+    }, 500);
 
-  const fetchUnverifiedMentors = async () => {
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm]);
+
+  const fetchMentors = async (query = "") => {
+    setLoading(true);
     try {
-      const { data } = await api.get("/mentors/unverified");
+      const { data } = await api.get(`/mentors?search=${encodeURIComponent(query)}`);
       setMentors(data);
     } catch (err) {
-      console.error("Failed to fetch unverified mentors");
+      console.error("Failed to fetch mentors");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleVerify = async (id: string) => {
-    if (!confirm("Are you sure you want to verify this mentor?")) return;
-    setVerifyingId(id);
-    try {
-      await api.post(`/mentors/${id}/verify`, {});
-      setMentors(mentors.filter(m => m.mentorId !== id));
-    } catch (err) {
-      alert("Failed to verify mentor.");
-    } finally {
-      setVerifyingId(null);
     }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-text">Mentor Verification Portal</h1>
+        <h1 className="text-2xl font-bold text-text">Mentor Directory</h1>
       </div>
 
-      {loading ? (
-        <div className="text-center py-12 text-secondary">Loading pending verifications...</div>
-      ) : mentors.length === 0 ? (
-        <div className="bg-card p-12 rounded-xl border border-gray-200 text-center space-y-4 shadow-sm">
-           <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto">
-             <CheckCircle size={32} />
-           </div>
-           <h2 className="text-xl font-bold text-text">All Caught Up!</h2>
-           <p className="text-secondary">There are no mentors waiting for verification at the moment.</p>
+      <div className="bg-card rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="p-4 border-b border-gray-100 flex items-center gap-4">
+          <div className="relative flex-1 max-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              type="text"
+              placeholder="Search mentors by name or email..."
+              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {mentors.map((mentor) => (
-            <div key={mentor.mentorId} className="bg-card rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-              <div className="p-6 border-b border-gray-100 flex gap-4">
-                <div className="w-16 h-16 bg-gray-200 rounded-full flex-shrink-0 flex items-center justify-center text-gray-500 font-bold text-xl uppercase">
-                   {mentor.user?.name?.charAt(0) || "M"}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-lg font-bold text-text truncate">{mentor.user?.name}</h2>
-                  <p className="text-secondary text-sm truncate">{mentor.user?.email}</p>
-                  <p className="text-primary text-sm font-semibold">{mentor.iit_name} • {mentor.branch}</p>
-                </div>
-                <div className="text-right flex flex-col items-end">
-                   <span className="px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold rounded uppercase border border-amber-100">Pending</span>
-                   <p className="text-xs text-gray-400 mt-2">Year: {mentor.year}</p>
-                </div>
-              </div>
-              
-              <div className="p-6 bg-gray-50 flex-1 space-y-4">
-                 <div>
-                    <h3 className="text-xs font-bold text-secondary uppercase tracking-wider mb-2">Bio & Expertise</h3>
-                    <p className="text-sm text-text line-clamp-3 italic">"{mentor.bio || "No bio provided."}"</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                        {mentor.expertise?.split(',').map((tag: string) => (
-                            <span key={tag} className="px-2 py-1 bg-white border border-gray-200 text-gray-600 text-xs rounded-full">{tag.trim()}</span>
-                        ))}
+
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-gray-50 text-secondary text-sm font-semibold uppercase tracking-wider">
+              <th className="px-6 py-4">Mentor</th>
+              <th className="px-6 py-4">Institution & Branch</th>
+              <th className="px-6 py-4">Rate/Min</th>
+              <th className="px-6 py-4">Status</th>
+              <th className="px-6 py-4">Joined</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {loading ? (
+              <tr><td colSpan={5} className="px-6 py-8 text-center text-secondary">Loading mentors...</td></tr>
+            ) : mentors.length === 0 ? (
+              <tr><td colSpan={5} className="px-6 py-8 text-center text-secondary">No mentors found.</td></tr>
+            ) : mentors.map((mentor) => (
+              <tr key={mentor.mentorId} className="hover:bg-gray-50 transition-colors">
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold">
+                      {mentor.user?.name?.charAt(0) || "M"}
                     </div>
-                 </div>
-
-                 <div>
-                    <h3 className="text-xs font-bold text-secondary uppercase tracking-wider mb-2">Identity Document</h3>
-                    {mentor.id_doc_url ? (
-                        <MentorDocumentViewer mentorId={mentor.mentorId} />
-                    ) : (
-                        <div className="p-4 bg-red-50 text-red-500 text-xs rounded-lg border border-red-100 flex items-center gap-2">
-                           <XCircle size={14} /> No ID document uploaded.
-                        </div>
-                    )}
-                 </div>
-              </div>
-
-              <div className="p-6 border-t border-gray-100 flex gap-3">
-                 <button 
-                   disabled={verifyingId === mentor.mentorId}
-                   className="flex-1 bg-white hover:bg-red-50 text-red-600 border border-red-200 font-medium py-2 rounded-lg transition-colors text-sm"
-                 >
-                    Reject Application
-                 </button>
-                 <button 
-                   onClick={() => handleVerify(mentor.mentorId)}
-                   disabled={verifyingId === mentor.mentorId}
-                   className="flex-1 bg-primary hover:bg-primary-dark text-white font-medium py-2 rounded-lg transition-colors shadow-md shadow-primary/20 flex items-center justify-center gap-2 text-sm"
-                 >
-                    <UserCheck size={18} /> {verifyingId === mentor.mentorId ? "Verifying..." : "Approve & Verify"}
-                 </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+                    <div>
+                      <p className="font-medium text-text">{mentor.user?.name}</p>
+                      <p className="text-xs text-secondary">{mentor.user?.email}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <p className="text-sm font-medium text-text">{mentor.iit_name}</p>
+                  <p className="text-xs text-secondary">{mentor.branch} • Year {mentor.year}</p>
+                </td>
+                <td className="px-6 py-4 text-text font-medium">
+                  ₹{mentor.rate_per_min}
+                </td>
+                <td className="px-6 py-4">
+                  {mentor.verified ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-50 text-green-600 text-[10px] font-bold rounded uppercase border border-green-100">
+                      <CheckCircle2 size={12} /> Verified
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold rounded uppercase border border-amber-100">
+                      <ShieldAlert size={12} /> Pending
+                    </span>
+                  )}
+                </td>
+                <td className="px-6 py-4 text-sm text-secondary">
+                  {new Date(mentor.user?.created_at).toLocaleDateString()}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -20,12 +20,17 @@ export default function StudentsPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    fetchStudents();
-  }, []);
+    const delayDebounceFn = setTimeout(() => {
+      fetchStudents(searchTerm);
+    }, 500);
 
-  const fetchStudents = async () => {
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm]);
+
+  const fetchStudents = async (query = "") => {
+    setLoading(true);
     try {
-      const { data } = await api.get("/students");
+      const { data } = await api.get(`/students?search=${encodeURIComponent(query)}`);
       setStudents(data);
     } catch (err) {
       console.error("Failed to fetch students");
@@ -72,11 +77,6 @@ export default function StudentsPage() {
     }
   };
 
-  const filteredStudents = students.filter(s => 
-    s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -89,7 +89,7 @@ export default function StudentsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text"
-              placeholder="Search students..."
+              placeholder="Search students by name or email..."
               className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -110,9 +110,9 @@ export default function StudentsPage() {
           <tbody className="divide-y divide-gray-100">
             {loading ? (
               <tr><td colSpan={5} className="px-6 py-8 text-center text-secondary">Loading students...</td></tr>
-            ) : filteredStudents.length === 0 ? (
+            ) : students.length === 0 ? (
               <tr><td colSpan={5} className="px-6 py-8 text-center text-secondary">No students found.</td></tr>
-            ) : filteredStudents.map((student) => (
+            ) : students.map((student) => (
               <tr key={student.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4 font-medium text-text">{student.name}</td>
                 <td className="px-6 py-4 text-secondary">{student.email}</td>

@@ -13,7 +13,8 @@ function cn(...inputs: ClassValue[]) {
 const navItems = [
   { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
   { name: "Students", href: "/dashboard/students", icon: Users },
-  { name: "Mentor Verification", href: "/dashboard/mentors", icon: ShieldCheck },
+  { name: "Mentors", href: "/dashboard/mentors", icon: ShieldCheck },
+  { name: "Mentor Verification", href: "/dashboard/mentor-verification", icon: ShieldCheck },
   { name: "Email Center", href: "/dashboard/email", icon: Mail },
 ];
 

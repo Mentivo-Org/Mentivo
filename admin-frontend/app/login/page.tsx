@@ -57,11 +57,11 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="max-w-md w-full bg-card rounded-xl shadow-lg p-8 border border-gray-200">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-4">
-             <span className="text-white font-bold text-xl">M</span>
+          <div className="w-12 h-12 rounded-lg flex items-center justify-center mb-4">
+             <img src="/logo.svg" alt="Mentivo Logo" className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-bold text-text">Admin Login</h1>
-          <p className="text-secondary text-sm">Strictly for @mentivo.in personnel</p>
+          <p className="text-secondary text-sm">Strictly for mentivo personnel</p>
         </div>
 
         {error && (

@@ -8,6 +8,30 @@ const router = Router();
 
 router.use(authenticateAdmin);
 
+// List all mentors
+router.get('/', async (req, res) => {
+  const { search } = req.query;
+
+  const where: any = {};
+
+  if (search) {
+    where.user = {
+      OR: [
+        { name: { contains: search as string, mode: 'insensitive' } },
+        { email: { contains: search as string, mode: 'insensitive' } },
+      ],
+    };
+  }
+
+  const mentors = await prisma.mentorProfile.findMany({
+    where,
+    include: { user: true },
+    orderBy: { user: { created_at: 'desc' } },
+  });
+
+  res.json(mentors);
+});
+
 // List unverified mentors
 router.get('/unverified', async (req, res) => {
   const unverifiedMentors = await prisma.mentorProfile.findMany({

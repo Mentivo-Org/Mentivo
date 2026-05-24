@@ -9,8 +9,19 @@ router.use(authenticateAdmin);
 
 // List all students
 router.get('/', async (req, res) => {
+  const { search } = req.query;
+  
+  const where: any = { role: 'student' };
+  
+  if (search) {
+    where.OR = [
+      { name: { contains: search as string, mode: 'insensitive' } },
+      { email: { contains: search as string, mode: 'insensitive' } },
+    ];
+  }
+
   const students = await prisma.user.findMany({
-    where: { role: 'student' },
+    where,
     orderBy: { created_at: 'desc' },
   });
   res.json(students);
