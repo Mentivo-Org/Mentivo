@@ -8,6 +8,7 @@ export const AuthEndpoints = {
     verifyOtp: `${baseUrl}/auth/otp/verify`,
     googleLogin: `${baseUrl}/auth/google-native`,
     refreshToken: `${baseUrl}/auth/refresh`,
+    whoAmI: `${baseUrl}/auth/whoami`,
 };
 
 export const HealthEndpoints = {

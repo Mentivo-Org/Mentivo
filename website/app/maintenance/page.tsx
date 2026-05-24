@@ -1,14 +1,12 @@
 "use client";
 
 import React from 'react';
-
-// Images from Figma design context
-const imgContainer = "https://www.figma.com/api/mcp/asset/f8a2e487-6d55-496e-a599-2895c7945cbe";
-const imgAbstractGeometricElements = "https://www.figma.com/api/mcp/asset/c401c8e6-7857-41b7-af0c-36f284e05ba8";
-const imgContainer1 = "https://www.figma.com/api/mcp/asset/abd952c8-6cd4-491b-a2ff-d06b851742ca";
-const imgContainer2 = "https://www.figma.com/api/mcp/asset/ae07c2f6-0205-4b9d-8395-ab6d55647678";
+import { Sparkles, Users, Layers, Zap } from 'lucide-react';
 
 export default function MaintenancePage() {
+  const percentage = process.env.PERCENTAGE_COMPLETED || "0";
+  const progressWidth = `${percentage}%`;
+
   return (
     <div className="flex flex-col min-h-screen bg-[#f8f9ff] selection:bg-[#00288e]/10 selection:text-[#00288e]">
       {/* Main Content */}
@@ -23,10 +21,10 @@ export default function MaintenancePage() {
 
         <div className="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10 px-4 sm:px-6 lg:px-8">
           {/* Left Hero Section */}
-          <div className="lg:col-span-7 flex flex-col items-start space-y-8">
+          <div className="lg:col-span-7 flex flex-col items-start space-y-8 text-center lg:text-left items-center lg:items-start">
             {/* "COMING SOON" Badge */}
             <div className="inline-flex items-center space-x-2 bg-[#dce9ff] border border-[#c4c5d5] px-4 py-2 rounded-full shadow-sm">
-              <img src={imgContainer} alt="Badge icon" className="w-4 h-4" />
+              <Sparkles className="w-4 h-4 text-[#00288e]" />
               <span className="text-[#00288e] text-sm font-semibold tracking-wider uppercase">COMING SOON</span>
             </div>
 
@@ -53,12 +51,12 @@ export default function MaintenancePage() {
               <div className="absolute inset-0 opacity-[0.05] group-hover:opacity-[0.08] transition-opacity duration-500" 
                    style={{ backgroundImage: 'radial-gradient(#00288e 1.5px, transparent 1.5px)', backgroundSize: '24px 24px' }} />
               
-              <img src={imgAbstractGeometricElements} alt="" className="absolute top-6 right-6 w-4 opacity-40" />
-              <img src={imgContainer1} alt="" className="absolute bottom-6 left-6 w-12 opacity-40" />
+              <Layers className="absolute top-6 right-6 w-6 h-6 text-[#00288e] opacity-20" />
+              <Zap className="absolute bottom-6 left-6 w-8 h-8 text-[#00288e] opacity-20" />
 
               {/* Main Illustration/Icon */}
               <div className="w-20 h-20 bg-[#e5eeff] border border-[#c4c5d5] rounded-full flex items-center justify-center relative z-10 shadow-inner">
-                <img src={imgContainer2} alt="Mentorship Icon" className="w-12" />
+                <Users className="w-10 h-10 text-[#00288e]" />
               </div>
 
               {/* Card Content */}
@@ -72,9 +70,14 @@ export default function MaintenancePage() {
               {/* Progress Indicator */}
               <div className="w-full space-y-4 relative z-10">
                 <div className="h-3 w-full bg-[#e5eeff] rounded-full overflow-hidden shadow-sm">
-                  <div className="h-full bg-[#00288e] rounded-full transition-all duration-1000 ease-out" style={{ width: '75%' }} />
+                  <div 
+                    className="h-full bg-[#00288e] rounded-full transition-all duration-1000 ease-out" 
+                    style={{ width: progressWidth }} 
+                  />
                 </div>
-                <p className="text-[#00288e] font-bold text-sm tracking-wide">Platform Status: 25% Complete</p>
+                <p className="text-[#00288e] font-bold text-sm tracking-wide">
+                  Platform Status: {percentage}% Complete
+                </p>
               </div>
             </div>
           </div>

@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  env: {
+    PERCENTAGE_COMPLETED: process.env.PERCENTAGE_COMPLETED || "0",
+  },
 };
 
 export default nextConfig;
