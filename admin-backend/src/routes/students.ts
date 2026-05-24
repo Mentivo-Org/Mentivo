@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import prisma from '../config/db';
-import { authenticateAdmin } from '../middleware/auth';
+import prisma from '../config/db.ts';
+import { authenticateAdmin } from '../middleware/auth.ts';
 
 const router = Router();
 

@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import redis from '../config/redis';
-import resend from '../services/resend';
-import prisma from '../config/db';
-import { generateOTP } from '../utils/otp';
-import { generateAccessToken, generateRefreshToken } from '../utils/jwt';
-import { authenticateAdmin, AuthRequest } from '../middleware/auth';
+import redis from '../config/redis.ts';
+import resend from '../services/resend.ts';
+import { generateOTP } from '../utils/otp.ts';
+import { generateAccessToken, generateRefreshToken } from '../utils/jwt.ts';
+import { authenticateAdmin } from '../middleware/auth.ts';
+import type { AuthRequest } from '../middleware/auth.ts';
 
 const router = Router();
 

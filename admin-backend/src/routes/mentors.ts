@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import prisma from '../config/db';
-import { authenticateAdmin, AuthRequest } from '../middleware/auth';
-import supabase from '../services/supabase';
+import prisma from '../config/db.ts';
+import { authenticateAdmin } from '../middleware/auth.ts';
+import type { AuthRequest } from '../middleware/auth.ts';
+import supabase from '../services/supabase.ts';
 
 const router = Router();
 

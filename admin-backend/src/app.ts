@@ -4,10 +4,10 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import 'express-async-errors';
 import dotenv from 'dotenv';
-import authRoutes from './routes/auth';
-import studentRoutes from './routes/students';
-import mentorRoutes from './routes/mentors';
-import emailRoutes from './routes/email';
+import authRoutes from './routes/auth.ts';
+import studentRoutes from './routes/students.ts';
+import mentorRoutes from './routes/mentors.ts';
+import emailRoutes from './routes/email.ts';
 
 dotenv.config();
 
