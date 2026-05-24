@@ -21,7 +21,8 @@
     "ioredis": "^5.10.1",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
-    "resend": "^3.2.0"
+    "resend": "^3.2.0",
+    "ts-node": "^10.9.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
