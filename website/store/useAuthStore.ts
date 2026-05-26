@@ -48,7 +48,10 @@ export const useAuthStore = create<AuthState>()(
           const { default: api } = await import('@/lib/api');
           const { AuthEndpoints } = await import('@/constants/endpoints');
           
-          const { data } = await api.get(AuthEndpoints.whoAmI);
+          const { data } = await api.get(AuthEndpoints.whoAmI, { 
+            // @ts-ignore
+            skipLoader: true 
+          });
           
           if (data.user) {
             set({ user: data.user, isSignedIn: true });

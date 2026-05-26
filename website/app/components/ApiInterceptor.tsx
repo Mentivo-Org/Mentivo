@@ -9,7 +9,10 @@ export default function ApiInterceptor({ children }: { children: React.ReactNode
 
   useEffect(() => {
     const requestInterceptor = api.interceptors.request.use((config) => {
-      setIsLoading(true);
+      // @ts-ignore - custom property
+      if (!config.skipLoader) {
+        setIsLoading(true);
+      }
       return config;
     }, (error) => {
       setIsLoading(false);
@@ -17,7 +20,10 @@ export default function ApiInterceptor({ children }: { children: React.ReactNode
     });
 
     const responseInterceptor = api.interceptors.response.use((response) => {
-      setIsLoading(false);
+      // @ts-ignore - custom property
+      if (!response.config.skipLoader) {
+        setIsLoading(false);
+      }
       return response;
     }, (error) => {
       setIsLoading(false);

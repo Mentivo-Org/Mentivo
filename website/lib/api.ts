@@ -29,8 +29,11 @@ api.interceptors.response.use(
       } catch (refreshError) {
         console.error('Refresh token failed:', refreshError);
         if (typeof window !== 'undefined') {
-          // Clear any local state if needed (handled by the app usually)
-          window.location.href = '/login';
+          // Prevent infinite redirect loop if already on a guest path
+          const guestPaths = ['/', '/login', '/signup', '/verify-otp'];
+          if (!guestPaths.includes(window.location.pathname)) {
+            window.location.href = '/login';
+          }
         }
         return Promise.reject(refreshError);
       }
