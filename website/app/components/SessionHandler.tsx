@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 
-export default function SessionHandler() {
+export function useSession() {
   const { validateSession, isSignedIn, user } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
@@ -39,13 +39,15 @@ export default function SessionHandler() {
     }
   }, [isSignedIn, user, pathname, router, isHydrated]);
 
-  // Prevent flash of guest content if we are potentially redirecting
-  const guestPaths = ['/', '/login', '/signup', '/verify-otp'];
-  if (isHydrated && guestPaths.includes(pathname) && (isSignedIn || isValidating)) {
-    return (
-      <div className="fixed inset-0 bg-white z-[9999]" />
-    );
-  }
+  // We are ready to show content if:
+  // 1. We have hydrated AND
+  // 2. We have finished the session validation
+  const isReady = isHydrated && !isValidating;
 
+  return { isReady, isSignedIn, user };
+}
+
+export default function SessionHandler() {
+  useSession();
   return null;
 }

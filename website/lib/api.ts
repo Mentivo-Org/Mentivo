@@ -16,8 +16,10 @@ api.interceptors.response.use(
 
     // Check if error is 401, we haven't retried yet, and it's not an auth route
     const isAuthRoute = originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/auth/signup');
+    const errorMessage = error.response?.data?.error?.toLowerCase() || '';
+    const isNoTokenError = errorMessage.includes('no token provided');
 
-    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRoute) {
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRoute && !isNoTokenError) {
       originalRequest._retry = true;
 
       try {

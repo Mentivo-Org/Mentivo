@@ -5,6 +5,7 @@ import "./globals.css";
 import { LoadingProvider } from "@/context/LoadingContext";
 import LoadingModal from "@/components/LoadingModal";
 import ApiInterceptor from "@/components/ApiInterceptor";
+import AdminAuthHandler from "@/components/AdminAuthHandler";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -26,8 +27,10 @@ export default function RootLayout({
       <body className={inter.className}>
         <LoadingProvider>
           <ApiInterceptor>
-            {children}
-            <LoadingModal />
+            <AdminAuthHandler>
+              {children}
+              <LoadingModal />
+            </AdminAuthHandler>
           </ApiInterceptor>
         </LoadingProvider>
       </body>
