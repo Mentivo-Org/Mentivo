@@ -18,8 +18,28 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#ffffff",
       },
+      "intentFilters": [
+      {
+        "action": "VIEW",
+        "autoVerify": true,
+        "category": [
+          "DEFAULT",
+          "BROWSABLE"
+        ],
+        "data": [
+          {
+            "scheme": "https",
+            "host": "mentivo.in"
+          },
+          {
+            "scheme": "http",
+            "host": "mentivo.in"
+          }
+        ]
+      }
+    ],
       "edgeToEdgeEnabled": true,
       "package": "com.mentivo.in",
       "googleServicesFile": "./google-services.json"
