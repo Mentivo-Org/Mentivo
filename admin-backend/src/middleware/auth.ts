@@ -6,8 +6,20 @@ export interface AuthRequest extends Request {
 }
 
 export const authenticateAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1];
+  let token: string | undefined;
+
+  // 1. Check cookies (Web)
+  if (req.cookies && req.cookies.admin_accessToken) {
+    token = req.cookies.admin_accessToken;
+  }
+
+  // 2. Fallback to Authorization header
+  if (!token) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    }
+  }
 
   if (!token) {
     return res.status(401).json({ error: 'Unauthorized: No token provided.' });

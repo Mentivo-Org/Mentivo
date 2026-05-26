@@ -12,11 +12,9 @@ interface User {
 
 interface AuthState {
   user: User | null;
-  accessToken: string | null;
-  refreshToken: string | null;
   isSignedIn: boolean;
-  setAuth: (user: User, accessToken: string, refreshToken: string) => void;
-  logout: () => void;
+  setAuth: (user: User) => void;
+  logout: () => Promise<void>;
   validateSession: () => Promise<void>;
 }
 
@@ -24,30 +22,29 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      accessToken: null,
-      refreshToken: null,
       isSignedIn: false,
-      setAuth: (user, accessToken, refreshToken) => {
-        set({ user, accessToken, refreshToken, isSignedIn: true });
+      setAuth: (user) => {
+        set({ user, isSignedIn: true });
         if (typeof window !== 'undefined') {
-          localStorage.setItem('accessToken', accessToken);
-          localStorage.setItem('refreshToken', refreshToken);
           localStorage.setItem('user', JSON.stringify(user));
         }
       },
-      logout: () => {
-        set({ user: null, accessToken: null, refreshToken: null, isSignedIn: false });
+      logout: async () => {
+        const { default: api } = await import('@/lib/api');
+        const { AuthEndpoints } = await import('@/constants/endpoints');
+        try {
+          await api.post(`${AuthEndpoints.login.replace('/login', '/logout')}`);
+        } catch (e) {
+          console.error('Logout API failed', e);
+        }
+
+        set({ user: null, isSignedIn: false });
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
           localStorage.removeItem('user');
         }
       },
       validateSession: async () => {
         try {
-          const accessToken = localStorage.getItem('accessToken');
-          if (!accessToken) return;
-
           const { default: api } = await import('@/lib/api');
           const { AuthEndpoints } = await import('@/constants/endpoints');
           
@@ -58,7 +55,7 @@ export const useAuthStore = create<AuthState>()(
           }
         } catch (error) {
           console.error('Session validation failed:', error);
-          // If 401, the interceptor in api.ts will handle it (attempt refresh or logout)
+          set({ user: null, isSignedIn: false });
         }
       },
     }),

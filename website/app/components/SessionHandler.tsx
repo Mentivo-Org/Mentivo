@@ -14,12 +14,8 @@ export default function SessionHandler() {
     const handleAuth = async () => {
       if (hasValidated.current) return;
       
-      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-      
-      if (token) {
-        hasValidated.current = true;
-        await validateSession();
-      }
+      hasValidated.current = true;
+      await validateSession();
     };
 
     handleAuth();

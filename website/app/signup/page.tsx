@@ -48,7 +48,7 @@ export default function StudentSignupPage() {
         router.push(`/verify-otp?email=${encodeURIComponent(formData.email)}`);
       } else {
         // Google signup or direct signup success (if verification was skipped or handled differently)
-        setAuth(data.user, data.accessToken, data.refreshToken);
+        setAuth(data.user);
         router.push(data.user.role === 'mentor' ? '/mentor/home' : '/student/home');
       }
     } catch (err: any) {

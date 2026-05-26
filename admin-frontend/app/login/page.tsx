@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
 
@@ -12,15 +12,12 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const router = useRouter();
 
-  useState(() => {
+  useEffect(() => {
     // Check for existing session on mount
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("admin_accessToken");
-      if (token) {
-        router.replace("/dashboard");
-      }
-    }
-  });
+    api.get("/auth/me")
+      .then(() => router.replace("/dashboard"))
+      .catch(() => { /* Not logged in, stay on login page */ });
+  }, [router]);
 
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,10 +38,7 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const { data } = await api.post("/auth/verify-otp", { email, otp });
-      localStorage.setItem("admin_accessToken", data.accessToken);
-      localStorage.setItem("admin_refreshToken", data.refreshToken);
-      localStorage.setItem("admin_email", email);
+      await api.post("/auth/verify-otp", { email, otp });
       router.push("/dashboard");
     } catch (err: any) {
       setError(err.response?.data?.error || "Invalid OTP.");

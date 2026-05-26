@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { rateLimit } from 'express-rate-limit';
 import authrouter from './routes/auth.ts';
 import coachingRouter from './routes/coaching.ts';
@@ -12,6 +13,8 @@ import prisma from './config/db.ts';
 import { startJobs } from './jobs/index.ts';
 
 const app = express();
+
+app.use(cookieParser());
 
 // Move CORS to the top
 app.use(cors({
@@ -38,13 +41,12 @@ app.use(cors({
     ) {
       callback(null, true);
     } else {
-      console.warn(`[CORS Blocked] Origin attempting to connect: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-razorpay-signature']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-razorpay-signature', 'x-client-type']
 }));
 
 app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRouter);

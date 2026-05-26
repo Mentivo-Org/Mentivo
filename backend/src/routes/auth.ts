@@ -7,6 +7,7 @@ import {
   signUpWithEmail,
   verifyOtp,
   whoAmI,
+  logout,
 } from "../controllers/loginController.ts";
 import { authenticateUser } from "../auth/authenticateUser.ts";
 import { iitNameExporter } from "../controllers/iitNameController.ts";
@@ -21,6 +22,7 @@ app.get('/whoami', authenticateUser, whoAmI)
 // backend/routes/auth.js
 app.post("/signup", signUpWithEmail);
 app.post("/login", loginWithEmail);
+app.post("/logout", logout);
 
 // OTP Verification
 app.post("/otp/verify", verifyOtp);

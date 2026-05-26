@@ -8,6 +8,36 @@ import {
 } from "../utils/jwt.ts";
 import { emailValidator } from "../utils/mailIdLoader.ts";
 
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+};
+
+const sendAuthResponse = (res: Response, req: Request, statusCode: number, data: any) => {
+  const isMobile = req.headers['x-client-type'] === 'mobile';
+  const { accessToken, refreshToken, user, message, requiresVerification } = data;
+
+  if (isMobile) {
+    // Mobile: Return tokens in body
+    return res.status(statusCode).json({ accessToken, refreshToken, user, message, requiresVerification });
+  } else {
+    // Web: Set httpOnly cookies
+    if (accessToken) res.cookie('accessToken', accessToken, { ...COOKIE_OPTIONS, maxAge: 15 * 60 * 1000 }); // 15 mins
+    if (refreshToken) res.cookie('refreshToken', refreshToken, { ...COOKIE_OPTIONS, maxAge: 7 * 24 * 60 * 60 * 1000 }); // 7 days
+    
+    // Return user info and other flags, but NO tokens in body
+    return res.status(statusCode).json({ user, message, requiresVerification });
+  }
+};
+
+export const logout = async (req: Request, res: Response) => {
+  res.clearCookie('accessToken', COOKIE_OPTIONS);
+  res.clearCookie('refreshToken', COOKIE_OPTIONS);
+  return res.status(200).json({ message: "Logged out successfully" });
+};
+
 export const whoAmI = async (req:Request, res: Response) => {
   return res.status(200).json({
     user: req.user
@@ -39,7 +69,7 @@ export const signUpWithEmail = async (req: Request, res: Response) => {
     });
     if (otpError)
       return res.status(500).json({ error: "Failed to resend OTP" });
-    return res.status(202).json({
+    return sendAuthResponse(res, req, 202, {
       message: "Account pending verification. OTP resent to your email.",
       email,
       requiresVerification: true,
@@ -83,7 +113,7 @@ export const signUpWithEmail = async (req: Request, res: Response) => {
       });
       if (otpError)
         return res.status(500).json({ error: "Failed to resend OTP" });
-      return res.status(202).json({
+      return sendAuthResponse(res, req, 202, {
         message: "Account pending verification. OTP resent to your email.",
         email,
         requiresVerification: true,
@@ -146,7 +176,7 @@ export const signUpWithEmail = async (req: Request, res: Response) => {
       .status(400)
       .json({ error: "Failed to send OTP: " + otpError.message });
 
-  return res.status(202).json({
+  return sendAuthResponse(res, req, 202, {
     message: "Signup successful. Please verify your email with the OTP sent.",
     email,
     requiresVerification: true,
@@ -205,7 +235,7 @@ export const loginWithEmail = async (req: Request, res: Response) => {
   const accessToken = generateAccessToken(payload);
   const refreshToken = await generateRefreshToken(payload);
 
-  return res.status(200).json({ accessToken, refreshToken, user });
+  return sendAuthResponse(res, req, 200, { accessToken, refreshToken, user });
 };
 
 export const handleNativeGoogle = async (req: Request, res: Response) => {
@@ -257,7 +287,7 @@ export const handleNativeGoogle = async (req: Request, res: Response) => {
       const accessToken = generateAccessToken(payload);
       const refreshToken = await generateRefreshToken(payload);
 
-      return res.status(202).json({ accessToken, refreshToken, user });
+      return sendAuthResponse(res, req, 202, { accessToken, refreshToken, user });
     }
 
     // mode is "sign-in" but user doesn't exist in DB
@@ -280,7 +310,7 @@ export const handleNativeGoogle = async (req: Request, res: Response) => {
     const accessToken = generateAccessToken(payload);
     const refreshToken = await generateRefreshToken(payload);
 
-    return res.status(200).json({ accessToken, refreshToken, user });
+    return sendAuthResponse(res, req, 200, { accessToken, refreshToken, user });
   }
 };
 
@@ -341,7 +371,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
     const accessToken = generateAccessToken(payload);
     const refreshToken = await generateRefreshToken(payload);
 
-    return res.status(200).json({
+    return sendAuthResponse(res, req, 200, {
       message: "Successfully verified",
       accessToken,
       refreshToken,
@@ -372,7 +402,12 @@ export const resendOtp = async (req: Request, res: Response) => {
 };
 
 export const refreshUserToken = async (req: Request, res: Response) => {
-  const { refreshToken: oldToken } = req.body;
+  let oldToken = req.body.refreshToken;
+
+  // Web clients might have it in cookies
+  if (!oldToken && req.cookies && req.cookies.refreshToken) {
+    oldToken = req.cookies.refreshToken;
+  }
 
   if (!oldToken) {
     return res.status(400).json({ error: "Refresh token is required" });
@@ -408,7 +443,7 @@ export const refreshUserToken = async (req: Request, res: Response) => {
       where: { id: payload.userId },
     });
 
-    return res.json({
+    return sendAuthResponse(res, req, 200, {
       accessToken,
       refreshToken,
       user: user

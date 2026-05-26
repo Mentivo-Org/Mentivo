@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import 'express-async-errors';
@@ -16,7 +17,29 @@ dotenv.config();
 const app = express();
 
 app.use(helmet());
-app.use(cors());
+app.use(cookieParser());
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    
+    const normalizedOrigin = origin.endsWith('/') ? origin.slice(0, -1) : origin;
+    const allowedOrigins = [
+      'https://mentivo.in',
+      'https://www.mentivo.in',
+      'http://localhost:5001',
+      'http://127.0.0.1:5001'
+    ];
+
+    if (allowedOrigins.includes(normalizedOrigin) || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-client-type']
+}));
 app.use(morgan('dev'));
 app.use(express.json());
 app.set('trust proxy', 1);

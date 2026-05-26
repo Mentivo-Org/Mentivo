@@ -3,13 +3,24 @@ import prisma from '../config/db.ts';
 import { verifyAccessToken } from '../utils/jwt.ts';
 
 export const authenticateUser = async (req: Request, res: Response, next: NextFunction) => {
-  const authHeader = req.headers.authorization;
+  let token: string | undefined;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'No token provided' });
+  // 1. Check cookies first (Web)
+  if (req.cookies && req.cookies.accessToken) {
+    token = req.cookies.accessToken;
+  } 
+  
+  // 2. Fallback to Authorization header (Mobile/Fallback)
+  if (!token) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    }
   }
 
-  const token = authHeader.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
 
   try {
     // 1. Verify our custom JWT

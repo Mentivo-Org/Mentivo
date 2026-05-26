@@ -37,7 +37,7 @@ function VerifyOtpContent() {
       setSuccess(true);
       // Wait a bit to show success state before redirecting
       setTimeout(() => {
-        setAuth(data.user, data.accessToken, data.refreshToken);
+        setAuth(data.user);
         router.push(data.user.role === 'mentor' ? '/mentor/home' : '/student/home');
       }, 1500);
     } catch (err: any) {

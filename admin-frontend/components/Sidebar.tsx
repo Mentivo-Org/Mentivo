@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Users, ShieldCheck, Mail, LogOut, LayoutDashboard } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import api from "@/lib/api";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -22,7 +23,12 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch (err) {
+      console.error("Logout API failed", err);
+    }
     localStorage.clear();
     router.push("/login");
   };

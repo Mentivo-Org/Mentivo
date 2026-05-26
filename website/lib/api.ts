@@ -3,23 +3,8 @@ import { AuthEndpoints } from '../constants/endpoints';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api',
+  withCredentials: true,
 });
-
-// Request Interceptor: Attach the access token to every request
-api.interceptors.request.use(
-  (config) => {
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('accessToken');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
 
 // Response Interceptor: Handle 401 errors and log responses
 api.interceptors.response.use(
@@ -36,29 +21,15 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        if (typeof window !== 'undefined') {
-          const refreshToken = localStorage.getItem('refreshToken');
-          if (!refreshToken) throw new Error('No refresh token available');
+        // Call backend refresh endpoint (no need to pass token, it's in the cookie)
+        await axios.post(AuthEndpoints.refreshToken, {}, { withCredentials: true });
 
-          // Call backend refresh endpoint
-          const { data } = await axios.post(AuthEndpoints.refreshToken, {
-            refreshToken,
-          });
-
-          // Store new tokens
-          localStorage.setItem('accessToken', data.accessToken);
-          localStorage.setItem('refreshToken', data.refreshToken);
-
-          // Update the header and retry the original request
-          originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
-          return api(originalRequest);
-        }
+        // Retry the original request (browser will send the new cookie automatically)
+        return api(originalRequest);
       } catch (refreshError) {
         console.error('Refresh token failed:', refreshError);
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('user');
+          // Clear any local state if needed (handled by the app usually)
           window.location.href = '/login';
         }
         return Promise.reject(refreshError);

@@ -4,6 +4,9 @@ import { baseUrl, LoginEndpoints } from '../constants/endpoint';
 
 const api = axios.create({
   baseURL: baseUrl,
+  headers: {
+    'x-client-type': 'mobile'
+  }
 });
 
 // Request Interceptor: Attach the access token to every request

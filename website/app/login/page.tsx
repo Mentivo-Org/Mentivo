@@ -34,7 +34,7 @@ export default function StudentLoginPage() {
 
     try {
       const { data } = await api.post(AuthEndpoints.login, { email, password });
-      setAuth(data.user, data.accessToken, data.refreshToken);
+      setAuth(data.user);
       
       if (data.user.role === 'mentor') {
         router.push('/mentor/home');
