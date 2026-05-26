@@ -24,8 +24,8 @@ app.use(cors({
     
     const normalizedOrigin = origin.endsWith('/') ? origin.slice(0, -1) : origin;
     const allowedOrigins = [
-      'https://mentivo.in',
-      'https://www.mentivo.in',
+      'https://admin.mentivo.in',
+      'https://www.admin.mentivo.in',
       'http://localhost:5001',
       'http://127.0.0.1:5001'
     ];
