@@ -19,6 +19,8 @@ import { useNavigation } from "@react-navigation/native";
 import MentorCard from "../../components/MentorCard";
 import { useAuth } from "../../services/retrieveKeys";
 import DialogBox from "../../components/DialogBox";
+import api from "../../services/api";
+import { WalletEndpoints } from "../../constants/endpoint";
 
 const { width, height } = Dimensions.get("window");
 
@@ -29,10 +31,22 @@ export default function StudentHomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("All");
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(0);
   const slideAnim = useRef(new Animated.Value(-width * 0.7)).current;
 
   const [alertData, setAlertData] = useState({title: '', message: ''});
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
+
+  const fetchWalletBalance = async () => {
+    try {
+      const response = await api.get(WalletEndpoints.getBalance);
+      if (response.status === 200) {
+        setWalletBalance(response.data.balance);
+      }
+    } catch (error) {
+      console.error("Failed to fetch wallet balance:", error);
+    }
+  };
 
   useEffect(() => {
     const loadUser = async () => {
@@ -42,6 +56,7 @@ export default function StudentHomePage() {
       }
     };
     loadUser();
+    fetchWalletBalance();
   }, []);
 
   const toggleSidebar = () => {
@@ -53,6 +68,7 @@ export default function StudentHomePage() {
       }).start(() => setIsSidebarVisible(false));
     } else {
       setIsSidebarVisible(true);
+      fetchWalletBalance();
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: 300,
@@ -255,7 +271,7 @@ export default function StudentHomePage() {
               <View style={styles.sidebarStatCard}>
                 <Image source={require("../../app-assets/wallet-fill.svg")} style={styles.sidebarStatIcon} />
                 <View>
-                  <Text style={styles.walletBalance}>₹ 500</Text>
+                  <Text style={styles.walletBalance}>₹ {walletBalance}</Text>
                   <Text style={styles.walletBonus}>+9m free</Text>
                 </View>
               </View>

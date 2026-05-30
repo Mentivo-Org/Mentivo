@@ -8,10 +8,14 @@ const rz = new Razorpay({
 
 // Create a Razorpay order for wallet top-up
 export async function createTopupOrder(amountRupees: number, userId: string) {
+  
+  const rawReceipt = `${userId}_${Date.now()}`;
+  const shortReceipt = "rcpt_"+crypto.createHash('md5').update(rawReceipt).digest('hex');
+  // console.log(shortReceipt);
   return rz.orders.create({
     amount: amountRupees * 100,  // Razorpay uses paise
     currency: 'INR',
-    receipt: `rcpt_${userId}_${Date.now()}`,
+    receipt: shortReceipt,
     payment_capture: true, 
     notes: { userId, type: 'wallet_topup' },
   });
