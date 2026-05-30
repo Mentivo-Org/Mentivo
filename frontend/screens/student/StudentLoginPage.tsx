@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import api from '../../services/api';
@@ -31,6 +31,9 @@ const StudentLoginPage = () => {
 
   const [alertData, setAlertData] = useState({title: '', message: ''});
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
+
+  const route=useRoute<any>();
+  const {referral_id} = route.params;
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -121,6 +124,24 @@ const StudentLoginPage = () => {
       setAlertVisible(true)
     }
   };
+
+  useEffect(()=> {
+    const loadReferral = async () => {
+      if(referral_id) {
+        const past_referral_id = await AsyncStorage.getItem('referral_code');
+        await AsyncStorage.setItem('referral_code', referral_id);
+        if(past_referral_id) {
+          setAlertData({title: "Referral code successfully updated", message: "Please login to activate the referral code"});
+          setAlertVisible(true);
+        }
+        setAlertData({title: "Referral code successfully applied", message: "Please login to activate the referral code"});
+        setAlertVisible(true);
+      }
+    }
+
+    loadReferral();
+
+  },[])
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>

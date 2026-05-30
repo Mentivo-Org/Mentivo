@@ -25,6 +25,8 @@ import { LoginEndpoints } from "../constants/endpoint";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DialogBox from "../components/DialogBox";
 
+import linking from "../linking";
+
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
@@ -142,6 +144,7 @@ export default function RootNavigator() {
             headerShown: false,
           }}
           initialRouteName={initialScreen}
+          linking={linking}
         >
           <Stack.Screen name="Landing" component={LandingPage} />
           <Stack.Screen name="RoleSelection" component={RoleSelection} />
