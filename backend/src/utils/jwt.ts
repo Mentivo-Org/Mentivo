@@ -12,7 +12,7 @@ export interface TokenPayload {
 }
 
 export const generateAccessToken = (payload: TokenPayload): string => {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 };
 
 export const generateRefreshToken = async (payload: TokenPayload): Promise<string> => {
