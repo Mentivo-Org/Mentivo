@@ -34,7 +34,7 @@ export default function ApiInterceptor({ children }: { children: React.ReactNode
       // Check for token expiration (standard 401 with specific message)
       if (
         error.response?.status === 401 && 
-        errorMessage.toLowerCase().includes("expired token") && 
+        errorMessage.toLowerCase().includes("token") && 
         !originalRequest._retry
       ) {
         originalRequest._retry = true;
