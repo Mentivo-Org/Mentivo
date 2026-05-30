@@ -33,7 +33,7 @@ const StudentLoginPage = () => {
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
 
   const route=useRoute<any>();
-  const {referral_id} = route.params;
+  const {referral_id} = route.params ?? {};
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -96,7 +96,8 @@ const StudentLoginPage = () => {
         prompt: 'select_account'
       });
       
-      const idToken = userInfo?.data?.idToken; 
+      const idToken = userInfo?.data?.idToken;
+      showLoading("Logging you in...");
 
       const response = await api.post(LoginEndpoints.googleLogin, { idToken, mode: "login" })
       
@@ -122,6 +123,9 @@ const StudentLoginPage = () => {
       const errorMsg = error.response?.data?.error || "Google sign-in failed";
       setAlertData({title: "Error", message: errorMsg});
       setAlertVisible(true)
+    }
+    finally {
+      hideLoading();
     }
   };
 
