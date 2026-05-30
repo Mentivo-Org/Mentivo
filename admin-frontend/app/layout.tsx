@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 
 import { LoadingProvider } from "@/context/LoadingContext";
+import { AuthProvider } from "@/context/AuthContext";
 import LoadingModal from "@/components/LoadingModal";
 import ApiInterceptor from "@/components/ApiInterceptor";
 import AdminAuthHandler from "@/components/AdminAuthHandler";
@@ -25,14 +26,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <LoadingProvider>
-          <ApiInterceptor>
-            <AdminAuthHandler>
-              {children}
-              <LoadingModal />
-            </AdminAuthHandler>
-          </ApiInterceptor>
-        </LoadingProvider>
+        <AuthProvider>
+          <LoadingProvider>
+            <ApiInterceptor>
+              <AdminAuthHandler>
+                {children}
+                <LoadingModal />
+              </AdminAuthHandler>
+            </ApiInterceptor>
+          </LoadingProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -1,38 +1,31 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 export default function AdminAuthHandler({ children }: { children: React.ReactNode }) {
-  const [isReady, setIsReady] = useState(false);
+  const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        await api.get("/auth/me");
-        // Logged in
-        if (pathname === "/login" || pathname === "/") {
-          router.replace("/dashboard");
-        } else {
-          setIsReady(true);
-        }
-      } catch (err) {
-        // Not logged in
-        if (pathname !== "/login") {
-          router.replace("/login");
-        } else {
-          setIsReady(true);
-        }
+    if (loading) return;
+
+    if (user) {
+      // Logged in
+      if (pathname === "/login" || pathname === "/") {
+        router.replace("/dashboard");
       }
-    };
+    } else {
+      // Not logged in
+      if (pathname !== "/login") {
+        router.replace("/login");
+      }
+    }
+  }, [user, loading, pathname, router]);
 
-    checkAuth();
-  }, [pathname, router]);
-
-  if (!isReady) return null;
+  if (loading) return null;
 
   return <>{children}</>;
 }

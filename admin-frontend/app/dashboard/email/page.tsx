@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import api from "@/lib/api";
-import { Send, Users, Mail, AlertTriangle, UserPlus, CheckCircle2, XCircle, X } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { Send, Users, Mail, AlertTriangle, UserPlus, X } from "lucide-react";
 
 interface UserSuggestion {
   email: string;
@@ -10,16 +11,11 @@ interface UserSuggestion {
   role: string;
 }
 
-interface AdminProfile {
-  email: string;
-  name: string | null;
-}
-
 export default function EmailCenterPage() {
+  const { user: admin } = useAuth();
   const [mode, setMode] = useState<"group" | "specific">("group");
   const [filters, setFilters] = useState<any>({ role: "", grade: "", verified: undefined });
-  const [admin, setAdmin] = useState<AdminProfile | null>(null);
-  
+
   // Specific Recipients State
   const [searchText, setSearchText] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<UserSuggestion[]>([]);
@@ -33,19 +29,6 @@ export default function EmailCenterPage() {
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(false);
   const [counting, setCounting] = useState(false);
-
-  useEffect(() => {
-    fetchAdminProfile();
-  }, []);
-
-  const fetchAdminProfile = async () => {
-    try {
-      const { data } = await api.get("/auth/me");
-      setAdmin(data);
-    } catch (err) {
-      console.error("Failed to fetch admin profile");
-    }
-  };
 
   useEffect(() => {
     if (mode === "group") {
@@ -68,7 +51,9 @@ export default function EmailCenterPage() {
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const { data } = await api.get(`/email/search-users?q=${searchText}`);
+        const { data } = await api.get(`/email/search-users?q=${searchText}`, {
+          hideLoading: true
+        } as any);
         
         // Filter out already selected users
         const filtered = data.filter((u: UserSuggestion) => !selectedUsers.some(s => s.email === u.email));
@@ -88,7 +73,9 @@ export default function EmailCenterPage() {
   const updateCount = async () => {
     setCounting(true);
     try {
-      const { data } = await api.post("/email/preview-group", { filters });
+      const { data } = await api.post("/email/preview-group", { filters }, {
+        hideLoading: true
+      } as any);
       setCount(data.count);
     } catch (err) {
       console.error("Failed to count recipients");

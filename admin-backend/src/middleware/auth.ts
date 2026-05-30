@@ -30,6 +30,6 @@ export const authenticateAdmin = (req: AuthRequest, res: Response, next: NextFun
     req.user = decoded;
     next();
   } catch (err) {
-    return res.status(403).json({ error: 'Forbidden: Invalid or expired token.' });
+    return res.status(401).json({ error: 'Unauthorized: Invalid or expired token.' });
   }
 };

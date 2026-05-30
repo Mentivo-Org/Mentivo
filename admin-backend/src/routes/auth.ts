@@ -11,8 +11,9 @@ const router = Router();
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
+  sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as const,
   path: '/',
+  domain: process.env.NODE_ENV === 'production' ? '.mentivo.in' : undefined,
 };
 
 const sendAuthResponse = (res: any, req: any, statusCode: number, data: any) => {
