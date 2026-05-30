@@ -8,6 +8,7 @@ import coachingRouter from './routes/coaching.ts';
 import mentorRouter from './routes/mentors.ts';
 import callsRouter from './routes/calls.ts';
 import walletRouter from './routes/wallet.ts';
+import agoraRouter from './routes/agora.ts'
 import webhookRouter from './routes/webhooks.ts';
 import prisma from './config/db.ts';
 import { startJobs } from './jobs/index.ts';
@@ -113,12 +114,17 @@ app.get('/api/health', async (req, res) => {
     res.status(500).send('System Status: Paused');
   }
 });
-
+//Handle authentication
 app.use('/api/auth', authrouter);
+//Handle coaching
 app.use('/api/coaching', coachingRouter);
+//Handle mentor functionality
 app.use('/api/mentors', mentorRouter);
 app.use('/api/calls', callsRouter);
 app.use('/api/wallet', walletRouter);
+
+//Handle agora token generation
+app.use('/api/agora/token', agoraRouter);
 
 // Global Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
