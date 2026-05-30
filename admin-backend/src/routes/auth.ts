@@ -23,8 +23,8 @@ const sendAuthResponse = (res: any, req: any, statusCode: number, data: any) => 
   if (isMobile) {
     return res.status(statusCode).json({ accessToken, refreshToken, ...rest });
   } else {
-    if (accessToken) res.cookie('admin_accessToken', accessToken, { ...COOKIE_OPTIONS, maxAge: 15 * 60 * 1000 });
-    if (refreshToken) res.cookie('admin_refreshToken', refreshToken, { ...COOKIE_OPTIONS, maxAge: 7 * 24 * 60 * 60 * 1000 });
+    if (accessToken) res.cookie('admin_accessToken', accessToken, { ...COOKIE_OPTIONS, maxAge: 7 * 24 * 60 * 60 * 1000 });
+    if (refreshToken) res.cookie('admin_refreshToken', refreshToken, { ...COOKIE_OPTIONS, maxAge: 30 * 24 * 60 * 60 * 1000 });
     return res.status(statusCode).json(rest);
   }
 };
