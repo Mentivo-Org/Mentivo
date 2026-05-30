@@ -20,6 +20,7 @@ import ResetPassword from "./ResetPassword";
 import StudentHomePage from "./student/StudentHomePage";
 import YourSession from "./student/YourSession";
 import MentorProfile from "./student/MentorProfile";
+import PaymentPage from "./student/PaymentPage";
 import MentorHomePage from "./mentor/MentorHomePage";
 import SplashScreen from "./SplashScreen";
 import api from "../services/api";
@@ -153,6 +154,7 @@ export default function RootNavigator() {
           <AuthStack.Screen name="Main" component={StudentHomePage} />
           <AuthStack.Screen name="YourSession" component={YourSession} />
           <AuthStack.Screen name="MentorProfile" component={MentorProfile} />
+          <AuthStack.Screen name="Payment" component={PaymentPage} />
         </AuthStack.Navigator>
       ) : (
         <Stack.Navigator

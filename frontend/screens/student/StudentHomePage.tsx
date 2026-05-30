@@ -272,7 +272,7 @@ export default function StudentHomePage() {
               <TouchableOpacity style={styles.sidebarLink} onPress={() => { toggleSidebar(); navigation.navigate("YourSession"); }}>
                 <Text style={styles.sidebarLinkText}>Your session</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.sidebarLink}>
+              <TouchableOpacity style={styles.sidebarLink} onPress={() => { toggleSidebar(); navigation.navigate("Payment"); }}>
                 <Text style={styles.sidebarLinkText}>Payment</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.sidebarLink, styles.logoutLink]} onPress={handleLogoutClick}>
