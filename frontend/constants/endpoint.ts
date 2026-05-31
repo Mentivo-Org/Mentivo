@@ -1,6 +1,6 @@
 // export const baseUrl = 'http://10.150.63.231:3000/api';
-export const baseUrl = 'http://192.168.29.18:3000/api';
-// export const baseUrl = 'https://api.mentivo.in/api';
+// export const baseUrl = 'http://192.168.29.18:3000/api';
+export const baseUrl = 'https://api.mentivo.in/api';
 
 export const LoginEndpoints = {
     whoAmI: `${baseUrl}/auth/whoami`,
