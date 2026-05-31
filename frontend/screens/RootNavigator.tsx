@@ -18,6 +18,9 @@ import ForgotPassword from "./ForgotPassword";
 import ResetPassword from "./ResetPassword";
 
 import StudentHomePage from "./student/StudentHomePage";
+import YourSession from "./student/YourSession";
+import MentorProfile from "./student/MentorProfile";
+import PaymentPage from "./student/PaymentPage";
 import MentorHomePage from "./mentor/MentorHomePage";
 import SplashScreen from "./SplashScreen";
 import api from "../services/api";
@@ -29,6 +32,7 @@ import linking from "../linking";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
+const AuthStack = createStackNavigator();
 
 interface ProfileInfoParams {
   full_name: string,
@@ -39,8 +43,43 @@ interface ProfileInfoParams {
   state: string
 }
 
+function AuthenticatedTabs() {
+  return (
+    <Tab.Navigator
+      initialRouteName="Home"
+      backBehavior="initialRoute"
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Tab.Screen
+        name="Captured"
+        component={StudentHomePage}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons
+              name="checkmark-circle"
+              size={size + 5}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Home"
+        component={MentorHomePage}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size + 5} color={color} />
+          ),
+        }}
+      />
+    </Tab.Navigator>
+  );
+}
+
 export default function RootNavigator() {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, setIsSignedIn } = useAuth();
   const [profileData, setProfileData] = useState<ProfileInfoParams>({full_name: '',email: '',role: '',phone: '', state: ''});
   const [initialScreen, setInitialScreen] = useState<string | null>(null);
   const [alertData, setAlertData] = useState({ title: "", message: "" });
@@ -60,6 +99,7 @@ export default function RootNavigator() {
         const response = await api.get(LoginEndpoints.whoAmI, {});
         if (response.status === 200) {
           if (response.data?.user?.isEmailVerified === true) {
+            await AsyncStorage.setItem('verifiedEmail', 'true');
             if (response.data?.user?.profile_completed === false) {
               const user = response.data?.user;
               console.log("user information ", user);
@@ -76,7 +116,9 @@ export default function RootNavigator() {
               setInitialScreen("CompleteProfile");
               return;
             } else {
-              setInitialScreen("Landing"); // Profile already completed, TabNavigator will take over if isSignedIn is true
+              setIsSignedIn(true);
+              setInitialScreen('');
+              // setInitialScreen("Landing"); // Profile already completed, TabNavigator will take over if isSignedIn is true
             }
           } else {
             await AsyncStorage.multiRemove(["accessToken","refreshToken","user","verifiedEmail"]);
@@ -108,36 +150,12 @@ export default function RootNavigator() {
   return (
     <NavigationContainer>
       {isSignedIn ? (
-        <Tab.Navigator
-          initialRouteName="Home"
-          backBehavior="initialRoute"
-          screenOptions={{
-            headerShown: false,
-          }}
-        >
-          <Tab.Screen
-            name="Captured"
-            component={StudentHomePage}
-            options={{
-              tabBarIcon: ({ color, size }) => (
-                <Ionicons
-                  name="checkmark-circle"
-                  size={size + 5}
-                  color={color}
-                />
-              ),
-            }}
-          />
-          <Tab.Screen
-            name="Home"
-            component={MentorHomePage}
-            options={{
-              tabBarIcon: ({ color, size }) => (
-                <Ionicons name="home" size={size + 5} color={color} />
-              ),
-            }}
-          />
-        </Tab.Navigator>
+        <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+          <AuthStack.Screen name="Main" component={StudentHomePage} />
+          <AuthStack.Screen name="YourSession" component={YourSession} />
+          <AuthStack.Screen name="MentorProfile" component={MentorProfile} />
+          <AuthStack.Screen name="Payment" component={PaymentPage} />
+        </AuthStack.Navigator>
       ) : (
         <Stack.Navigator
           screenOptions={{

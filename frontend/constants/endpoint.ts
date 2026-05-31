@@ -20,3 +20,9 @@ export const ForgotPassEndpoints = {
     verifyOtp: `${baseUrl}/auth/verify-forgot-password`,
     resetPass: `${baseUrl}/auth/reset-password`
 }
+
+export const WalletEndpoints = {
+    getBalance: `${baseUrl}/wallet/balance`,
+    topup: `${baseUrl}/wallet/topup`,
+    confirm: `${baseUrl}/wallet/topup/confirm`
+}

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLoading } from '../context/LoadingContext';
 
 // 1. Define the shape of our state
 interface AuthContextType {
@@ -14,6 +15,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const { showLoading, hideLoading } = useLoading();
   const [isSignedIn, setIsSignedIn] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   // Inside AuthProvider
@@ -38,6 +40,7 @@ const checkLoginStatus = async () => {
 };
 
 const handleLogout = async ()=> {
+  showLoading("Logging out...");
   try {
     await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user', 'verifiedEmail']);
     const isGoogleSignedIn = await GoogleSignin.hasPreviousSignIn();
@@ -49,6 +52,9 @@ const handleLogout = async ()=> {
   }
   catch(e) {
     console.error("Logout failed", e);
+  }
+  finally {
+    hideLoading();
   }
 }
 

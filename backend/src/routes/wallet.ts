@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Request, Response } from 'express';
 import { authenticateUser } from '../auth/authenticateUser.ts';
 import { createTopupOrder, verifyPayment } from '../services/razorpay.ts';
 import prisma from '../config/db.ts';
@@ -6,9 +7,9 @@ import prisma from '../config/db.ts';
 const router = Router();
 
 // GET /api/wallet/balance
-router.get('/balance', authenticateUser, async (req, res) => {
+router.get('/balance', authenticateUser, async (req:Request, res:Response) => {
   try {
-    const wallet = await prisma.wallet.findUnique({ where: { userId: req.user.id } });
+    const wallet = await prisma.wallet.findUnique({ where: { userId: req.user?.id as string } });
     res.json({ balance: wallet ? Number(wallet.balance) : 0 });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
@@ -18,16 +19,22 @@ router.get('/balance', authenticateUser, async (req, res) => {
 // POST /api/wallet/topup
 router.post('/topup', authenticateUser, async (req, res) => {
   const { amount } = req.body;
+  const userId = req.user?.id as string;
+  if(!userId) {
+    return res.status(401).json({
+      error: "Account not authorized to perform such function"
+    })
+  }
   if (!amount || amount < 10) {
     return res.status(400).json({ error: 'Minimum top-up is ₹10' });
   }
 
   try {
-    const order = await createTopupOrder(amount, req.user.id);
+    const order = await createTopupOrder(amount, userId);
     
     await prisma.walletTransaction.create({
       data: {
-        userId: req.user.id,
+        userId: userId,
         amount,
         type: 'topup',
         razorpayOrderId: order.id,
@@ -48,7 +55,7 @@ router.post('/topup', authenticateUser, async (req, res) => {
 });
 
 // POST /api/wallet/topup/confirm
-router.post('/topup/confirm', authenticateUser, async (req, res) => {
+router.post('/topup/confirm', authenticateUser, async (req: Request, res: Response) => {
   const { orderId, paymentId, signature } = req.body;
 
   try {

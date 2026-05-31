@@ -10,12 +10,12 @@ export default function App() {
   
   return (
     <SafeAreaProvider>
-    <AuthProvider>
       <LoadingProvider>
-        <StatusBar style='dark'/>
-        <RootNavigator/>
+        <AuthProvider>
+          <StatusBar style='dark'/>
+          <RootNavigator/>
+        </AuthProvider>
       </LoadingProvider>
-    </AuthProvider>
     </SafeAreaProvider>
   );
 }

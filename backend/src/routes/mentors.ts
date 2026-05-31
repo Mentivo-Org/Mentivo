@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Request, Response } from 'express';
 import { authenticateUser } from '../auth/authenticateUser.ts';
 import { getAvailableMentors, setAvailable } from '../services/presence.ts';
 import prisma from '../config/db.ts';
@@ -6,7 +7,7 @@ import prisma from '../config/db.ts';
 const router = Router();
 
 // GET /api/mentors
-router.get('/', authenticateUser, async (req, res) => {
+router.get('/', authenticateUser, async (req:Request, res:Response) => {
   try {
     const availableIds = await getAvailableMentors();
     if (availableIds.length === 0) {
@@ -25,10 +26,10 @@ router.get('/', authenticateUser, async (req, res) => {
 });
 
 // GET /api/mentors/:id
-router.get('/:id', authenticateUser, async (req, res) => {
+router.get('/:id', authenticateUser, async (req:Request, res:Response) => {
   try {
     const mentor = await prisma.mentorProfile.findUnique({
-      where: { mentorId: req.params.id },
+      where: { mentorId: req.params.id as string },
       include: { user: { select: { name: true, email: true } } }
     });
     
@@ -43,9 +44,9 @@ router.get('/:id', authenticateUser, async (req, res) => {
 });
 
 // PATCH /api/mentors/me/heartbeat
-router.patch('/me/heartbeat', authenticateUser, async (req: res) => {
+router.patch('/me/heartbeat', authenticateUser, async (req: Request, res:Response) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id as string;
     // Assuming the user is a mentor
     await setAvailable(userId);
     res.json({ success: true });
