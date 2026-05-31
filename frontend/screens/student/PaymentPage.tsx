@@ -98,7 +98,7 @@ export default function PaymentPage() {
         .catch((error: any) => {
           console.log("Razorpay Error:", error);
           if (error.code !== 2) { // 2 is user cancel
-            setAlertData({ title: "Payment Failed", message: error.description || "Payment was not successful" });
+            setAlertData({ title: "Error",message:"Payment Failed" });
             setAlertVisible(true);
           }
         })
