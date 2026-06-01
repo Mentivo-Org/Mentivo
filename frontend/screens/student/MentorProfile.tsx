@@ -10,21 +10,23 @@ const { width, height } = Dimensions.get("window");
 export default function MentorProfile() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { mentorId } = route.params || {};
-
-  // Mock data - in a real app, fetch this based on mentorId
+  
+  // Extract mentor data from params, with fallbacks
+  const passedMentor = route.params?.mentor || {};
+  
   const mentor = {
-    name: 'Suraj Jain',
-    iit: 'IIT Guwahati',
-    branch: 'CSE',
-    year: 'Y3',
-    rating: 4.6,
-    reviews: 122,
-    sessions: 25,
-    price: 7,
-    isFavorite: true,
-    isOnline: true,
-    bio: 'Life is short, live it like a pro.',
+    id: passedMentor.id || route.params?.mentorId,
+    name: passedMentor.name || 'Unknown Mentor',
+    iit: passedMentor.iit || 'Unknown IIT',
+    branch: passedMentor.branch || 'Unknown Branch',
+    year: passedMentor.year || '',
+    rating: passedMentor.rating || 0,
+    reviews: passedMentor.reviews || 0,
+    sessions: passedMentor.calls || 0,
+    price: passedMentor.price || 10,
+    isFavorite: passedMentor.isFavorite || false,
+    isOnline: passedMentor.isOnline || false,
+    bio: passedMentor.bio || 'Available for mentoring sessions.',
   };
 
   return (

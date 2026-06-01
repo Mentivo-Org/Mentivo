@@ -43,12 +43,15 @@ export default function StudentHomePage() {
 
   // Pagination states
   const [mentors, setMentors] = useState<any[]>([]);
+  const [displayedMentors, setDisplayedMentors] = useState<any[]>([]);
   const [offset, setOffset] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [onlineCount, setOnlineCount] = useState(0);
   const LIMIT = 10;
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchWalletBalance = async () => {
     try {
@@ -72,8 +75,65 @@ export default function StudentHomePage() {
     }
   };
 
+  const performSearch = async (query: string) => {
+    if (!query.trim()) {
+      setDisplayedMentors(mentors);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    const lowerQuery = query.toLowerCase();
+    
+    // Local Search
+    const localResults = mentors.filter(m => m.iit.toLowerCase().includes(lowerQuery));
+    
+    if (localResults.length > 0) {
+      setDisplayedMentors(localResults);
+      setIsSearching(false);
+      return;
+    }
+
+    // Remote Search Fallback
+    try {
+      const response = await api.get(`${MentorEndpoints.searchMentors}?iitName=${query}`);
+      if (response.status === 200) {
+        const fetchedMentors = response.data.map((m: any) => ({
+          id: m.mentorId,
+          name: m.user?.name || "Unknown",
+          iit: m.iit_name || "IIT Delhi",
+          branch: m.branch || "CSE",
+          year: `Y${m.year}`,
+          rating: m.avg_rating || 0,
+          calls: m.total_calls || 0,
+          price: 10,
+          isFavorite: false,
+          isOnline: m.isOnline,
+        }));
+        setDisplayedMentors(fetchedMentors);
+      }
+    } catch (err) {
+      console.error("Remote search failed:", err);
+      setDisplayedMentors([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  useEffect(() => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    
+    searchTimeoutRef.current = setTimeout(() => {
+      performSearch(searchQuery);
+    }, 400);
+
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    };
+  }, [searchQuery, mentors]);
+
   const fetchMentors = async (reset = false) => {
-    if (isLoading || (!hasMore && !reset)) return;
+    if (isLoading || (!hasMore && !reset) || searchQuery.length > 0) return;
     
     setIsLoading(true);
     const currentOffset = reset ? 0 : offset;
@@ -105,7 +165,11 @@ export default function StudentHomePage() {
           setHasMore(true);
         }
 
-        setMentors(prev => reset ? formattedMentors : [...prev, ...formattedMentors]);
+        const newMentors = reset ? formattedMentors : [...mentors, ...formattedMentors];
+        setMentors(newMentors);
+        if (!searchQuery.trim()) {
+           setDisplayedMentors(newMentors);
+        }
         setOffset(currentOffset + LIMIT);
       }
     } catch (error) {
@@ -179,7 +243,7 @@ export default function StudentHomePage() {
     handleLogout();
   }
 
-  const filters = ["All", "Online(3)", "Standard", "Premium"];
+  const filters = ["All", "Online", "Standard", "Premium"];
 
   const renderHeader = () => (
     <View>
@@ -187,7 +251,7 @@ export default function StudentHomePage() {
       <View style={styles.greetingCard}>
         <View style={styles.greetingHeader}>
           <Text style={styles.greetingText}>Hey, Future IITian,</Text>
-          <Text style={styles.userNameText}>{user?.name?.split(" ")[0] || "Anurag"}!</Text>
+          <Text style={styles.userNameText}>{user?.name?.split(" ")[0] || "Anurag"}</Text>
         </View>
         
         <View style={styles.separator} />
@@ -299,17 +363,21 @@ export default function StudentHomePage() {
 
       <FlatList
         ref={flatListRef}
-        data={mentors}
+        data={displayedMentors}
         keyExtractor={(item, index) => `${item.id}-${index}`}
         renderItem={({ item }) => (
           <MentorCard
             {...item}
-            onPress={() => navigation.navigate("MentorProfile", { mentorId: item.id })}
+            onPress={() => navigation.navigate("MentorProfile", { mentor: item })}
           />
         )}
         ListHeaderComponent={renderHeader}
         ListFooterComponent={renderFooter}
-        onEndReached={() => fetchMentors()}
+        onEndReached={() => {
+          if (!searchQuery.trim()) {
+            fetchMentors();
+          }
+        }}
         onEndReachedThreshold={0.5}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}

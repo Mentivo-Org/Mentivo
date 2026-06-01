@@ -25,6 +25,7 @@ export const MentorEndpoints = {
     getAllMentors: `${baseUrl}/mentors`,
     getMentorsPaginated: `${baseUrl}/mentors/paginated`,
     getOnlineCount: `${baseUrl}/mentors/count/online`,
+    searchMentors: `${baseUrl}/mentors/search`,
     getMentorById: `${baseUrl}/mentors/`, // append id
     heartbeat: `${baseUrl}/mentors/me/heartbeat`
 }

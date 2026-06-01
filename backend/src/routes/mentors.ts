@@ -97,6 +97,37 @@ router.get('/online/paginated', authenticateUser, async (req: Request, res: Resp
   }
 });
 
+// GET /api/mentors/search
+router.get('/search', authenticateUser, async (req: Request, res: Response) => {
+  try {
+    const iitName = req.query.iitName as string;
+    
+    if (!iitName) {
+      return res.json([]);
+    }
+
+    const mentors = await prisma.mentorProfile.findMany({
+      where: {
+        iit_name: {
+          contains: iitName,
+          mode: 'insensitive',
+        }
+      },
+      include: { 
+        user: { select: { name: true, email: true } } 
+      },
+      orderBy: {
+        avg_rating: 'desc'
+      }
+    });
+    
+    res.json(mentors);
+  } catch (err) {
+    console.error('Error searching mentors:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 // GET /api/mentors/:id
 router.get('/:id', authenticateUser, async (req:Request, res:Response) => {
   try {
