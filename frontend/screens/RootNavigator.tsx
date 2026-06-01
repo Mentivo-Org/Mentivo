@@ -21,12 +21,16 @@ import StudentHomePage from "./student/StudentHomePage";
 import YourSession from "./student/YourSession";
 import MentorProfile from "./student/MentorProfile";
 import PaymentPage from "./student/PaymentPage";
+import StudentChatPage from "./student/StudentChatPage";
+import StudentAskPage from "./student/StudentAskPage";
 import MentorHomePage from "./mentor/MentorHomePage";
 import SplashScreen from "./SplashScreen";
 import api from "../services/api";
 import { LoginEndpoints } from "../constants/endpoint";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DialogBox from "../components/DialogBox";
+import { Image } from "expo-image";
+import { StyleSheet, View, TouchableOpacity } from "react-native";
 
 import linking from "../linking";
 
@@ -43,36 +47,100 @@ interface ProfileInfoParams {
   state: string
 }
 
+function CustomTabBar({ state, descriptors, navigation }: any) {
+  return (
+    <View style={tabStyles.container}>
+      <View style={tabStyles.pill}>
+        {state.routes.map((route: any, index: number) => {
+          const { options } = descriptors[route.key];
+          const isFocused = state.index === index;
+
+          const onPress = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
+
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
+            }
+          };
+
+          let icon;
+          if (route.name === "Home") {
+            icon = require("../app-assets/mentoring-icon.svg");
+          } else if (route.name === "Chat") {
+            icon = require("../app-assets/chat-round.svg");
+          } else if (route.name === "Ask") {
+            // Re-using chat round for now or circle plus if available
+            icon = require("../app-assets/chat-round.svg"); 
+          }
+
+          return (
+            <TouchableOpacity
+              key={route.name}
+              onPress={onPress}
+              activeOpacity={1}
+              style={tabStyles.tabItem}
+            >
+              {isFocused ? (
+                <View style={tabStyles.activeIndicatorContainer}>
+                  <View style={tabStyles.activeCircle} />
+                  <View style={tabStyles.activeIconBox}>
+                    {route.name === "Ask" ? (
+                      <Ionicons name="add-circle" size={26} color="#2563eb" />
+                    ) : (
+                      <Image
+                        source={icon}
+                        style={tabStyles.activeIcon}
+                        tintColor="#2563eb"
+                      />
+                    )}
+                  </View>
+                </View>
+              ) : (
+                <View style={tabStyles.inactiveIconWrapper}>
+                  {route.name === "Ask" ? (
+                    <Ionicons name="add-circle-outline" size={26} color="white" />
+                  ) : (
+                    <Image
+                      source={icon}
+                      style={tabStyles.inactiveIcon}
+                      tintColor="white"
+                    />
+                  )}
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 function AuthenticatedTabs() {
   return (
     <Tab.Navigator
       initialRouteName="Home"
       backBehavior="initialRoute"
+      tabBar={props => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
       }}
     >
       <Tab.Screen
-        name="Captured"
+        name="Home"
         component={StudentHomePage}
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons
-              name="checkmark-circle"
-              size={size + 5}
-              color={color}
-            />
-          ),
-        }}
       />
       <Tab.Screen
-        name="Home"
-        component={MentorHomePage}
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size + 5} color={color} />
-          ),
-        }}
+        name="Chat"
+        component={StudentChatPage}
+      />
+      <Tab.Screen
+        name="Ask"
+        component={StudentAskPage}
       />
     </Tab.Navigator>
   );
@@ -131,7 +199,7 @@ export default function RootNavigator() {
       } catch (err) {
         setAlertData({
           title: "Error in fetching user profile information",
-          message: err,
+          message: err as string,
         });
         setAlertVisible(true);
         await AsyncStorage.multiRemove(["accessToken","refreshToken","user","verifiedEmail"]);
@@ -151,7 +219,7 @@ export default function RootNavigator() {
     <NavigationContainer>
       {isSignedIn ? (
         <AuthStack.Navigator screenOptions={{ headerShown: false }}>
-          <AuthStack.Screen name="Main" component={StudentHomePage} />
+          <AuthStack.Screen name="Main" component={AuthenticatedTabs} />
           <AuthStack.Screen name="YourSession" component={YourSession} />
           <AuthStack.Screen name="MentorProfile" component={MentorProfile} />
           <AuthStack.Screen name="Payment" component={PaymentPage} />
@@ -185,3 +253,74 @@ export default function RootNavigator() {
     </NavigationContainer>
   );
 }
+
+const tabStyles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    bottom: 30,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    elevation: 0,
+  },
+  pill: {
+    flexDirection: 'row',
+    backgroundColor: '#2563eb',
+    width: '55%',
+    height: '90%',
+    borderRadius: 43,
+    justifyContent: 'space-evenly',
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 8,
+  },
+  tabItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 60,
+    height: 60,
+  },
+  activeIndicatorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'absolute',
+    top: -12, // Significant jump up from the center of the pill
+  },
+  activeCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    // backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#f5f5f5f5', 
+    position: 'absolute',
+  },
+  activeIconBox: {
+    backgroundColor: 'white',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+    elevation: 4,
+  },
+  activeIcon: {
+    width: 26,
+    height: 26,
+  },
+  inactiveIconWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inactiveIcon: {
+    width: 26,
+    height: 26,
+  }
+});

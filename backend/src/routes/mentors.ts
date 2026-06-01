@@ -47,7 +47,12 @@ router.get('/:id', authenticateUser, async (req:Request, res:Response) => {
 router.patch('/me/heartbeat', authenticateUser, async (req: Request, res:Response) => {
   try {
     const userId = req.user?.id as string;
-    // Assuming the user is a mentor
+    // Verify the user is a mentor
+    if(req.user?.role!=='mentor') {
+      return res.status(400).json({
+        error: "You are not allowed to request at this endpoint"
+      })
+    }
     await setAvailable(userId);
     res.json({ success: true });
   } catch (err) {
