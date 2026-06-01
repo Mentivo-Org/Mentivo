@@ -123,6 +123,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 function AuthenticatedTabs() {
   return (
     <Tab.Navigator
+      id="authenticated-tabs"
       initialRouteName="Home"
       backBehavior="initialRoute"
       tabBar={props => <CustomTabBar {...props} />}
@@ -218,7 +219,7 @@ export default function RootNavigator() {
   return (
     <NavigationContainer>
       {isSignedIn ? (
-        <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+        <AuthStack.Navigator id="auth-stack" screenOptions={{ headerShown: false }}>
           <AuthStack.Screen name="Main" component={AuthenticatedTabs} />
           <AuthStack.Screen name="YourSession" component={YourSession} />
           <AuthStack.Screen name="MentorProfile" component={MentorProfile} />
@@ -226,6 +227,7 @@ export default function RootNavigator() {
         </AuthStack.Navigator>
       ) : (
         <Stack.Navigator
+          id="unauth-stack"
           screenOptions={{
             headerShown: false,
           }}

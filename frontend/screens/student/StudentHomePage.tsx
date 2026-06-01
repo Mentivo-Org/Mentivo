@@ -11,6 +11,7 @@ import {
   FlatList,
   Modal,
   TouchableWithoutFeedback,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
@@ -20,7 +21,7 @@ import MentorCard from "../../components/MentorCard";
 import { useAuth } from "../../services/retrieveKeys";
 import DialogBox from "../../components/DialogBox";
 import api from "../../services/api";
-import { WalletEndpoints } from "../../constants/endpoint";
+import { WalletEndpoints, MentorEndpoints } from "../../constants/endpoint";
 
 const { width, height } = Dimensions.get("window");
 
@@ -37,6 +38,14 @@ export default function StudentHomePage() {
   const [alertData, setAlertData] = useState({title: '', message: ''});
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
 
+  // Pagination states
+  const [mentors, setMentors] = useState<any[]>([]);
+  const [offset, setOffset] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [onlineCount, setOnlineCount] = useState(0);
+  const LIMIT = 10;
+
   const fetchWalletBalance = async () => {
     try {
       const response = await api.get(WalletEndpoints.getBalance);
@@ -45,6 +54,60 @@ export default function StudentHomePage() {
       }
     } catch (error) {
       console.error("Failed to fetch wallet balance:", error);
+    }
+  };
+
+  const fetchOnlineCount = async () => {
+    try {
+      const response = await api.get(MentorEndpoints.getOnlineCount);
+      if (response.status === 200) {
+        setOnlineCount(response.data.count);
+      }
+    } catch (error) {
+      console.error("Failed to fetch online count:", error);
+    }
+  };
+
+  const fetchMentors = async (reset = false) => {
+    if (isLoading || (!hasMore && !reset)) return;
+    
+    setIsLoading(true);
+    const currentOffset = reset ? 0 : offset;
+    const isOnlineOnly = selectedFilter.includes("Online");
+
+    try {
+      const response = await api.get(`${MentorEndpoints.getMentorsPaginated}?offset=${currentOffset}&limit=${LIMIT}&onlineOnly=${isOnlineOnly}`);
+      
+      if (response.status === 200) {
+        const fetchedMentors = response.data;
+        
+        // Transform the backend data format to match the frontend expectations
+        const formattedMentors = fetchedMentors.map((m: any) => ({
+          id: m.mentorId,
+          name: m.user?.name || "Unknown",
+          iit: m.iit_name || "IIT Delhi",
+          branch: m.branch || "CSE",
+          year: `Y${m.year}`,
+          rating: m.avg_rating || 0,
+          calls: m.total_calls || 0,
+          price: 10, // Assuming fixed price for now, or fetch from backend
+          isFavorite: false, // Update if you have a favorites system
+          isOnline: m.isOnline,
+        }));
+
+        if (formattedMentors.length < LIMIT) {
+          setHasMore(false);
+        } else {
+          setHasMore(true);
+        }
+
+        setMentors(prev => reset ? formattedMentors : [...prev, ...formattedMentors]);
+        setOffset(currentOffset + LIMIT);
+      }
+    } catch (error) {
+      console.error("Failed to fetch mentors:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -57,7 +120,13 @@ export default function StudentHomePage() {
     };
     loadUser();
     fetchWalletBalance();
+    fetchOnlineCount();
+    fetchMentors(true); // Initial fetch
   }, []);
+
+  useEffect(() => {
+    fetchMentors(true);
+  }, [selectedFilter]);
 
   const toggleSidebar = () => {
     if (isSidebarVisible) {
@@ -89,57 +158,99 @@ export default function StudentHomePage() {
 
   const filters = ["All", "Online(3)", "Standard", "Premium"];
 
-  // Mock data for mentors
-  const mentors = [
-    {
-      id: "1",
-      name: "Suraj Jain",
-      iit: "IIT Guwahati",
-      branch: "CSE",
-      year: "Y3",
-      rating: 4.6,
-      calls: 125,
-      price: 10,
-      isFavorite: true,
-      isOnline: true,
-    },
-    {
-      id: "2",
-      name: "Akshay Kumar",
-      iit: "IIT BHU",
-      branch: "Ceramic",
-      year: "Y3",
-      rating: 4.6,
-      calls: 125,
-      price: 10,
-      isFavorite: false,
-      isOnline: true,
-    },
-    {
-      id: "3",
-      name: "Rahman Dakait",
-      iit: "IIT Delhi",
-      branch: "MNC",
-      year: "Y2",
-      rating: 4.2,
-      calls: 99,
-      price: 10,
-      isFavorite: true,
-      isOnline: false,
-    },
-    {
-      id: "4",
-      name: "Tony Stark",
-      iit: "IIT Jammu",
-      branch: "Material",
-      year: "Y1",
-      rating: 4.6,
-      calls: 126,
-      price: 10,
-      isFavorite: false,
-      isOnline: true,
-    },
-  ];
+  const renderHeader = () => (
+    <View>
+      {/* Greeting Card */}
+      <View style={styles.greetingCard}>
+        <View style={styles.greetingHeader}>
+          <Text style={styles.greetingText}>Hey, Future IITian,</Text>
+          <Text style={styles.userNameText}>{user?.name?.split(" ")[0] || "Anurag"}!</Text>
+        </View>
+        
+        <View style={styles.separator} />
+
+        <View style={styles.countdownRow}>
+          <View style={styles.countdownItem}>
+            <View style={styles.countdownValueContainer}>
+              <Text style={styles.countdownValue}>98</Text>
+              <View style={styles.countdownUnitContainer}>
+                <Text style={styles.countdownUnit}>Days</Text>
+                <Text style={styles.countdownUnit}>Left</Text>
+              </View>
+            </View>
+            <Text style={styles.examText}>Jee Mains</Text>
+          </View>
+
+          <View style={styles.countdownItem}>
+            <View style={styles.countdownValueContainer}>
+              <Text style={styles.countdownValue}>130</Text>
+              <View style={styles.countdownUnitContainer}>
+                <Text style={styles.countdownUnit}>Days</Text>
+                <Text style={styles.countdownUnit}>Left</Text>
+              </View>
+            </View>
+            <Text style={styles.examText}>Jee Advanced</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity style={styles.mentorSyncButton}>
+          <Text style={styles.mentorSyncText}>Mentor Sync </Text>
+          <View style={styles.syncTimerBadge}>
+            <Text style={styles.syncTimerText}>in 10 min</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {/* Filters */}
+      <View style={styles.filterContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {filters.map((filter) => (
+            <TouchableOpacity
+              key={filter}
+              style={[
+                styles.filterChip,
+                selectedFilter === filter && styles.filterChipActive,
+              ]}
+              onPress={() => setSelectedFilter(filter)}
+            >
+              {filter.includes("Online") && (
+                <>
+                  <View style={styles.onlineStatusDot} />
+                  <Text
+                    style={[
+                      styles.filterText,
+                      selectedFilter === filter && styles.filterTextActive,
+                    ]}
+                  >
+                    Online({onlineCount})
+                  </Text>
+                </>
+              )}
+              {!filter.includes("Online") && (
+                <Text
+                  style={[
+                    styles.filterText,
+                    selectedFilter === filter && styles.filterTextActive,
+                  ]}
+                >
+                  {filter}
+                </Text>
+              )}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    </View>
+  );
+
+  const renderFooter = () => {
+    if (!isLoading) return <View style={{ height: 100 }} />; // Padding for tab bar when not loading
+    return (
+      <View style={styles.loadingFooter}>
+        <ActivityIndicator size="small" color="#2563eb" />
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -163,85 +274,29 @@ export default function StudentHomePage() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Greeting Card */}
-        <View style={styles.greetingCard}>
-          <View style={styles.greetingHeader}>
-            <Text style={styles.greetingText}>Hey, Future IITian,</Text>
-            <Text style={styles.userNameText}>{user?.name?.split(" ")[0] || "Anurag"}!</Text>
-          </View>
-          
-          <View style={styles.separator} />
-
-          <View style={styles.countdownRow}>
-            <View style={styles.countdownItem}>
-              <View style={styles.countdownValueContainer}>
-                <Text style={styles.countdownValue}>98</Text>
-                <View style={styles.countdownUnitContainer}>
-                  <Text style={styles.countdownUnit}>Days</Text>
-                  <Text style={styles.countdownUnit}>Left</Text>
-                </View>
-              </View>
-              <Text style={styles.examText}>Jee Mains</Text>
+      <FlatList
+        data={mentors}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
+        renderItem={({ item }) => (
+          <MentorCard
+            {...item}
+            onPress={() => navigation.navigate("MentorProfile", { mentorId: item.id })}
+          />
+        )}
+        ListHeaderComponent={renderHeader}
+        ListFooterComponent={renderFooter}
+        onEndReached={() => fetchMentors()}
+        onEndReachedThreshold={0.5}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          !isLoading ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No mentors found</Text>
             </View>
-
-            <View style={styles.countdownItem}>
-              <View style={styles.countdownValueContainer}>
-                <Text style={styles.countdownValue}>130</Text>
-                <View style={styles.countdownUnitContainer}>
-                  <Text style={styles.countdownUnit}>Days</Text>
-                  <Text style={styles.countdownUnit}>Left</Text>
-                </View>
-              </View>
-              <Text style={styles.examText}>Jee Advanced</Text>
-            </View>
-          </View>
-
-          <TouchableOpacity style={styles.mentorSyncButton}>
-            <Text style={styles.mentorSyncText}>Mentor Sync </Text>
-            <View style={styles.syncTimerBadge}>
-              <Text style={styles.syncTimerText}>in 10 min</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* Filters */}
-        <View style={styles.filterContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {filters.map((filter) => (
-              <TouchableOpacity
-                key={filter}
-                style={[
-                  styles.filterChip,
-                  selectedFilter === filter && styles.filterChipActive,
-                ]}
-                onPress={() => setSelectedFilter(filter)}
-              >
-                {filter.includes("Online") && <View style={styles.onlineStatusDot} />}
-                <Text
-                  style={[
-                    styles.filterText,
-                    selectedFilter === filter && styles.filterTextActive,
-                  ]}
-                >
-                  {filter}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Mentor List */}
-        <View style={styles.mentorList}>
-          {mentors.map((mentor) => (
-            <MentorCard
-              key={mentor.id}
-              {...mentor}
-              onPress={() => navigation.navigate("MentorProfile", { mentorId: mentor.id })}
-            />
-          ))}
-        </View>
-      </ScrollView>
+          ) : null
+        }
+      />
 
       {/* Sidebar Overlay */}
       {isSidebarVisible && (
@@ -631,5 +686,20 @@ const styles = StyleSheet.create({
   },
   logoutLink: {
     marginTop: 20,
+  },
+  loadingFooter: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: 20,
+    color: '#444653',
+    textAlign: 'center',
   },
 });

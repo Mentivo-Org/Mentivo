@@ -88,23 +88,35 @@ export default function StudentChatPage() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Favourites</Text>
-          <FlatList
-            data={favourites}
-            renderItem={renderFavourite}
-            keyExtractor={(item) => item.id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.favouriteList}
-          />
+          {favourites.length > 0 ? (
+            <FlatList
+              data={favourites}
+              renderItem={renderFavourite}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.favouriteList}
+            />
+          ) : (
+            <View style={styles.emptyContainerSmall}>
+              <Text style={styles.emptyTextSmall}>No favourite mentors yet.</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Recent</Text>
-          {recentCalls.map((item) => (
-            <React.Fragment key={item.id}>
-              {renderRecentCall({ item })}
-            </React.Fragment>
-          ))}
+          {recentCalls.length > 0 ? (
+            recentCalls.map((item) => (
+              <React.Fragment key={item.id}>
+                {renderRecentCall({ item })}
+              </React.Fragment>
+            ))
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No recent calls.</Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -248,4 +260,21 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontWeight: "bold",
   },
+  emptyContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#444653',
+  },
+  emptyContainerSmall: {
+    padding: 10,
+  },
+  emptyTextSmall: {
+    fontSize: 12,
+    color: '#444653',
+    fontStyle: 'italic',
+  }
 });
