@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,16 +8,39 @@ import {
   TouchableOpacity,
   Dimensions,
   FlatList,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useScrollToTop } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
 export default function StudentChatPage() {
   const navigation = useNavigation<any>();
   const [searchQuery, setSearchQuery] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  const scrollViewRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollViewRef);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    // Simulate fetching data
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 1000);
+  };
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('tabPress', (e: any) => {
+      if (navigation.isFocused()) {
+        handleRefresh();
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const favourites = [
     { id: "1", name: "Suraj Jain", iit: "IIT Guwahati" },
@@ -85,7 +108,14 @@ export default function StudentChatPage() {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        ref={scrollViewRef}
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={["#2563eb"]} />
+        }
+      >
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Favourites</Text>
           {favourites.length > 0 ? (

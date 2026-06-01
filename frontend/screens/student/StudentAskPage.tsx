@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,16 +7,39 @@ import {
   TextInput,
   TouchableOpacity,
   Dimensions,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useScrollToTop } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
 export default function StudentAskPage() {
   const navigation = useNavigation<any>();
   const [searchQuery, setSearchQuery] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  const scrollViewRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollViewRef);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    // Simulate fetching data
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 1000);
+  };
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('tabPress', (e: any) => {
+      if (navigation.isFocused()) {
+        handleRefresh();
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const questions = [
     {
@@ -92,8 +115,21 @@ export default function StudentAskPage() {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {questions.map(renderQuestion)}
+      <ScrollView 
+        ref={scrollViewRef}
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={["#2563eb"]} />
+        }
+      >
+        {questions.length > 0 ? (
+          questions.map(renderQuestion)
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No questions asked yet.</Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -233,5 +269,15 @@ const styles = StyleSheet.create({
   heartsCount: {
     fontSize: 12,
     color: "#444653",
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#444653',
+    textAlign: 'center',
   },
 });

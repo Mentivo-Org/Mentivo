@@ -12,11 +12,12 @@ import {
   Modal,
   TouchableWithoutFeedback,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useScrollToTop } from "@react-navigation/native";
 import MentorCard from "../../components/MentorCard";
 import { useAuth } from "../../services/retrieveKeys";
 import DialogBox from "../../components/DialogBox";
@@ -34,6 +35,8 @@ export default function StudentHomePage() {
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
   const slideAnim = useRef(new Animated.Value(-width * 0.7)).current;
+  const flatListRef = useRef<FlatList>(null);
+  useScrollToTop(flatListRef);
 
   const [alertData, setAlertData] = useState({title: '', message: ''});
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
@@ -42,6 +45,7 @@ export default function StudentHomePage() {
   const [mentors, setMentors] = useState<any[]>([]);
   const [offset, setOffset] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [onlineCount, setOnlineCount] = useState(0);
   const LIMIT = 10;
@@ -108,8 +112,27 @@ export default function StudentHomePage() {
       console.error("Failed to fetch mentors:", error);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchWalletBalance();
+    fetchOnlineCount();
+    fetchMentors(true);
+  };
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('tabPress', (e: any) => {
+      // If the screen is focused and tab is pressed again, refresh
+      if (navigation.isFocused()) {
+        handleRefresh();
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -275,6 +298,7 @@ export default function StudentHomePage() {
       </View>
 
       <FlatList
+        ref={flatListRef}
         data={mentors}
         keyExtractor={(item, index) => `${item.id}-${index}`}
         renderItem={({ item }) => (
@@ -289,6 +313,9 @@ export default function StudentHomePage() {
         onEndReachedThreshold={0.5}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={["#2563eb"]} />
+        }
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.emptyContainer}>
