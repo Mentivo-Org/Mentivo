@@ -9,10 +9,13 @@ import {
   Dimensions,
   FlatList,
   RefreshControl,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { useNavigation, useScrollToTop } from "@react-navigation/native";
+import api from "../../services/api";
+import { MentorEndpoints } from "../../constants/endpoint";
 
 const { width } = Dimensions.get("window");
 
@@ -20,17 +23,40 @@ export default function StudentChatPage() {
   const navigation = useNavigation<any>();
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [favorites, setFavorites] = useState<any[]>([]);
+  const [isLoadingFavorites, setIsLoadingFavorites] = useState(false);
   
   const scrollViewRef = useRef<ScrollView>(null);
   useScrollToTop(scrollViewRef);
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    // Simulate fetching data
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 1000);
+  const fetchFavorites = async () => {
+    setIsLoadingFavorites(true);
+    try {
+      const response = await api.get(MentorEndpoints.getFavoriteMentors);
+      if (response.status === 200) {
+        const fetchedFavs = response.data.map((m: any) => ({
+          id: m.mentorId,
+          name: m.user?.name || "Unknown",
+          iit: m.iit_name || "IIT",
+        }));
+        setFavorites(fetchedFavs);
+      }
+    } catch (error) {
+      console.error("Failed to fetch favorite mentors:", error);
+    } finally {
+      setIsLoadingFavorites(false);
+    }
   };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchFavorites();
+    setIsRefreshing(false);
+  };
+
+  useEffect(() => {
+    fetchFavorites();
+  }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('tabPress', (e: any) => {
@@ -41,12 +67,6 @@ export default function StudentChatPage() {
 
     return unsubscribe;
   }, [navigation]);
-
-  const favourites = [
-    { id: "1", name: "Suraj Jain", iit: "IIT Guwahati" },
-    { id: "2", name: "Gurvindar", iit: "IIT Delhi" },
-    { id: "3", name: "Suraj Jain", iit: "IIT Dwarka" },
-  ];
 
   const recentCalls = [
     { id: "4", name: "Suraj Jain", iit: "IIT Guwahati", day: "Friday", unread: 1 },
@@ -118,9 +138,9 @@ export default function StudentChatPage() {
       >
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Favourites</Text>
-          {favourites.length > 0 ? (
+          {favorites.length > 0 ? (
             <FlatList
-              data={favourites}
+              data={favorites}
               renderItem={renderFavourite}
               keyExtractor={(item) => item.id}
               horizontal
@@ -129,7 +149,11 @@ export default function StudentChatPage() {
             />
           ) : (
             <View style={styles.emptyContainerSmall}>
-              <Text style={styles.emptyTextSmall}>No favourite mentors yet.</Text>
+              {isLoadingFavorites ? (
+                <ActivityIndicator size="small" color="#2563eb" />
+              ) : (
+                <Text style={styles.emptyTextSmall}>No favourite mentors yet.</Text>
+              )}
             </View>
           )}
         </View>

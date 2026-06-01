@@ -128,6 +128,69 @@ router.get('/search', authenticateUser, async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/mentors/favorites
+router.get('/favorites', authenticateUser, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id as string;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { favouriteMentors: true }
+    });
+
+    if (!user || !user.favouriteMentors || user.favouriteMentors.length === 0) {
+      return res.json([]);
+    }
+
+    const mentors = await prisma.mentorProfile.findMany({
+      where: { mentorId: { in: user.favouriteMentors } },
+      include: { user: { select: { name: true, email: true } } }
+    });
+
+    res.json(mentors);
+  } catch (err) {
+    console.error('Error fetching favorite mentors:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// POST /api/mentors/:id/favorite
+router.post('/:id/favorite', authenticateUser, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id as string;
+    const mentorId = req.params.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { favouriteMentors: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let updatedFavorites = [...(user.favouriteMentors || [])];
+    const index = updatedFavorites.indexOf(mentorId);
+
+    if (index === -1) {
+      // Add to favorites
+      updatedFavorites.push(mentorId);
+    } else {
+      // Remove from favorites
+      updatedFavorites.splice(index, 1);
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { favouriteMentors: updatedFavorites }
+    });
+
+    res.json({ success: true, favouriteMentors: updatedFavorites });
+  } catch (err) {
+    console.error('Error toggling favorite:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 // GET /api/mentors/:id
 router.get('/:id', authenticateUser, async (req:Request, res:Response) => {
   try {

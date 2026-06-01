@@ -22,7 +22,7 @@ import MentorCard from "../../components/MentorCard";
 import { useAuth } from "../../services/retrieveKeys";
 import DialogBox from "../../components/DialogBox";
 import api from "../../services/api";
-import { WalletEndpoints, MentorEndpoints } from "../../constants/endpoint";
+import { WalletEndpoints, MentorEndpoints, LoginEndpoints } from "../../constants/endpoint";
 
 const { width, height } = Dimensions.get("window");
 
@@ -44,6 +44,7 @@ export default function StudentHomePage() {
   // Pagination states
   const [mentors, setMentors] = useState<any[]>([]);
   const [displayedMentors, setDisplayedMentors] = useState<any[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [offset, setOffset] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -52,6 +53,48 @@ export default function StudentHomePage() {
   const [onlineCount, setOnlineCount] = useState(0);
   const LIMIT = 10;
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const syncFavorites = async () => {
+    try {
+      // 1. Load from AsyncStorage immediately for fast UI
+      const localFavs = await AsyncStorage.getItem("favouriteMentors");
+      if (localFavs) {
+        setFavoriteIds(JSON.parse(localFavs));
+      }
+
+      // 2. Fetch from server in background
+      const response = await api.get(LoginEndpoints.whoAmI);
+      if (response.status === 200 && response.data.user) {
+        const serverFavs = response.data.user.favouriteMentors || [];
+        setFavoriteIds(serverFavs);
+        await AsyncStorage.setItem("favouriteMentors", JSON.stringify(serverFavs));
+      }
+    } catch (error) {
+      console.error("Failed to sync favorites:", error);
+    }
+  };
+
+  const handleToggleFavorite = async (mentorId: string) => {
+    // Optimistic UI update
+    let updatedFavs;
+    if (favoriteIds.includes(mentorId)) {
+      updatedFavs = favoriteIds.filter(id => id !== mentorId);
+    } else {
+      updatedFavs = [...favoriteIds, mentorId];
+    }
+    
+    setFavoriteIds(updatedFavs);
+    await AsyncStorage.setItem("favouriteMentors", JSON.stringify(updatedFavs));
+
+    // Server request
+    try {
+      await api.post(`${MentorEndpoints.toggleFavoriteMentor}${mentorId}/favorite`);
+    } catch (error) {
+      console.error("Failed to toggle favorite on server:", error);
+      // Revert if failed
+      syncFavorites();
+    }
+  };
 
   const fetchWalletBalance = async () => {
     try {
@@ -206,6 +249,7 @@ export default function StudentHomePage() {
       }
     };
     loadUser();
+    syncFavorites();
     fetchWalletBalance();
     fetchOnlineCount();
     fetchMentors(true); // Initial fetch
@@ -368,6 +412,8 @@ export default function StudentHomePage() {
         renderItem={({ item }) => (
           <MentorCard
             {...item}
+            isFavorite={favoriteIds.includes(item.id)}
+            onFavoritePress={() => handleToggleFavorite(item.id)}
             onPress={() => navigation.navigate("MentorProfile", { mentor: item })}
           />
         )}
