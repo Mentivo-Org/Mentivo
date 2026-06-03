@@ -24,6 +24,7 @@ model User {
   coachingCenterId String?   @db.Uuid
   created_at      DateTime  @default(now())
   profile_completed Boolean @default(false)
+  favouriteMentors String[] @default([])
   
   mentorProfile  MentorProfile?
   wallet         Wallet?
@@ -38,8 +39,22 @@ model User {
 
   payouts        Payout[]
   refreshTokens  RefreshToken[]
+  fcmTokens      FCMToken[]
+  notifications  Notification[]
 
   @@map("users")
+}
+
+model FCMToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  token     String   @unique
+  userId    String   @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("fcm_tokens")
 }
 
 model CoachingCenter {
@@ -142,6 +157,8 @@ model CallSession {
   mentor_id       String    @db.Uuid
   agoraChannelId  String?   @map("agora_channel_id")
   status          String    @default("pending")
+  scheduledAt     DateTime? @map("scheduled_at")
+  scheduledDuration Int?    @map("scheduled_duration")
   startedAt       DateTime? @map("started_at")
   endedAt         DateTime? @map("ended_at")
   durationSecs    Int       @default(0) @map("duration_secs")
@@ -159,6 +176,30 @@ model CallSession {
   rating          Rating?
 
   @@map("call_sessions")
+}
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  title     String
+  body      String
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model NotificationLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  sender         String
+  received_by_id String[]
+  title          String
+  body           String   @db.Text
+  sent_at        DateTime @default(now())
+
+  @@map("notification_logs")
 }
 
 model Rating {
