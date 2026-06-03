@@ -50,3 +50,8 @@ export const CallEndpoints = {
     end: (id: string) => `${baseUrl}/calls/${id}/end`,
     rate: (id: string) => `${baseUrl}/calls/${id}/rate`,
 }
+
+export const NotificationEndpoints = {
+    addFcmToken: `${baseUrl}/auth/fcm-token`,    // POST
+    updateFcmToken: `${baseUrl}/auth/fcm-token`  // PUT
+}

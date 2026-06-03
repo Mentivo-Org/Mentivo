@@ -13,6 +13,7 @@ import { authenticateUser } from "../auth/authenticateUser.ts";
 import { iitNameExporter } from "../controllers/iitNameController.ts";
 import { forgotPassword, resetPassword, verifyForgotPasswordOtp } from "../controllers/forgotPassword.ts";
 import { CompleteProfileMentor, CompleteProfileStudent, uploadFile } from "../controllers/completeProfile.ts";
+import { addFcmToken, updateFcmToken } from "../controllers/fcmController.ts";
 
 const app = Router();
 
@@ -23,6 +24,10 @@ app.get('/whoami', authenticateUser, whoAmI)
 app.post("/signup", signUpWithEmail);
 app.post("/login", loginWithEmail);
 app.post("/logout", logout);
+
+// FCM Tokens
+app.post("/fcm-token", authenticateUser, addFcmToken);
+app.put("/fcm-token", authenticateUser, updateFcmToken);
 
 // OTP Verification
 app.post("/otp/verify", verifyOtp);
