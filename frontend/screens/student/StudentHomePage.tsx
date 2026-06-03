@@ -22,7 +22,7 @@ import MentorCard from "../../components/MentorCard";
 import { useAuth } from "../../services/retrieveKeys";
 import DialogBox from "../../components/DialogBox";
 import api from "../../services/api";
-import { WalletEndpoints, MentorEndpoints, LoginEndpoints } from "../../constants/endpoint";
+import { WalletEndpoints, MentorEndpoints, LoginEndpoints, CallEndpoints } from "../../constants/endpoint";
 
 const { width, height } = Dimensions.get("window");
 
@@ -36,6 +36,7 @@ export default function StudentHomePage() {
   const [walletBalance, setWalletBalance] = useState(0);
   const slideAnim = useRef(new Animated.Value(-width * 0.7)).current;
   const flatListRef = useRef<FlatList>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   useScrollToTop(flatListRef);
 
   const [alertData, setAlertData] = useState({title: '', message: ''});
@@ -51,8 +52,54 @@ export default function StudentHomePage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [onlineCount, setOnlineCount] = useState(0);
+  const [upcomingCall, setUpcomingCall] = useState<any>(null);
+  const [syncCountdown, setSyncCountdown] = useState<string>("");
   const LIMIT = 10;
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const fetchUpcomingCall = async () => {
+    try {
+      const response = await api.get(CallEndpoints.getUpcoming);
+      if (response.status === 200 && response.data) {
+        setUpcomingCall(response.data);
+        calculateCountdown(response.data.scheduledAt);
+      } else {
+        setUpcomingCall(null);
+        setSyncCountdown("");
+      }
+    } catch (error) {
+      console.error("Failed to fetch upcoming call:", error);
+    }
+  };
+
+  const calculateCountdown = (scheduledAt: string) => {
+    const now = new Date();
+    const target = new Date(scheduledAt);
+    const diffMs = target.getTime() - now.getTime();
+    
+    if (diffMs <= 0) {
+      setSyncCountdown("Now");
+      return;
+    }
+
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    if (diffMins < 60) {
+      setSyncCountdown(`in ${diffMins} min`);
+    } else {
+      const hours = Math.floor(diffMins / 60);
+      const mins = diffMins % 60;
+      setSyncCountdown(`in ${hours}h ${mins}m`);
+    }
+  };
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (upcomingCall) {
+      interval = setInterval(() => {
+        calculateCountdown(upcomingCall.scheduledAt);
+      }, 60000); // Update every minute
+    }
+    return () => clearInterval(interval);
+  }, [upcomingCall]);
 
   const syncFavorites = async () => {
     try {
@@ -149,7 +196,7 @@ export default function StudentHomePage() {
           year: `Y${m.year}`,
           rating: m.avg_rating || 0,
           calls: m.total_calls || 0,
-          price: 10,
+          price: m.rate_per_min || 10,
           isFavorite: false,
           isOnline: m.isOnline,
         }));
@@ -197,7 +244,7 @@ export default function StudentHomePage() {
           year: `Y${m.year}`,
           rating: m.avg_rating || 0,
           calls: m.total_calls || 0,
-          price: 10, // Assuming fixed price for now, or fetch from backend
+          price: m.rate_per_min || 10,
           isFavorite: false, // Update if you have a favorites system
           isOnline: m.isOnline,
         }));
@@ -227,6 +274,7 @@ export default function StudentHomePage() {
     setIsRefreshing(true);
     fetchWalletBalance();
     fetchOnlineCount();
+    fetchUpcomingCall();
     fetchMentors(true);
   };
 
@@ -252,6 +300,7 @@ export default function StudentHomePage() {
     syncFavorites();
     fetchWalletBalance();
     fetchOnlineCount();
+    fetchUpcomingCall();
     fetchMentors(true); // Initial fetch
   }, []);
 
@@ -300,36 +349,18 @@ export default function StudentHomePage() {
         
         <View style={styles.separator} />
 
-        <View style={styles.countdownRow}>
-          <View style={styles.countdownItem}>
-            <View style={styles.countdownValueContainer}>
-              <Text style={styles.countdownValue}>98</Text>
-              <View style={styles.countdownUnitContainer}>
-                <Text style={styles.countdownUnit}>Days</Text>
-                <Text style={styles.countdownUnit}>Left</Text>
-              </View>
+        {syncCountdown ? (
+          <TouchableOpacity style={styles.mentorSyncButton}>
+            <Text style={styles.mentorSyncText}>Mentor Sync </Text>
+            <View style={styles.syncTimerBadge}>
+              <Text style={styles.syncTimerText}>{syncCountdown}</Text>
             </View>
-            <Text style={styles.examText}>Jee Mains</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.noSyncContainer}>
+            <Text style={styles.noSyncText}>No calls scheduled for today</Text>
           </View>
-
-          <View style={styles.countdownItem}>
-            <View style={styles.countdownValueContainer}>
-              <Text style={styles.countdownValue}>130</Text>
-              <View style={styles.countdownUnitContainer}>
-                <Text style={styles.countdownUnit}>Days</Text>
-                <Text style={styles.countdownUnit}>Left</Text>
-              </View>
-            </View>
-            <Text style={styles.examText}>Jee Advanced</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity style={styles.mentorSyncButton}>
-          <Text style={styles.mentorSyncText}>Mentor Sync </Text>
-          <View style={styles.syncTimerBadge}>
-            <Text style={styles.syncTimerText}>in 10 min</Text>
-          </View>
-        </TouchableOpacity>
+        )}
       </View>
 
       {/* Filters */}
@@ -842,5 +873,14 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: '#444653',
     textAlign: 'center',
+  },
+  noSyncContainer: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  noSyncText: {
+    fontSize: 12,
+    color: '#444653',
+    fontStyle: 'italic',
   },
 });

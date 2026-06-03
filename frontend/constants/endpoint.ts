@@ -37,3 +37,14 @@ export const WalletEndpoints = {
     topup: `${baseUrl}/wallet/topup`,
     confirm: `${baseUrl}/wallet/topup/confirm`
 }
+
+export const CallEndpoints = {
+    initiate: `${baseUrl}/calls/initiate`,
+    schedule: `${baseUrl}/calls/schedule`,
+    getStudentSessions: `${baseUrl}/calls/student/sessions`,
+    getUpcoming: `${baseUrl}/calls/student/upcoming`,
+    start: (id: string) => `${baseUrl}/calls/${id}/start`,
+    heartbeat: (id: string) => `${baseUrl}/calls/${id}/heartbeat`,
+    end: (id: string) => `${baseUrl}/calls/${id}/end`,
+    rate: (id: string) => `${baseUrl}/calls/${id}/rate`,
+}

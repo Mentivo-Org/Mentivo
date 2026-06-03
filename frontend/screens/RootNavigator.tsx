@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { createStackNavigator } from "@react-navigation/stack";
+import { createStackNavigator, TransitionPresets } from "@react-navigation/stack";
 import { NavigationContainer } from "@react-navigation/native";
 
 import { useAuth } from "../services/retrieveKeys";
@@ -20,6 +20,7 @@ import ResetPassword from "./ResetPassword";
 import StudentHomePage from "./student/StudentHomePage";
 import YourSession from "./student/YourSession";
 import MentorProfile from "./student/MentorProfile";
+import ScheduleCall from "./student/ScheduleCall";
 import PaymentPage from "./student/PaymentPage";
 import StudentChatPage from "./student/StudentChatPage";
 import StudentAskPage from "./student/StudentAskPage";
@@ -30,7 +31,7 @@ import { LoginEndpoints } from "../constants/endpoint";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DialogBox from "../components/DialogBox";
 import { Image } from "expo-image";
-import { StyleSheet, View, TouchableOpacity } from "react-native";
+import { StyleSheet, View, TouchableOpacity, Animated } from "react-native";
 
 import linking from "../linking";
 
@@ -47,17 +48,113 @@ interface ProfileInfoParams {
   state: string
 }
 
+function TabItem({ route, isFocused, onPress }: any) {
+  const animatedValue = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.spring(animatedValue, {
+      toValue: isFocused ? 1 : 0,
+      useNativeDriver: false,
+      friction: 8,
+      tension: 40,
+    }).start();
+  }, [isFocused]);
+
+  const translateY = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -12],
+  });
+
+  const backgroundColor = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["transparent", "#f5f5f5f5"],
+  });
+
+  const iconContainerBackground = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["transparent", "white"],
+  });
+
+  const iconColor = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#ffffff", "#2563eb"],
+  });
+
+  let icon;
+  if (route.name === "Home") {
+    icon = require("../app-assets/mentoring-icon.svg");
+  } else if (route.name === "Chat") {
+    icon = require("../app-assets/chat-round.svg");
+  } else if (route.name === "Ask") {
+    icon = require("../app-assets/chat-round.svg");
+  }
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={1}
+      style={tabStyles.tabItem}
+    >
+      <Animated.View
+        style={[
+          tabStyles.animatedWrapper,
+          {
+            transform: [{ translateY }],
+          },
+        ]}
+      >
+        <Animated.View
+          style={[
+            tabStyles.activeCircle,
+            {
+              backgroundColor: backgroundColor,
+            },
+          ]}
+        />
+        <Animated.View
+          style={[
+            tabStyles.iconContainer,
+            {
+              backgroundColor: iconContainerBackground,
+              // Shadow animation is tricky with native driver false on some platforms, 
+              // but we can control elevation/opacity if needed.
+              elevation: isFocused ? 4 : 0,
+              shadowOpacity: isFocused ? 0.25 : 0,
+            },
+          ]}
+        >
+          {route.name === "Ask" ? (
+            <AnimatedIonicons
+              name={isFocused ? "add-circle" : "add-circle-outline"}
+              size={26}
+              style={{ color: iconColor }}
+            />
+          ) : (
+            <AnimatedImage
+              source={icon}
+              style={tabStyles.icon}
+              tintColor={isFocused ? "#2563eb" : "#ffffff"}
+            />
+          )}
+        </Animated.View>
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
+
+const AnimatedIonicons = Animated.createAnimatedComponent(Ionicons);
+const AnimatedImage = Animated.createAnimatedComponent(Image);
+
 function CustomTabBar({ state, descriptors, navigation }: any) {
   return (
     <View style={tabStyles.container}>
       <View style={tabStyles.pill}>
         {state.routes.map((route: any, index: number) => {
-          const { options } = descriptors[route.key];
           const isFocused = state.index === index;
 
           const onPress = () => {
             const event = navigation.emit({
-              type: 'tabPress',
+              type: "tabPress",
               target: route.key,
               canPreventDefault: true,
             });
@@ -67,52 +164,13 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
             }
           };
 
-          let icon;
-          if (route.name === "Home") {
-            icon = require("../app-assets/mentoring-icon.svg");
-          } else if (route.name === "Chat") {
-            icon = require("../app-assets/chat-round.svg");
-          } else if (route.name === "Ask") {
-            // Re-using chat round for now or circle plus if available
-            icon = require("../app-assets/chat-round.svg"); 
-          }
-
           return (
-            <TouchableOpacity
+            <TabItem
               key={route.name}
+              route={route}
+              isFocused={isFocused}
               onPress={onPress}
-              activeOpacity={1}
-              style={tabStyles.tabItem}
-            >
-              {isFocused ? (
-                <View style={tabStyles.activeIndicatorContainer}>
-                  <View style={tabStyles.activeCircle} />
-                  <View style={tabStyles.activeIconBox}>
-                    {route.name === "Ask" ? (
-                      <Ionicons name="add-circle" size={26} color="#2563eb" />
-                    ) : (
-                      <Image
-                        source={icon}
-                        style={tabStyles.activeIcon}
-                        tintColor="#2563eb"
-                      />
-                    )}
-                  </View>
-                </View>
-              ) : (
-                <View style={tabStyles.inactiveIconWrapper}>
-                  {route.name === "Ask" ? (
-                    <Ionicons name="add-circle-outline" size={26} color="white" />
-                  ) : (
-                    <Image
-                      source={icon}
-                      style={tabStyles.inactiveIcon}
-                      tintColor="white"
-                    />
-                  )}
-                </View>
-              )}
-            </TouchableOpacity>
+            />
           );
         })}
       </View>
@@ -219,10 +277,17 @@ export default function RootNavigator() {
   return (
     <NavigationContainer>
       {isSignedIn ? (
-        <AuthStack.Navigator id="auth-stack" screenOptions={{ headerShown: false }}>
+        <AuthStack.Navigator
+          id="auth-stack"
+          screenOptions={{
+            headerShown: false,
+            ...TransitionPresets.SlideFromRightIOS,
+          }}
+        >
           <AuthStack.Screen name="Main" component={AuthenticatedTabs} />
           <AuthStack.Screen name="YourSession" component={YourSession} />
           <AuthStack.Screen name="MentorProfile" component={MentorProfile} />
+          <AuthStack.Screen name="ScheduleCall" component={ScheduleCall} />
           <AuthStack.Screen name="Payment" component={PaymentPage} />
         </AuthStack.Navigator>
       ) : (
@@ -230,6 +295,7 @@ export default function RootNavigator() {
           id="unauth-stack"
           screenOptions={{
             headerShown: false,
+            ...TransitionPresets.SlideFromRightIOS,
           }}
           initialRouteName={initialScreen}
           linking={linking}
@@ -258,22 +324,22 @@ export default function RootNavigator() {
 
 const tabStyles = StyleSheet.create({
   container: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 30,
     left: 0,
     right: 0,
-    alignItems: 'center',
-    backgroundColor: 'transparent',
+    alignItems: "center",
+    backgroundColor: "transparent",
     elevation: 0,
   },
   pill: {
-    flexDirection: 'row',
-    backgroundColor: '#2563eb',
-    width: '55%',
-    height: '90%',
+    flexDirection: "row",
+    backgroundColor: "#2563eb",
+    width: "55%",
+    height: "90%",
     borderRadius: 43,
-    justifyContent: 'space-evenly',
-    alignItems: 'center',
+    justifyContent: "space-evenly",
+    alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
@@ -281,48 +347,35 @@ const tabStyles = StyleSheet.create({
     elevation: 8,
   },
   tabItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     width: 60,
     height: 60,
   },
-  activeIndicatorContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'absolute',
-    top: -12, // Significant jump up from the center of the pill
+  animatedWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: 60,
+    height: 60,
   },
   activeCircle: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    // backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    backgroundColor: '#f5f5f5f5', 
-    position: 'absolute',
+    position: "absolute",
   },
-  activeIconBox: {
-    backgroundColor: 'white',
+  iconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
     shadowRadius: 2,
-    elevation: 4,
   },
-  activeIcon: {
+  icon: {
     width: 26,
     height: 26,
   },
-  inactiveIconWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  inactiveIcon: {
-    width: 26,
-    height: 26,
-  }
 });

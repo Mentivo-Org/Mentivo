@@ -1,38 +1,52 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import SessionCard from '../../components/SessionCard';
+import api from '../../services/api';
+import { CallEndpoints } from '../../constants/endpoint';
 
 export default function YourSession() {
   const navigation = useNavigation<any>();
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data for sessions
-  const sessions = [
-    {
-      id: '1',
-      name: 'Suraj Jain',
-      iit: 'IIT Guwahati',
-      branch: 'CSE',
-      year: 'Y3',
-      rating: 4.6,
-      calls: 125,
-      duration: '02H 05M',
-      isFavorite: true,
-    },
-    {
-      id: '2',
-      name: 'Rahman Dakait',
-      iit: 'IIT Delhi',
-      branch: 'MNC',
-      year: 'Y2',
-      rating: 4.2,
-      calls: 99,
-      duration: '07H 54M',
-      isFavorite: true,
-    },
-  ];
+  const fetchSessions = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get(CallEndpoints.getStudentSessions);
+      if (response.status === 200) {
+        // Transform backend data to frontend expectations
+        const formatted = response.data.map((s: any) => {
+          const durationMins = Math.floor(s.durationSecs / 60);
+          const durationSecs = s.durationSecs % 60;
+          const durationStr = `${durationMins}M ${durationSecs}S`;
+
+          return {
+            id: s.id,
+            name: s.mentor?.name || 'Unknown Mentor',
+            iit: s.mentor?.mentorProfile?.iit_name || 'Unknown IIT',
+            branch: s.mentor?.mentorProfile?.branch || '',
+            year: s.mentor?.mentorProfile?.year ? `Y${s.mentor.mentorProfile.year}` : '',
+            rating: s.mentor?.mentorProfile?.avg_rating || 0,
+            calls: s.mentor?.mentorProfile?.total_calls || 0,
+            duration: durationStr,
+            isFavorite: false, // You could sync this from favoriteIds if needed
+          };
+        });
+        setSessions(formatted);
+      }
+    } catch (error) {
+      console.error('Failed to fetch sessions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSessions();
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -50,11 +64,23 @@ export default function YourSession() {
         <Text style={styles.title}>Your session</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {sessions.map((session) => (
-          <SessionCard key={session.id} {...session} />
-        ))}
-      </ScrollView>
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#2563eb" />
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {sessions.length > 0 ? (
+            sessions.map((session) => (
+              <SessionCard key={session.id} {...session} />
+            ))
+          ) : (
+            <View style={styles.center}>
+              <Text style={styles.emptyText}>No sessions found</Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -102,5 +128,15 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingBottom: 20,
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 100,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#444653',
   },
 });

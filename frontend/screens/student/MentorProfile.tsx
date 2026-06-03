@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import api from '../../services/api';
+import { MentorEndpoints } from '../../constants/endpoint';
 
 const { width, height } = Dimensions.get("window");
 
@@ -14,6 +16,8 @@ export default function MentorProfile() {
   // Extract mentor data from params, with fallbacks
   const passedMentor = route.params?.mentor || {};
   
+  const [isFavorite, setIsFavorite] = useState(passedMentor.isFavorite || false);
+
   const mentor = {
     id: passedMentor.id || route.params?.mentorId,
     name: passedMentor.name || 'Unknown Mentor',
@@ -24,9 +28,21 @@ export default function MentorProfile() {
     reviews: passedMentor.reviews || 0,
     sessions: passedMentor.calls || 0,
     price: passedMentor.price || 10,
-    isFavorite: passedMentor.isFavorite || false,
     isOnline: passedMentor.isOnline || false,
     bio: passedMentor.bio || 'Available for mentoring sessions.',
+  };
+
+  const toggleFavorite = async () => {
+    try {
+      const newStatus = !isFavorite;
+      setIsFavorite(newStatus);
+      
+      await api.post(`${MentorEndpoints.toggleFavoriteMentor}${mentor.id}/favorite`);
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      // Revert state if API fails
+      setIsFavorite(isFavorite);
+    }
   };
 
   return (
@@ -58,14 +74,14 @@ export default function MentorProfile() {
         </View>
 
         <View style={styles.statsRow}>
-          <View style={styles.statItem}>
+          <TouchableOpacity style={styles.statItem} onPress={toggleFavorite}>
             <Image 
               source={require('../../app-assets/heart-icon.svg')} 
               style={styles.statIcon} 
-              tintColor={mentor.isFavorite ? "#2563eb" : "#444653"}
+              tintColor={isFavorite ? "#2563eb" : "#444653"}
             />
             <Text style={styles.statLabel}>MY FAVOURITE</Text>
-          </View>
+          </TouchableOpacity>
           
           <View style={styles.statItem}>
             <Text style={styles.statValue}>{mentor.sessions}</Text>
@@ -98,7 +114,13 @@ export default function MentorProfile() {
             <Text style={styles.chatButtonText}>Chat</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.scheduleButton}>
+          <TouchableOpacity 
+            style={styles.scheduleButton}
+            onPress={() => navigation.navigate('ScheduleCall', { 
+              mentorName: mentor.name,
+              mentorId: mentor.id 
+            })}
+          >
             <Text style={styles.scheduleButtonText}>Schedule Call</Text>
           </TouchableOpacity>
         </View>

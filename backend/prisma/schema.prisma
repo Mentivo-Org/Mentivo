@@ -143,6 +143,8 @@ model CallSession {
   mentor_id       String    @db.Uuid
   agoraChannelId  String?   @map("agora_channel_id")
   status          String    @default("pending")
+  scheduledAt     DateTime? @map("scheduled_at")
+  scheduledDuration Int?    @map("scheduled_duration")
   startedAt       DateTime? @map("started_at")
   endedAt         DateTime? @map("ended_at")
   durationSecs    Int       @default(0) @map("duration_secs")
