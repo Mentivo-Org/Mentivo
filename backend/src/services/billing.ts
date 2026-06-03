@@ -1,6 +1,5 @@
 import prisma from '../config/db.ts';
 
-const RATE_PER_MIN = 10;   // ₹10 per minute
 const MENTOR_SHARE = 0.70; // 70%
 const FREE_SECONDS = 300;  // first 5 minutes free
 
@@ -19,24 +18,37 @@ export async function settleBilling(sessionId: string, durationSecs: number, rec
       return; 
     }
 
-    // Now that we have the lock, fetch the session details
+    // Now that we have the lock, fetch the session details with all required relations
     const session = await tx.callSession.findUnique({
-      where: { id: sessionId }
+      where: { id: sessionId },
+      include: {
+        mentor: {
+          include: {
+            mentorProfile: true
+          }
+        },
+        student: {
+          include: {
+            wallet: true
+          }
+        }
+      }
     });
 
     if (!session) return;
 
     // 2. Calculation
+    const ratePerMin = Number(session.mentor?.mentorProfile?.rate_per_min || 10);
     const isFree = session.is_free; 
     const billableSecs = isFree ? Math.max(0, durationSecs - FREE_SECONDS) : durationSecs;
     const billableMins = Math.ceil(billableSecs / 60);
-    const totalCharge = billableMins * RATE_PER_MIN;
+    const totalCharge = billableMins * ratePerMin;
     const mentorEarning = totalCharge * MENTOR_SHARE;
     const platformFee = totalCharge - mentorEarning;
 
     if (totalCharge > 0) {
       // 3. Debit student wallet.
-      const studentWallet = await tx.wallet.findUnique({ where: { userId: session.student_id } });
+      const studentWallet = session.student.wallet;
       const amountToCharge = studentWallet && Number(studentWallet.balance) >= totalCharge 
         ? totalCharge 
         : Number(studentWallet?.balance || 0);
@@ -65,13 +77,13 @@ export async function settleBilling(sessionId: string, durationSecs: number, rec
       });
 
       // 4. Handle 5% revenue share for CoachingCenterBalance if applicable
-      const student = await tx.user.findUnique({ where: { id: session.student_id } });
-      if (student?.coachingCenterId) {
+      const coachingCenterId = session.student.coachingCenterId;
+      if (coachingCenterId) {
         const centerShare = amountToCharge * 0.05; // 5%
         await tx.coachingCenterBalance.upsert({
-          where: { centerId: student.coachingCenterId },
+          where: { centerId: coachingCenterId },
           create: {
-            centerId: student.coachingCenterId,
+            centerId: coachingCenterId,
             pendingPayout: centerShare,
             totalEarned: centerShare
           },
