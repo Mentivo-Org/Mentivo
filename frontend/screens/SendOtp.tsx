@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   View,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  AppState,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -21,12 +22,21 @@ const SendOtpScreen = () => {
   const { showLoading, hideLoading } = useLoading();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { email, name, role, phone, forgotPass } = route.params;
+  const { email, name, role, phone, forgotPass, serverTime } = route.params;
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const inputs = useRef<any>([]);
+  
+  // Timer State
   const [secondsLeft, setSecondsLeft] = useState<number>(60);
+  
+  // Calculate initial offset if serverTime is provided, otherwise default to 0
+  const initialOffset = serverTime ? serverTime - Date.now() : 0;
+  const offsetRef = useRef<number>(initialOffset);
+  const endTimeRef = useRef<number | null>(Date.now() + offsetRef.current + 60000);
+  
   const [resend, setResend] = useState<boolean>(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
   const [alertData, setAlertData] = useState({ title: "", message: "" });
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
 
@@ -96,7 +106,7 @@ const SendOtpScreen = () => {
           role,
         });
         if (response.status === 200) {
-          await AsyncStorage.setItem("acccessToken", response.data.accessToken);
+          await AsyncStorage.setItem("accessToken", response.data.accessToken);
           await AsyncStorage.setItem(
             "refreshToken",
             response.data.refreshToken,
@@ -160,11 +170,14 @@ const SendOtpScreen = () => {
     showLoading("Resending OTP...");
     try {
       const response = await api.post(LoginEndpoints.resendOtp, { email });
-      if (response.status === 201) {
+      if (response.status === 201 || response.status === 200) {
+        offsetRef.current = response.data.serverTime ? response.data.serverTime - Date.now() : 0;
+        endTimeRef.current = Date.now() + offsetRef.current + 60000;
         setSecondsLeft(60);
         setResend(false);
         setOtp(["", "", "", "", "", ""]);
         inputs.current[0].focus();
+        startTimer();
       } else {
         setAlertData({
           title: "Resend OTP Failed",
@@ -183,21 +196,55 @@ const SendOtpScreen = () => {
     }
   };
 
-  useEffect(() => {
-    if (resend === false && secondsLeft > 0) {
-      timerRef.current = setInterval(() => {
-        setSecondsLeft((prev) => prev - 1);
-      }, 1000);
-    } else if (secondsLeft === 0) {
-      if (timerRef.current !== null) {
-        clearInterval(timerRef.current);
+  const calculateTimeLeft = useCallback(() => {
+    if (!endTimeRef.current) return 0;
+    const currentAdjustedTime = Date.now() + offsetRef.current;
+    const diff = Math.floor((endTimeRef.current - currentAdjustedTime) / 1000);
+    return Math.max(0, diff);
+  }, []);
+
+  const startTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    
+    setSecondsLeft(calculateTimeLeft());
+    
+    timerRef.current = setInterval(() => {
+      const remaining = calculateTimeLeft();
+      setSecondsLeft(remaining);
+      
+      if (remaining <= 0) {
+        if (timerRef.current) clearInterval(timerRef.current);
+        setResend(false);
       }
-      setResend(false);
-    }
+    }, 1000);
+  }, [calculateTimeLeft]);
+
+  // Initial timer start
+  useEffect(() => {
+    startTimer();
     return () => {
-      if (timerRef.current !== null) clearInterval(timerRef.current);
+      if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [resend, secondsLeft]);
+  }, [startTimer]);
+
+  // Handle AppState changes (background to foreground)
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (nextAppState === "active") {
+        const remaining = calculateTimeLeft();
+        setSecondsLeft(remaining);
+        if (remaining > 0) {
+          startTimer();
+        } else {
+          if (timerRef.current) clearInterval(timerRef.current);
+        }
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [calculateTimeLeft, startTimer]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -228,7 +275,7 @@ const SendOtpScreen = () => {
             {otp.map((digit, index) => (
               <TextInput
                 key={index}
-                ref={(ref) => (inputs.current[index] = ref)}
+                ref={(ref) => { inputs.current[index] = ref; }}
                 style={styles.otpInput}
                 value={digit}
                 onChangeText={(value) => handleOtpChange(value, index)}
@@ -246,10 +293,10 @@ const SendOtpScreen = () => {
               <Text
                 style={[
                   styles.resendAction,
-                  secondsLeft == 0 ? { color: "blue" } : {},
+                  secondsLeft === 0 ? { color: "blue" } : {},
                 ]}
               >
-                Resend {secondsLeft !== 0 ? `in ${secondsLeft}` : "code"}
+                Resend {secondsLeft !== 0 ? `in ${secondsLeft}s` : "code"}
               </Text>
             </TouchableOpacity>
           </View>
