@@ -41,6 +41,8 @@ export const WalletEndpoints = {
 export const CallEndpoints = {
     initiate: `${baseUrl}/calls/initiate`,
     schedule: `${baseUrl}/calls/schedule`,
+    getMentorSchedule: (id: string) => `${baseUrl}/calls/mentor/${id}/schedule`,
+    getStudentSchedule: `${baseUrl}/calls/student/schedule`,
     getStudentSessions: `${baseUrl}/calls/student/sessions`,
     getUpcoming: `${baseUrl}/calls/student/upcoming`,
     start: (id: string) => `${baseUrl}/calls/${id}/start`,

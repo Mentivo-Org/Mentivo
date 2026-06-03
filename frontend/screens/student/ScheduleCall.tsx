@@ -11,7 +11,7 @@ const { width } = Dimensions.get('window');
 
 const timeSlots = [
   { time: '10:00 AM' },
-  { time: '11:00 AM', selected: true },
+  { time: '11:00 AM' },
   { time: '05:00 PM' },
   { time: '07:00 PM' },
   { time: '08:00 PM' },
@@ -31,6 +31,7 @@ export default function ScheduleCall() {
 
   const [alertData, setAlertData] = useState({title: "", message: ""});
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
+  const [existingSchedules, setExistingSchedules] = useState<any[]>([]);
 
   // Generate the next 14 days starting from today
   const dynamicDays = useMemo(() => {
@@ -53,26 +54,66 @@ export default function ScheduleCall() {
   const [selectedLength, setSelectedLength] = useState('15 min');
   const [loading, setLoading] = useState(false);
 
+  React.useEffect(() => {
+    const fetchSchedules = async () => {
+      if (!mentorId) return;
+      try {
+        const [mentorRes, studentRes] = await Promise.all([
+          api.get(CallEndpoints.getMentorSchedule(mentorId)),
+          api.get(CallEndpoints.getStudentSchedule)
+        ]);
+        
+        const combined = [
+          ...(mentorRes.status === 200 ? mentorRes.data.scheduledCalls : []),
+          ...(studentRes.status === 200 ? studentRes.data.scheduledCalls : [])
+        ];
+        
+        setExistingSchedules(combined);
+      } catch (error) {
+        console.error('Failed to fetch schedules:', error);
+      }
+    };
+    fetchSchedules();
+  }, [mentorId]);
+
   const isTimePast = (timeStr: string) => {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
     
-    // Only check if selected day is today
-    if (selectedDay !== todayStr) return false;
-
+    // 1. Check if the slot is in the past (if today)
     const [time, modifier] = timeStr.split(' ');
     let [hours, minutes] = time.split(':').map(Number);
-
     if (modifier === 'PM' && hours < 12) hours += 12;
     if (modifier === 'AM' && hours === 12) hours = 0;
 
-    const slotTime = new Date();
+    const slotTime = new Date(selectedDay);
     slotTime.setHours(hours, minutes, 0, 0);
 
-    // Disable if the slot is within the next 1 hour
-    const bufferTime = new Date(now.getTime() + 60 * 60 * 1000);
+    if (selectedDay === todayStr) {
+      // Disable if the slot is within the next 1 hour
+      const bufferTime = new Date(now.getTime() + 60 * 60 * 1000);
+      if (slotTime < bufferTime) return true;
+    }
 
-    return slotTime < bufferTime;
+    // 2. Check for conflicts with existing schedules (30 mins buffer)
+    const durationMins = parseInt(selectedLength.split(' ')[0]);
+    const slotStartTime = slotTime.getTime();
+    const slotEndTime = slotStartTime + (durationMins * 60 * 1000);
+    const slotBufferEnd = slotEndTime + (30 * 60 * 1000);
+
+    for (const schedule of existingSchedules) {
+      const existStart = new Date(schedule.scheduledAt).getTime();
+      const existEnd = existStart + (schedule.scheduledDuration * 60 * 1000);
+      const existBufferEnd = existEnd + (30 * 60 * 1000);
+
+      // Overlap logic: StartA < EndB && EndA > StartB
+      // Using buffer on both to ensure 30 min gap either way
+      if (slotStartTime < existBufferEnd && slotBufferEnd > existStart) {
+        return true;
+      }
+    }
+
+    return false;
   };
 
   const handleConfirm = async () => {

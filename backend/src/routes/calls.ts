@@ -106,6 +106,36 @@ router.post('/schedule', authenticateUser, async (req, res) => {
       return res.status(404).json({ error: 'Mentor not found' });
     }
 
+    // 2.5 Check for conflicts (30 mins buffer)
+    const existingCalls = await prisma.callSession.findMany({
+      where: {
+        OR: [
+          { mentor_id: mentorId },
+          { student_id: studentId as string }
+        ],
+        status: 'scheduled',
+        scheduledAt: { gte: new Date() }
+      }
+    });
+
+    const newStart = scheduledDate.getTime();
+    const newEnd = newStart + (durationMins * 60 * 1000);
+    const newBufferEnd = newEnd + (30 * 60 * 1000);
+
+    for (const call of existingCalls) {
+      if (call.scheduledAt && call.scheduledDuration) {
+        const existStart = call.scheduledAt.getTime();
+        const existEnd = existStart + (call.scheduledDuration * 60 * 1000);
+        const existBufferEnd = existEnd + (30 * 60 * 1000);
+
+        // Check if new call (with its 30-min buffer) overlaps existing call (with its buffer)
+        if (newStart < existBufferEnd && newBufferEnd > existStart) {
+          const conflictType = call.mentor_id === mentorId ? 'mentor' : 'your';
+          return res.status(409).json({ error: `Time slot conflicts with an existing call for ${conflictType} (requires 30-min gap).` });
+        }
+      }
+    }
+
     // 3. Create Session with status 'scheduled'
     const channelName = generateChannelName(studentId as string, mentorId);
     if (!channelName) {
@@ -136,6 +166,29 @@ router.post('/schedule', authenticateUser, async (req, res) => {
   }
 });
 
+// GET /api/calls/mentor/:mentorId/schedule
+router.get('/mentor/:mentorId/schedule', async (req, res) => {
+  try {
+    const { mentorId } = req.params;
+    const now = new Date();
+    const scheduledCalls = await prisma.callSession.findMany({
+      where: {
+        mentor_id: mentorId,
+        status: 'scheduled',
+        scheduledAt: { gte: now }
+      },
+      select: {
+        scheduledAt: true,
+        scheduledDuration: true
+      }
+    });
+    res.json({ scheduledCalls });
+  } catch (error) {
+    console.error('Error fetching mentor schedule:', error);
+    res.status(500).json({ error: 'Failed to fetch schedule' });
+  }
+});
+
 // GET /api/calls/student/sessions
 router.get('/student/sessions', authenticateUser, async (req, res) => {
   try {
@@ -158,6 +211,28 @@ router.get('/student/sessions', authenticateUser, async (req, res) => {
   } catch (e) {
     console.error('Fetch student sessions error:', e);
     res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+// GET /api/calls/student/schedule
+router.get('/student/schedule', authenticateUser, async (req, res) => {
+  try {
+    const now = new Date();
+    const scheduledCalls = await prisma.callSession.findMany({
+      where: {
+        student_id: req.user?.id,
+        status: 'scheduled',
+        scheduledAt: { gte: now }
+      },
+      select: {
+        scheduledAt: true,
+        scheduledDuration: true
+      }
+    });
+    res.json({ scheduledCalls });
+  } catch (error) {
+    console.error('Error fetching student schedule:', error);
+    res.status(500).json({ error: 'Failed to fetch schedule' });
   }
 });
 
