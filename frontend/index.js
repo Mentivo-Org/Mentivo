@@ -22,7 +22,13 @@ setupNotifee();
 // Background FCM Message Handler
 const messaging = getMessaging();
 setBackgroundMessageHandler(messaging, async (remoteMessage) => {
-  console.log('Message handled in the background!', remoteMessage);
+  console.log('--- [FCM MESSAGE RECEIVED (BACKGROUND)] ---');
+  console.log('Message ID:', remoteMessage.messageId);
+  console.log('Payload:', JSON.stringify(remoteMessage, null, 2));
+
+  if (remoteMessage.data?.source === 'admin-dashboard') {
+    console.log('>>> DETECTED: Push notification from Admin Dashboard');
+  }
   
   if (remoteMessage.data?.type === 'incoming_call') {
     const { callId, channelName, callerName } = remoteMessage.data;

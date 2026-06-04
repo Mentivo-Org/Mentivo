@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getMessaging, requestPermission, getToken, onTokenRefresh, AuthorizationStatus } from '@react-native-firebase/messaging';
+import { getMessaging, requestPermission, getToken, onTokenRefresh, AuthorizationStatus, onMessage } from '@react-native-firebase/messaging';
+import notifee, { AndroidImportance } from '@notifee/react-native';
 import api from './api';
 import { NotificationEndpoints } from '../constants/endpoint';
 import { useLoading } from '../context/LoadingContext';
@@ -70,6 +71,23 @@ const handleLogout = async ()=> {
       offlineAccess: true, 
       forceCodeForRefreshToken: true,
     });
+    
+    // Request notification permission and setup channel on first launch
+    const initializeNotifications = async () => {
+      try {
+        await notifee.requestPermission();
+        await notifee.createChannel({
+          id: 'default',
+          name: 'Default Channel',
+          importance: AndroidImportance.HIGH,
+        });
+        console.log('Notifications initialized on app launch');
+      } catch (err) {
+        console.error('Failed to initialize notifications on launch:', err);
+      }
+    };
+    initializeNotifications();
+    
     setIsLoading(false);
   }, []);
 
@@ -80,9 +98,9 @@ const handleLogout = async ()=> {
     const setupFCM = async () => {
       try {
         console.log('Starting FCM setup...');
-        const messaging = getMessaging();
+        const messagingInstance = getMessaging();
         
-        const authStatus = await requestPermission(messaging);
+        const authStatus = await requestPermission(messagingInstance);
         const enabled =
           authStatus === AuthorizationStatus.AUTHORIZED ||
           authStatus === AuthorizationStatus.PROVISIONAL;
@@ -90,7 +108,7 @@ const handleLogout = async ()=> {
         console.log('FCM Authorization status:', authStatus, 'Enabled:', enabled);
 
         if (enabled) {
-          const token = await getToken(messaging);
+          const token = await getToken(messagingInstance);
           console.log('FCM Token obtained:', token ? 'YES' : 'NO');
           
           if (token) {
@@ -124,11 +142,51 @@ const handleLogout = async ()=> {
 
     setupFCM();
 
-    // Listen to token refresh
+    const messaging = getMessaging();
+
+    // Listen to foreground notifications
+    const unsubscribeOnMessage = onMessage(messaging, async (remoteMessage) => {
+      console.log('--- [FCM MESSAGE RECEIVED (FOREGROUND)] ---');
+      console.log('Payload:', JSON.stringify(remoteMessage, null, 2));
+
+      if (remoteMessage.data?.source === 'admin-dashboard') {
+        console.log('>>> DETECTED: Push notification from Admin Dashboard');
+      }
+
+      const title = remoteMessage.notification?.title || remoteMessage.data?.title;
+      const body = remoteMessage.notification?.body || remoteMessage.data?.body;
+
+      if (title || body) {
+        console.log('>>> ATTEMPTING: Displaying notification via Notifee');
+        try {
+          // Check/Request Notifee specific permission for Android 13+
+          const settings = await notifee.requestPermission();
+          console.log('Notifee Permission Status:', settings.authorizationStatus);
+
+          await notifee.displayNotification({
+            title: title || 'Mentivo Notification',
+            body: body || 'You have a new message',
+            data: remoteMessage.data,
+            android: {
+              channelId: 'default',
+              importance: AndroidImportance.HIGH,
+              pressAction: {
+                id: 'default',
+              },
+            },
+          });
+          console.log('>>> SUCCESS: notifee.displayNotification called');
+        } catch (err) {
+          console.error('>>> ERROR: notifee.displayNotification failed', err);
+        }
+      } else {
+        console.log('>>> SKIPPED: No title or body found in message payload');
+      }
+    });
+
     let unsubscribeTokenRefresh: (() => void) | undefined;
     
     try {
-      const messaging = getMessaging();
       unsubscribeTokenRefresh = onTokenRefresh(messaging, async (newToken) => {
         console.log('FCM Token refreshed', newToken);
         try {
@@ -152,6 +210,7 @@ const handleLogout = async ()=> {
 
     return () => {
       if (unsubscribeTokenRefresh) unsubscribeTokenRefresh();
+      unsubscribeOnMessage();
     };
   }, [isSignedIn]);
 
