@@ -1,8 +1,27 @@
 {
   "name": "mentivo-admin-backend",
   "version": "1.0.0",
-  "main": "src/app.ts",
+  "description": "This is the code for the backend server for admin-facing applications which live on the web only.",
+  "keywords": [
+    "backend",
+    "admin",
+    "mentivo",
+    "Ayan-Bain",
+    "nodejs",
+    "expressjs"
+  ],
+  "homepage": "https://github.com/Ayan-Bain/Mentivo#readme",
+  "bugs": {
+    "url": "https://github.com/Ayan-Bain/Mentivo/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ayan-Bain/Mentivo.git"
+  },
+  "license": "UNLICENSED",
+  "author": "Ayan Bain",
   "type": "module",
+  "main": "src/app.ts",
   "scripts": {
     "start": "node dist/app.js",
     "dev": "nodemon src/app.ts",
