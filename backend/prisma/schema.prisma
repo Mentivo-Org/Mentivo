@@ -40,6 +40,7 @@ model User {
   payouts        Payout[]
   refreshTokens  RefreshToken[]
   fcmTokens      FCMToken[]
+  notifications  Notification[]
 
   @@map("users")
 }
@@ -175,6 +176,30 @@ model CallSession {
   rating          Rating?
 
   @@map("call_sessions")
+}
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  title     String
+  body      String
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model NotificationLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  sender         String
+  received_by_id String[]
+  title          String
+  body           String   @db.Text
+  sent_at        DateTime @default(now())
+
+  @@map("notification_logs")
 }
 
 model Rating {

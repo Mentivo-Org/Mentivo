@@ -10,6 +10,7 @@ import authRoutes from './routes/auth.ts';
 import studentRoutes from './routes/students.ts';
 import mentorRoutes from './routes/mentors.ts';
 import emailRoutes from './routes/email.ts';
+import notificationRoutes from './routes/notifications.ts';
 import prisma from './config/db.ts';
 
 dotenv.config();
@@ -107,6 +108,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/mentors', mentorRoutes);
 app.use('/api/email', emailRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Global Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
