@@ -27,17 +27,23 @@ export const getAgoraEngine = () => {
   return engine;
 };
 
-export const joinChannel = async (token: string, channelName: string, uid: number) => {
+export const joinChannel = async (token: string, channelName: string, uid: number | string) => {
   const rtcEngine = getAgoraEngine();
   
   // Start InCallManager for audio session management
   InCallManager.start({ media: 'audio' });
   
-  return rtcEngine.joinChannel(token, channelName, uid, {
+  const options = {
     clientRoleType: ClientRoleType.ClientRoleBroadcaster,
     publishMicrophoneTrack: true,
     autoSubscribeAudio: true,
-  });
+  };
+
+  if (typeof uid === 'number') {
+    return rtcEngine.joinChannel(token, channelName, uid, options);
+  } else {
+    return rtcEngine.joinChannelWithUserAccount(token, channelName, uid, options);
+  }
 };
 
 export const leaveChannel = () => {

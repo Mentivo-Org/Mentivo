@@ -6,7 +6,8 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@expo/config-plugins": "^56.0.8",
@@ -30,6 +31,7 @@
     "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
     "expo-system-ui": "~6.0.9",
+    "patch-package": "^8.0.1",
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-agora": "^4.5.4",
