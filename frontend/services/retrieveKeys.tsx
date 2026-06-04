@@ -66,7 +66,7 @@ const handleLogout = async ()=> {
     setIsLoading(true);
     checkLoginStatus();
     GoogleSignin.configure({
-      webClientId: '456108214629-ddj51krdofouhptf81ar6f0h8tb8gsu8.apps.googleusercontent.com', 
+      webClientId: '865059452188-k8gi046e0eaodb8pd5i19d6jan19r4fd.apps.googleusercontent.com', 
       offlineAccess: true, 
       forceCodeForRefreshToken: true,
     });
@@ -77,34 +77,45 @@ const handleLogout = async ()=> {
   useEffect(() => {
     if (!isSignedIn) return;
 
-    const messaging = getMessaging();
-
     const setupFCM = async () => {
       try {
+        console.log('Starting FCM setup...');
+        const messaging = getMessaging();
+        
         const authStatus = await requestPermission(messaging);
         const enabled =
           authStatus === AuthorizationStatus.AUTHORIZED ||
           authStatus === AuthorizationStatus.PROVISIONAL;
 
+        console.log('FCM Authorization status:', authStatus, 'Enabled:', enabled);
+
         if (enabled) {
-          console.log('Authorization status:', authStatus);
           const token = await getToken(messaging);
-          const storedToken = await AsyncStorage.getItem('fcmToken');
+          console.log('FCM Token obtained:', token ? 'YES' : 'NO');
           
-          // Send to backend if new or changed
-          if (token && token !== storedToken) {
-            console.log('Sending FCM token to backend...');
-            try {
-              if (storedToken) {
-                await api.put(NotificationEndpoints.updateFcmToken, { oldToken: storedToken, newToken: token });
-              } else {
-                await api.post(NotificationEndpoints.addFcmToken, { token });
+          if (token) {
+            const storedToken = await AsyncStorage.getItem('fcmToken');
+            
+            // Send to backend if new or changed
+            if (token !== storedToken) {
+              console.log('Sending FCM token to backend...');
+              try {
+                if (storedToken) {
+                  await api.put(NotificationEndpoints.updateFcmToken, { oldToken: storedToken, newToken: token });
+                } else {
+                  await api.post(NotificationEndpoints.addFcmToken, { token });
+                }
+                await AsyncStorage.setItem('fcmToken', token);
+                console.log('FCM token successfully synced with backend');
+              } catch (err) {
+                console.error('Failed to send FCM token to backend:', err);
               }
-              await AsyncStorage.setItem('fcmToken', token);
-            } catch (err) {
-              console.error('Failed to send FCM token to backend:', err);
+            } else {
+              console.log('FCM token unchanged, skipping sync');
             }
           }
+        } else {
+          console.warn('FCM permissions not granted');
         }
       } catch (error) {
         console.error('FCM Setup Error:', error);
@@ -114,23 +125,33 @@ const handleLogout = async ()=> {
     setupFCM();
 
     // Listen to token refresh
-    const unsubscribeTokenRefresh = onTokenRefresh(messaging, async (newToken) => {
-      console.log('FCM Token refreshed', newToken);
-      try {
-        const oldToken = await AsyncStorage.getItem('fcmToken');
-        if (oldToken) {
-          await api.put(NotificationEndpoints.updateFcmToken, { oldToken, newToken });
-        } else {
-          await api.post(NotificationEndpoints.addFcmToken, { token: newToken });
+    let unsubscribeTokenRefresh: (() => void) | undefined;
+    
+    try {
+      const messaging = getMessaging();
+      unsubscribeTokenRefresh = onTokenRefresh(messaging, async (newToken) => {
+        console.log('FCM Token refreshed', newToken);
+        try {
+          const oldToken = await AsyncStorage.getItem('fcmToken');
+          if (newToken !== oldToken) {
+            if (oldToken) {
+              await api.put(NotificationEndpoints.updateFcmToken, { oldToken, newToken });
+            } else {
+              await api.post(NotificationEndpoints.addFcmToken, { token: newToken });
+            }
+            await AsyncStorage.setItem('fcmToken', newToken);
+            console.log('Refreshed FCM token synced with backend');
+          }
+        } catch (err) {
+          console.error('Failed to update refreshed FCM token:', err);
         }
-        await AsyncStorage.setItem('fcmToken', newToken);
-      } catch (err) {
-        console.error('Failed to update refreshed FCM token:', err);
-      }
-    });
+      });
+    } catch (err) {
+      console.error('Failed to setup FCM token refresh listener:', err);
+    }
 
     return () => {
-      unsubscribeTokenRefresh();
+      if (unsubscribeTokenRefresh) unsubscribeTokenRefresh();
     };
   }, [isSignedIn]);
 

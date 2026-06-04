@@ -1,5 +1,5 @@
 import { registerRootComponent } from 'expo';
-import messaging from '@react-native-firebase/messaging';
+import { getMessaging, setBackgroundMessageHandler } from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from './services/api';
@@ -20,7 +20,8 @@ async function setupNotifee() {
 setupNotifee();
 
 // Background FCM Message Handler
-messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+const messaging = getMessaging();
+setBackgroundMessageHandler(messaging, async (remoteMessage) => {
   console.log('Message handled in the background!', remoteMessage);
   
   if (remoteMessage.data?.type === 'incoming_call') {
