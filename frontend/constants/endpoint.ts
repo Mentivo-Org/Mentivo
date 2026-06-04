@@ -47,6 +47,7 @@ export const CallEndpoints = {
     getStudentSchedule: `${baseUrl}/calls/student/schedule`,
     getStudentSessions: `${baseUrl}/calls/student/sessions`,
     getUpcoming: `${baseUrl}/calls/student/upcoming`,
+    token: (id: string) => `${baseUrl}/calls/${id}/token`,
     start: (id: string) => `${baseUrl}/calls/${id}/start`,
     heartbeat: (id: string) => `${baseUrl}/calls/${id}/heartbeat`,
     end: (id: string) => `${baseUrl}/calls/${id}/end`,

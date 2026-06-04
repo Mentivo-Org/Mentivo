@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Alert, PermissionsAndroid, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import api from '../../services/api';
-import { MentorEndpoints } from '../../constants/endpoint';
+import { MentorEndpoints, CallEndpoints } from '../../constants/endpoint';
+import { useLoading } from '../../context/LoadingContext';
 
 const { width, height } = Dimensions.get("window");
 
@@ -12,11 +13,13 @@ const { width, height } = Dimensions.get("window");
 export default function MentorProfile() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { showLoading, hideLoading } = useLoading();
   
   // Extract mentor data from params, with fallbacks
   const passedMentor = route.params?.mentor || {};
   
   const [isFavorite, setIsFavorite] = useState(passedMentor.isFavorite || false);
+  const [isInitiating, setIsInitiating] = useState(false);
 
   const mentor = {
     id: passedMentor.id || route.params?.mentorId,
@@ -42,6 +45,62 @@ export default function MentorProfile() {
       console.error('Error toggling favorite:', error);
       // Revert state if API fails
       setIsFavorite(isFavorite);
+    }
+  };
+
+  const handleCallNow = async () => {
+    if (!mentor.isOnline) {
+      Alert.alert('Mentor Offline', 'This mentor is currently offline. You can schedule a call instead.');
+      return;
+    }
+
+    // Check permissions
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+          {
+            title: 'Microphone Permission',
+            message: 'Mentivo needs access to your microphone so you can talk to mentors.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          },
+        );
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          Alert.alert('Permission Denied', 'Microphone permission is required to make calls.');
+          return;
+        }
+      } catch (err) {
+        console.warn(err);
+        return;
+      }
+    }
+
+    setIsInitiating(true);
+    showLoading('Initiating call...');
+    try {
+      const response = await api.post(CallEndpoints.initiate, { mentorId: mentor.id });
+      
+      if (response.status === 200) {
+        const { sessionId, channelName, studentToken, maxDurationSeconds } = response.data;
+        
+        navigation.navigate('InCall', {
+          callId: sessionId,
+          channelName,
+          callerName: mentor.name, // Displaying mentor's name on student's screen
+          role: 'caller',
+          initialToken: studentToken,
+          maxDuration: maxDurationSeconds
+        });
+      }
+    } catch (error: any) {
+      console.error('Failed to initiate call:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to connect. Please try again.';
+      Alert.alert('Call Error', errorMsg);
+    } finally {
+      setIsInitiating(false);
+      hideLoading();
     }
   };
 
@@ -106,8 +165,16 @@ export default function MentorProfile() {
         </View>
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.callButton}>
-            <Text style={styles.callButtonText}>Call Now</Text>
+          <TouchableOpacity 
+            style={[styles.callButton, (!mentor.isOnline || isInitiating) && styles.disabledButton]} 
+            onPress={handleCallNow}
+            disabled={isInitiating}
+          >
+            {isInitiating ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <Text style={styles.callButtonText}>Call Now</Text>
+            )}
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.chatButton}>
@@ -265,6 +332,9 @@ const styles = StyleSheet.create({
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  disabledButton: {
+    backgroundColor: '#93c5fd',
   },
   callButtonText: {
     color: 'white',

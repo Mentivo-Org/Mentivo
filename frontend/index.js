@@ -2,9 +2,36 @@ import { registerRootComponent } from 'expo';
 import { getMessaging, setBackgroundMessageHandler } from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import CallKeep from 'react-native-callkeep';
+import { PermissionsAndroid, Platform } from 'react-native';
 import api from './services/api';
 
 import App from './App';
+
+// Setup CallKeep
+const setupCallKeep = async () => {
+  try {
+    await CallKeep.setup({
+      ios: {
+        appName: 'Mentivo',
+        supportsVideo: false,
+      },
+      android: {
+        alertTitle: 'Phone account permissions',
+        alertDescription: 'Allow Mentivo to manage calls',
+        cancelButton: 'Cancel',
+        okButton: 'Allow',
+        additionalPermissions: [PermissionsAndroid.PERMISSIONS.RECORD_AUDIO],
+        selfManaged: false,
+      },
+    });
+    console.log('CallKeep setup successfully');
+  } catch (err) {
+    console.error('CallKeep setup error:', err);
+  }
+};
+
+setupCallKeep();
 
 // Create Notifee channel for calls
 async function setupNotifee() {
