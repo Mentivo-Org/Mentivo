@@ -14,11 +14,19 @@
       },
       "oauth_client": [
         {
-          "client_id": "865059452188-4a7197tdpmiqdhgvvl03osv9ol186spb.apps.googleusercontent.com",
+          "client_id": "865059452188-ihi0esm55o04dlrud0ps6eebnr3d28ue.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.mentivo.in",
-            "certificate_hash": "2bb23ef349adad6e02bf208bf09cdb8f3676c2c7"
+            "certificate_hash": "7c90e2103933c1386aa199e0088dee6b68c1e1e2"
+          }
+        },
+        {
+          "client_id": "865059452188-ol0sjdko4mrqev8qf16daoo3lk5jsh0k.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mentivo.in",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
           }
         },
         {
