@@ -1,6 +1,83 @@
 import { registerRootComponent } from 'expo';
+import messaging from '@react-native-firebase/messaging';
+import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from './services/api';
 
 import App from './App';
+
+// Create Notifee channel for calls
+async function setupNotifee() {
+  await notifee.createChannel({
+    id: 'calls',
+    name: 'Incoming Calls',
+    importance: AndroidImportance.HIGH,
+    vibration: true,
+    sound: 'default',
+  });
+}
+
+setupNotifee();
+
+// Background FCM Message Handler
+messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+  console.log('Message handled in the background!', remoteMessage);
+  
+  if (remoteMessage.data?.type === 'incoming_call') {
+    const { callId, channelName, callerName } = remoteMessage.data;
+
+    await notifee.displayNotification({
+      title: `Incoming call from ${callerName}`,
+      body: 'Tap to answer',
+      data: { callId, channelName, callerName },
+      android: {
+        channelId: 'calls',
+        importance: AndroidImportance.HIGH,
+        fullScreenAction: {
+          id: 'default',
+          launchActivity: 'default',
+        },
+        actions: [
+          {
+            title: 'Accept',
+            pressAction: {
+              id: 'accept',
+              launchActivity: 'default',
+            },
+          },
+          {
+            title: 'Reject',
+            pressAction: {
+              id: 'reject',
+            },
+          },
+        ],
+      },
+    });
+  }
+});
+
+// Background Notification Event Handler
+notifee.onBackgroundEvent(async ({ type, detail }) => {
+  const { notification, pressAction } = detail;
+
+  if (type === EventType.ACTION_PRESS) {
+    if (pressAction.id === 'accept') {
+      console.log('User accepted call from background');
+      await AsyncStorage.setItem('pendingCallId', notification.data.callId);
+      // App will be launched by launchActivity: 'default'
+    } else if (pressAction.id === 'reject') {
+      console.log('User rejected call from background');
+      const callId = notification.data.callId;
+      try {
+        await api.post(`/api/calls/${callId}/reject`);
+      } catch (error) {
+        console.error('Failed to reject call in background:', error);
+      }
+      await notifee.cancelNotification(notification.id);
+    }
+  }
+});
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);
 // It also ensures that whether you load the app in Expo Go or in a native build,

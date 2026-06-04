@@ -3,6 +3,7 @@ import { authenticateUser } from '../auth/authenticateUser.ts';
 import { generateToken, generateChannelName } from '../services/agora.ts';
 import { lockToBusy, getPresenceState, setAvailable } from '../services/presence.ts';
 import { settleBilling } from '../services/billing.ts';
+import { sendCallSignalingMessage } from '../services/notifications.ts';
 import prisma from '../config/db.ts';
 
 const router = Router();
@@ -58,6 +59,22 @@ router.post('/initiate', authenticateUser, async (req, res) => {
     // 7. Generate Agora Tokens with Dynamic Expiry
     const studentToken = generateToken(channelName, studentId as string, maxAllowedSeconds);
     const mentorToken = generateToken(channelName, mentorId, 3600); // Mentor can stay 1hr
+
+    // 8. Trigger Signaling (FCM)
+    const student = await prisma.user.findUnique({ where: { id: studentId }, select: { name: true } });
+    const mentorFcmToken = await prisma.fCMToken.findFirst({
+      where: { userId: mentorId },
+      orderBy: { updatedAt: 'desc' },
+      select: { token: true }
+    });
+
+    if (mentorFcmToken) {
+      await sendCallSignalingMessage(mentorFcmToken.token, {
+        callId: session.id,
+        channelName,
+        callerName: student?.name || 'Student'
+      });
+    }
 
     res.json({
       sessionId: session.id,
@@ -278,10 +295,16 @@ router.post('/:id/start', authenticateUser, async (req, res) => {
 // PATCH /api/calls/:id/heartbeat
 router.patch('/:id/heartbeat', authenticateUser, async (req, res) => {
   try {
-    await prisma.callSession.update({
+    const session = await prisma.callSession.update({
       where: { id: req.params.id as string },
       data: { lastHeartbeatAt: new Date() }
     });
+
+    // Also update mentor presence to busy
+    if (session.status === 'active') {
+      await lockToBusy(session.mentor_id);
+    }
+
     res.sendStatus(200);
   } catch (e) {
     res.status(500).json({ error: 'Server Error' });
@@ -313,6 +336,52 @@ router.post('/:id/end', authenticateUser, async (req, res) => {
     res.sendStatus(200);
   } catch (e) {
     console.error('Call end error:', e);
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+// POST /api/calls/:id/reject
+router.post('/:id/reject', authenticateUser, async (req, res) => {
+  try {
+    const session = await prisma.callSession.findUnique({ where: { id: req.params.id as string } });
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+
+    await prisma.callSession.update({
+      where: { id: req.params.id as string },
+      data: { status: 'rejected', endedAt: new Date() }
+    });
+
+    // Release mentor
+    await setAvailable(session.mentor_id);
+
+    res.sendStatus(200);
+  } catch (e) {
+    console.error('Call reject error:', e);
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+// GET /api/calls/:id/token
+router.get('/:id/token', authenticateUser, async (req, res) => {
+  try {
+    const session = await prisma.callSession.findUnique({ where: { id: req.params.id as string } });
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+
+    const userId = req.user?.id;
+    if (session.student_id !== userId && session.mentor_id !== userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const channelName = session.agoraChannelId;
+    if (!channelName) return res.status(500).json({ error: 'Channel name missing' });
+
+    // For simplicity, generate a fresh token for 1hr. 
+    // In production, you might want to match the student's wallet-limited duration.
+    const token = generateToken(channelName, userId as string, 3600);
+
+    res.json({ token, channelName });
+  } catch (e) {
+    console.error('Get token error:', e);
     res.status(500).json({ error: 'Server Error' });
   }
 });
