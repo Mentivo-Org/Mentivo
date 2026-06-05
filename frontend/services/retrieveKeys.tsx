@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getMessaging, requestPermission, getToken, onTokenRefresh, AuthorizationStatus } from '@react-native-firebase/messaging';
+import { getMessaging, requestPermission, getToken, onTokenRefresh, AuthorizationStatus, onMessage } from '@react-native-firebase/messaging';
+import notifee, { AndroidImportance } from '@notifee/react-native';
 import api from './api';
 import { NotificationEndpoints } from '../constants/endpoint';
 import { useLoading } from '../context/LoadingContext';
@@ -66,10 +67,27 @@ const handleLogout = async ()=> {
     setIsLoading(true);
     checkLoginStatus();
     GoogleSignin.configure({
-      webClientId: '456108214629-ddj51krdofouhptf81ar6f0h8tb8gsu8.apps.googleusercontent.com', 
+      webClientId: '865059452188-k8gi046e0eaodb8pd5i19d6jan19r4fd.apps.googleusercontent.com', 
       offlineAccess: true, 
       forceCodeForRefreshToken: true,
     });
+    
+    // Request notification permission and setup channel on first launch
+    const initializeNotifications = async () => {
+      try {
+        await notifee.requestPermission();
+        await notifee.createChannel({
+          id: 'default',
+          name: 'Default Channel',
+          importance: AndroidImportance.HIGH,
+        });
+        console.log('Notifications initialized on app launch');
+      } catch (err) {
+        console.error('Failed to initialize notifications on launch:', err);
+      }
+    };
+    initializeNotifications();
+    
     setIsLoading(false);
   }, []);
 
@@ -77,34 +95,44 @@ const handleLogout = async ()=> {
   useEffect(() => {
     if (!isSignedIn) return;
 
-    const messaging = getMessaging();
-
     const setupFCM = async () => {
       try {
-        const authStatus = await requestPermission(messaging);
+        console.log('Starting FCM setup...');
+        const messagingInstance = getMessaging();
+        
+        const authStatus = await requestPermission(messagingInstance);
         const enabled =
           authStatus === AuthorizationStatus.AUTHORIZED ||
           authStatus === AuthorizationStatus.PROVISIONAL;
 
+        console.log('FCM Authorization status:', authStatus, 'Enabled:', enabled);
+
         if (enabled) {
-          console.log('Authorization status:', authStatus);
-          const token = await getToken(messaging);
-          const storedToken = await AsyncStorage.getItem('fcmToken');
+          const token = await getToken(messagingInstance);
+          console.log('FCM Token obtained:', token ? 'YES' : 'NO');
           
-          // Send to backend if new or changed
-          if (token && token !== storedToken) {
-            console.log('Sending FCM token to backend...');
-            try {
-              if (storedToken) {
-                await api.put(NotificationEndpoints.updateFcmToken, { oldToken: storedToken, newToken: token });
-              } else {
-                await api.post(NotificationEndpoints.addFcmToken, { token });
+          if (token) {
+            const storedToken = await AsyncStorage.getItem('fcmToken');
+            
+            // Send to backend if new or changed
+            if (token !== storedToken) {
+              console.log('Syncing FCM token with backend...');
+              try {
+                const response = await api.post(NotificationEndpoints.syncFcmToken, { token });
+                
+                if (response.status === 200 || response.status === 201) {
+                  await AsyncStorage.setItem('fcmToken', token);
+                  console.log(`FCM token synced (Status: ${response.status})`);
+                }
+              } catch (err) {
+                console.error('Failed to sync FCM token with backend:', err);
               }
-              await AsyncStorage.setItem('fcmToken', token);
-            } catch (err) {
-              console.error('Failed to send FCM token to backend:', err);
+            } else {
+              console.log('FCM token unchanged, skipping sync');
             }
           }
+        } else {
+          console.warn('FCM permissions not granted');
         }
       } catch (error) {
         console.error('FCM Setup Error:', error);
@@ -113,24 +141,75 @@ const handleLogout = async ()=> {
 
     setupFCM();
 
-    // Listen to token refresh
-    const unsubscribeTokenRefresh = onTokenRefresh(messaging, async (newToken) => {
-      console.log('FCM Token refreshed', newToken);
-      try {
-        const oldToken = await AsyncStorage.getItem('fcmToken');
-        if (oldToken) {
-          await api.put(NotificationEndpoints.updateFcmToken, { oldToken, newToken });
-        } else {
-          await api.post(NotificationEndpoints.addFcmToken, { token: newToken });
+    const messaging = getMessaging();
+
+    // Listen to foreground notifications
+    const unsubscribeOnMessage = onMessage(messaging, async (remoteMessage) => {
+      console.log('--- [FCM MESSAGE RECEIVED (FOREGROUND)] ---');
+      console.log('Payload:', JSON.stringify(remoteMessage, null, 2));
+
+      if (remoteMessage.data?.source === 'admin-dashboard') {
+        console.log('>>> DETECTED: Push notification from Admin Dashboard');
+      }
+
+      const title = remoteMessage.notification?.title || remoteMessage.data?.title;
+      const body = remoteMessage.notification?.body || remoteMessage.data?.body;
+
+      if (title || body) {
+        console.log('>>> ATTEMPTING: Displaying notification via Notifee');
+        try {
+          // Check/Request Notifee specific permission for Android 13+
+          const settings = await notifee.requestPermission();
+          console.log('Notifee Permission Status:', settings.authorizationStatus);
+
+          await notifee.displayNotification({
+            title: title || 'Mentivo Notification',
+            body: body || 'You have a new message',
+            data: remoteMessage.data,
+            android: {
+              channelId: 'default',
+              importance: AndroidImportance.HIGH,
+              pressAction: {
+                id: 'default',
+              },
+            },
+          });
+          console.log('>>> SUCCESS: notifee.displayNotification called');
+        } catch (err) {
+          console.error('>>> ERROR: notifee.displayNotification failed', err);
         }
-        await AsyncStorage.setItem('fcmToken', newToken);
-      } catch (err) {
-        console.error('Failed to update refreshed FCM token:', err);
+      } else {
+        console.log('>>> SKIPPED: No title or body found in message payload');
       }
     });
 
+    let unsubscribeTokenRefresh: (() => void) | undefined;
+    
+    try {
+      unsubscribeTokenRefresh = onTokenRefresh(messaging, async (newToken) => {
+        console.log('FCM Token refreshed', newToken);
+        try {
+          const oldToken = await AsyncStorage.getItem('fcmToken');
+          if (newToken !== oldToken) {
+            console.log('Syncing refreshed FCM token with backend...');
+            const response = await api.post(NotificationEndpoints.syncFcmToken, { token: newToken });
+            
+            if (response.status === 200 || response.status === 201) {
+              await AsyncStorage.setItem('fcmToken', newToken);
+              console.log(`Refreshed FCM token synced (Status: ${response.status})`);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to update refreshed FCM token:', err);
+        }
+      });
+    } catch (err) {
+      console.error('Failed to setup FCM token refresh listener:', err);
+    }
+
     return () => {
-      unsubscribeTokenRefresh();
+      if (unsubscribeTokenRefresh) unsubscribeTokenRefresh();
+      unsubscribeOnMessage();
     };
   }, [isSignedIn]);
 

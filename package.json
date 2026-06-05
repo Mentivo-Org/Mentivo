@@ -1,0 +1,15 @@
+{
+  "name": "mentivo",
+  "version": "1.0.0",
+  "description": "Root folder",
+  "keywords": [
+    "mentivo"
+  ],
+  "license": "UNLICENSED",
+  "author": "Ayan Bain",
+  "type": "module",
+  "main": " ",
+  "scripts": {
+    "dev": "concurrently --color always --names \"backend,admin-backend,admin-frontend\" --prefix-colors \"blue,green,magenta\" \"cd backend && npm run run\" \"cd admin-backend && npm run dev\" \"cd admin-frontend && npm run dev\""
+  }
+}

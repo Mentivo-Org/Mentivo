@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Mentivo",
-    "slug": "com.mentivo.in",
+    "slug": "mentivo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -42,7 +42,18 @@
     ],
       "edgeToEdgeEnabled": true,
       "package": "com.mentivo.in",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "RECORD_AUDIO",
+        "MODIFY_AUDIO_SETTINGS",
+        "ACCESS_NETWORK_STATE",
+        "CHANGE_NETWORK_STATE",
+        "VIBRATE",
+        "USE_FULL_SCREEN_INTENT",
+        "FOREGROUND_SERVICE",
+        "RECEIVE_BOOT_COMPLETED",
+      ],
+      "versionCode": 2
     },
     "web": {
       "favicon": "./assets/icon.png"
@@ -51,7 +62,10 @@
       "@react-native-google-signin/google-signin",
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
-      "@react-native-firebase/messaging"
+      "@react-native-firebase/messaging",
+      "./plugins/withCallKeep",
+      "./plugins/withAndroidNativeConfig",
+      "./plugins/withNotifee"
     ]
   }
 }

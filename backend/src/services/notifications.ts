@@ -57,3 +57,21 @@ export async function sendIncomingCallAlert(fcmToken: string, studentName: strin
     });
   } catch(e) {}
 }
+
+export async function sendCallSignalingMessage(fcmToken: string, data: { callId: string, channelName: string, callerName: string }) {
+  if (!admin.apps.length || !fcmToken) return;
+  try {
+    await admin.messaging().send({
+      token: fcmToken,
+      data: { 
+        type: 'incoming_call',
+        ...data
+      },
+      android: {
+        priority: 'high',
+      },
+    });
+  } catch (error) {
+    console.error('Failed to send call signaling message:', error);
+  }
+}
