@@ -116,17 +116,16 @@ const handleLogout = async ()=> {
             
             // Send to backend if new or changed
             if (token !== storedToken) {
-              console.log('Sending FCM token to backend...');
+              console.log('Syncing FCM token with backend...');
               try {
-                if (storedToken) {
-                  await api.put(NotificationEndpoints.updateFcmToken, { oldToken: storedToken, newToken: token });
-                } else {
-                  await api.post(NotificationEndpoints.addFcmToken, { token });
+                const response = await api.post(NotificationEndpoints.syncFcmToken, { token });
+                
+                if (response.status === 200 || response.status === 201) {
+                  await AsyncStorage.setItem('fcmToken', token);
+                  console.log(`FCM token synced (Status: ${response.status})`);
                 }
-                await AsyncStorage.setItem('fcmToken', token);
-                console.log('FCM token successfully synced with backend');
               } catch (err) {
-                console.error('Failed to send FCM token to backend:', err);
+                console.error('Failed to sync FCM token with backend:', err);
               }
             } else {
               console.log('FCM token unchanged, skipping sync');
@@ -192,13 +191,13 @@ const handleLogout = async ()=> {
         try {
           const oldToken = await AsyncStorage.getItem('fcmToken');
           if (newToken !== oldToken) {
-            if (oldToken) {
-              await api.put(NotificationEndpoints.updateFcmToken, { oldToken, newToken });
-            } else {
-              await api.post(NotificationEndpoints.addFcmToken, { token: newToken });
+            console.log('Syncing refreshed FCM token with backend...');
+            const response = await api.post(NotificationEndpoints.syncFcmToken, { token: newToken });
+            
+            if (response.status === 200 || response.status === 201) {
+              await AsyncStorage.setItem('fcmToken', newToken);
+              console.log(`Refreshed FCM token synced (Status: ${response.status})`);
             }
-            await AsyncStorage.setItem('fcmToken', newToken);
-            console.log('Refreshed FCM token synced with backend');
           }
         } catch (err) {
           console.error('Failed to update refreshed FCM token:', err);
