@@ -16,6 +16,8 @@ import CompleteProfile from "./CompleteProfile";
 import SendOtpScreen from "./SendOtp";
 import ForgotPassword from "./ForgotPassword";
 import ResetPassword from "./ResetPassword";
+import IncomingCallScreen from "./IncomingCallScreen";
+import InCallScreen from "./InCallScreen";
 
 import StudentHomePage from "./student/StudentHomePage";
 import YourSession from "./student/YourSession";
@@ -32,6 +34,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import DialogBox from "../components/DialogBox";
 import { Image } from "expo-image";
 import { StyleSheet, View, TouchableOpacity, Animated } from "react-native";
+import notifee, { EventType } from "@notifee/react-native";
+import { navigationRef, navigate } from "../services/navigation";
 
 import linking from "../linking";
 
@@ -214,6 +218,39 @@ export default function RootNavigator() {
   
   
   useEffect (() => {
+    // Handle foreground and initial notifications
+    const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
+      if (type === EventType.PRESS) {
+        const { callId, channelName, callerName } = detail.notification?.data || {};
+        if (callId) {
+          navigate('IncomingCall', { callId, channelName, callerName });
+        }
+      }
+    });
+
+    const checkInitialNotification = async () => {
+      const initialNotification = await notifee.getInitialNotification();
+      if (initialNotification?.notification?.data?.callId) {
+        const { callId, channelName, callerName } = initialNotification.notification.data;
+        navigate('IncomingCall', { callId, channelName, callerName });
+      }
+
+      // Check for accepted call from background
+      const pendingCallId = await AsyncStorage.getItem('pendingCallId');
+      if (pendingCallId) {
+        await AsyncStorage.removeItem('pendingCallId');
+        // This was an "Accept" action, ideally we should have stored more data
+        // but for now we'll fetch what's needed in InCallScreen
+        navigate('InCall', { callId: pendingCallId, role: 'callee' });
+      }
+    };
+
+    checkInitialNotification();
+
+    return () => unsubscribe();
+  }, [isSignedIn]);
+
+  useEffect (() => {
 
     const getInitialScreen = async () => {
       const accessToken = await AsyncStorage.getItem("accessToken");
@@ -275,7 +312,7 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       {isSignedIn ? (
         <AuthStack.Navigator
           id="auth-stack"
@@ -289,6 +326,8 @@ export default function RootNavigator() {
           <AuthStack.Screen name="MentorProfile" component={MentorProfile} />
           <AuthStack.Screen name="ScheduleCall" component={ScheduleCall} />
           <AuthStack.Screen name="Payment" component={PaymentPage} />
+          <AuthStack.Screen name="IncomingCall" component={IncomingCallScreen} />
+          <AuthStack.Screen name="InCall" component={InCallScreen} />
         </AuthStack.Navigator>
       ) : (
         <Stack.Navigator
