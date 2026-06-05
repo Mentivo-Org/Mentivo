@@ -52,8 +52,8 @@
         "USE_FULL_SCREEN_INTENT",
         "FOREGROUND_SERVICE",
         "RECEIVE_BOOT_COMPLETED",
-        "READ_PHONE_STATE"
-      ]
+      ],
+      "versionCode": 2
     },
     "web": {
       "favicon": "./assets/icon.png"
