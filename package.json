@@ -10,6 +10,6 @@
   "type": "module",
   "main": " ",
   "scripts": {
-    "dev": "concurrently --color always --names \"backend,admin-backend,admin-frontend\" --prefix-colors \"blue,green,magenta\" \"cd backend && npm run run\" \"cd admin-backend && npm run dev\" \"cd admin-frontend && npm run dev\""
+    "dev": "concurrently --color always --names \"backend,admin-backend,admin-frontend\" --prefix-colors \"blue,green,magenta\" \"cd backend && npm run dev\" \"cd admin-backend && npm run dev\" \"cd admin-frontend && npm run dev\""
   }
 }
