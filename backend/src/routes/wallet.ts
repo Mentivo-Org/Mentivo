@@ -10,6 +10,15 @@ const router = Router();
 router.get('/balance', authenticateUser, async (req:Request, res:Response) => {
   try {
     const wallet = await prisma.wallet.findUnique({ where: { userId: req.user?.id as string } });
+
+    if(!wallet) {
+      await prisma.wallet.create({
+        data: {
+          userId: req.user?.id as string,
+          balance: 0
+        }
+      })
+    }
     res.json({ balance: wallet ? Number(wallet.balance) : 0 });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
