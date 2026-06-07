@@ -11,6 +11,7 @@ interface MentorCardProps {
   calls: number;
   price: number;
   isFavorite: boolean;
+  photoUrl?: string;
   isOnline?: boolean;
   onPress?: () => void;
   onFavoritePress?: () => void;
@@ -25,6 +26,7 @@ const MentorCard: React.FC<MentorCardProps> = ({
   calls,
   price,
   isFavorite,
+  photoUrl,
   isOnline,
   onPress,
   onFavoritePress,
@@ -32,7 +34,10 @@ const MentorCard: React.FC<MentorCardProps> = ({
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.imageContainer}>
-        <View style={styles.avatarPlaceholder} />
+        <Image 
+          source={photoUrl ? { uri: photoUrl } : require('../app-assets/avatar-placeholder.svg')} 
+          style={styles.avatar} 
+        />
         {isOnline && <View style={styles.onlineDot} />}
       </View>
 
@@ -95,11 +100,11 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
   },
-  avatarPlaceholder: {
+  avatar: {
     width: 56,
     height: 56,
-    backgroundColor: '#c0c0c0',
     borderRadius: 8,
+    backgroundColor: '#e2e8f0',
   },
   onlineDot: {
     position: 'absolute',
