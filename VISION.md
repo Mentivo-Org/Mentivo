@@ -306,39 +306,77 @@ CREATE INDEX idx_coaching_centers_code ON coaching_centers(code);
 
 ### Project structure
 
-```
-mentivo-api/
+#### Backend (`/backend`)
+```text
+backend/
 ├── src/
+│   ├── app.ts
+│   ├── auth/
 │   ├── config/
-│   │   ├── db.js           # Prisma client (Supabase)
-│   │   ├── redis.js        # Redis client (ioredis)
-│   │   └── firebase.js     # Firebase Admin SDK
-│   ├── middleware/
-│   │   ├── auth.js         # Verify Firebase/Google ID token
-│   │   ├── rateLimit.js    # Per-user rate limiting (Redis)
-│   │   └── validate.js     # Zod schema validation
-│   ├── routes/
-│   │   ├── auth.js         # POST /auth/verify
-│   │   ├── mentors.js      # GET /mentors, GET /mentors/:id
-│   │   ├── calls.js        # POST /calls/initiate, POST /calls/:id/start, POST /calls/:id/end
-│   │   ├── wallet.js       # POST /wallet/topup, GET /wallet/balance
-│   │   ├── ratings.js      # POST /calls/:id/rate
-│   │   ├── payouts.js      # Admin: trigger weekly payouts
-│   │   └── webhooks.js     # POST /webhooks/razorpay
-│   ├── services/
-│   │   ├── agora.js        # Agora Token generation
-│   │   ├── razorpay.js     # Razorpay API wrapper
-│   │   ├── billing.js      # settleBilling() — atomic transaction
-│   │   ├── presence.js     # Mentor online/offline via Redis
-│   │   └── notifications.js # FCM push notifications
+│   ├── controllers/
 │   ├── jobs/
-│   │   ├── payoutJob.js    # Weekly mentor payout batch
-│   │   └── balanceWatcher.js # Watcher for low balance
-│   └── app.js
+│   ├── lib/
+│   ├── routes/
+│   ├── services/
+│   ├── types/
+│   └── utils/
 ├── prisma/
 │   └── schema.prisma
 ├── .env
+├── package.json
+└── tsconfig.json
+```
+
+#### Frontend (`/frontend`)
+```text
+frontend/
+├── app-assets/         # Static assets and SVGs
+├── assets/             # Expo assets (icons, splash)
+├── components/         # Reusable UI components
+├── constants/          # App constants (endpoints, etc.)
+├── context/            # Global state and contexts
+├── hooks/              # Custom React hooks
+├── patches/            # Patch-package modifications
+├── plugins/            # Expo config plugins
+├── screens/            # Application screens (mentor & student)
+│   ├── mentor/
+│   └── student/
+├── services/           # API and third-party integrations
+├── App.js              # Entry point
+├── app.json            # Expo configuration
 └── package.json
+```
+
+#### Admin Backend (`/admin-backend`)
+```text
+admin-backend/
+├── src/
+│   ├── app.ts
+│   ├── config/         # Database, Redis, Firebase configs
+│   ├── middleware/     # Auth and rate-limiting middleware
+│   ├── routes/         # Express API routes
+│   ├── services/       # Resend, Supabase integrations
+│   └── utils/          # JWT and OTP utilities
+├── prisma/
+│   └── schema.prisma
+├── .env
+├── package.json
+└── tsconfig.json
+```
+
+#### Admin Frontend (`/admin-frontend`)
+```text
+admin-frontend/
+├── app/                # Next.js App Router
+│   ├── dashboard/
+│   └── login/
+├── components/         # React components
+├── context/            # Auth and Loading contexts
+├── lib/                # API interceptors and helpers
+├── public/             # Public static assets
+├── package.json
+├── tailwind.config.ts
+└── tsconfig.json
 ```
 
 ### Initial setup
