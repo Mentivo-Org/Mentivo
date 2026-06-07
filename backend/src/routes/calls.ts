@@ -206,6 +206,30 @@ router.get('/mentor/:mentorId/schedule', async (req, res) => {
   }
 });
 
+// GET /api/calls/mentor/sessions
+router.get('/mentor/sessions', authenticateUser, async (req, res) => {
+  try {
+    const sessions = await prisma.callSession.findMany({
+      where: { 
+        mentor_id: req.user?.id,
+        status: { in: ['completed', 'settled'] }
+      },
+      include: {
+        student: {
+          select: { name: true, email: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5
+    });
+
+    res.json(sessions);
+  } catch (e) {
+    console.error('Fetch mentor sessions error:', e);
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
 // GET /api/calls/student/sessions
 router.get('/student/sessions', authenticateUser, async (req, res) => {
   try {

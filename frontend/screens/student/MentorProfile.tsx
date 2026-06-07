@@ -33,6 +33,7 @@ export default function MentorProfile() {
     price: passedMentor.price || 10,
     isOnline: passedMentor.isOnline || false,
     bio: passedMentor.bio || 'Available for mentoring sessions.',
+    photoUrl: passedMentor.photoUrl || passedMentor.photo_url,
   };
 
   const toggleFavorite = async () => {
@@ -115,7 +116,10 @@ export default function MentorProfile() {
       <View style={styles.profileCard}>
         <View style={styles.topInfo}>
           <View style={styles.avatarContainer}>
-            <View style={styles.avatarPlaceholder} />
+            <Image 
+              source={mentor.photoUrl ? { uri: mentor.photoUrl } : require('../../app-assets/avatar-placeholder.svg')} 
+              style={styles.avatar} 
+            />
             <Image source={require('../../app-assets/verified-check.svg')} style={styles.verifiedIcon} />
             {mentor.isOnline && <View style={styles.onlineDot} />}
           </View>
@@ -228,11 +232,11 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: 'relative',
   },
-  avatarPlaceholder: {
+  avatar: {
     width: 56,
     height: 56,
-    backgroundColor: '#c0c0c0',
     borderRadius: 8,
+    backgroundColor: '#e2e8f0',
   },
   verifiedIcon: {
     position: 'absolute',
