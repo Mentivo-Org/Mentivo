@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Text, View, ScrollView, TouchableOpacity, RefreshControl, Dimensions, StyleSheet } from "react-native";
+import { Text, View, ScrollView, TouchableOpacity, RefreshControl, Dimensions, StyleSheet, Switch } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../services/retrieveKeys";
 import { Image } from "expo-image";
@@ -16,6 +16,7 @@ export default function MentorHomePage() {
   const [data, setData] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [isOnline, setIsOnline] = useState(false);
 
   const loadCachedData = async () => {
     try {
@@ -23,6 +24,7 @@ export default function MentorHomePage() {
       if (cachedStats) {
         const parsedData = JSON.parse(cachedStats);
         setData(parsedData);
+        setIsOnline(parsedData.profile.isOnline || false);
       }
     } catch (err) {
       console.error("Failed to load cached stats", err);
@@ -32,26 +34,46 @@ export default function MentorHomePage() {
   const fetchData = async (silent = false) => {
     if (!silent) setRefreshing(true);
     try {
-      const [statsRes, historyRes] = await Promise.all([
+      const [statsRes, historyRes, conditionsRes] = await Promise.all([
         api.get(MentorEndpoints.getMeStats),
-        api.get(CallEndpoints.getMentorSessions)
+        api.get(CallEndpoints.getMentorSessions),
+        api.get(MentorEndpoints.getPromotionConditions)
       ]);
       
       if (statsRes.status === 200) {
         const newData = statsRes.data;
-        // Compare with current data to avoid unnecessary re-renders if possible
-        // but always save to storage for persistence
         setData(newData);
+        setIsOnline(newData.profile.isOnline || false);
         await AsyncStorage.setItem("stats", JSON.stringify(newData));
       }
 
       if (historyRes.status === 200) {
         setHistory(historyRes.data);
       }
+
+      if (conditionsRes.status === 200) {
+          // Conditions from dedicated endpoint
+          // We can use these to override the ones in stats data if needed
+      }
     } catch (err) {
       console.error("Failed to fetch mentor stats", err);
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const toggleOnlineStatus = async (value: boolean) => {
+    try {
+      setIsOnline(value);
+      const response = await api.post(MentorEndpoints.setStatus, { isOnline: value });
+      if (response.status !== 200) {
+        // Rollback on failure
+        setIsOnline(!value);
+        console.error("Failed to toggle online status");
+      }
+    } catch (err) {
+      setIsOnline(!value);
+      console.error("Error toggling online status:", err);
     }
   };
 
@@ -73,6 +95,13 @@ export default function MentorHomePage() {
   if (!data) return null;
 
   const { profile, conditions, stats } = data;
+
+  const getRequirements = (level: string) => {
+      if (level === 'Verified') return ["KYC Verified", "College Verified"];
+      const cond = conditions.find((c: any) => c.level === level);
+      if (!cond) return ["Requirements TBD"];
+      return [`${cond.minCalls} Completed Calls`, `${Number(cond.minRating).toFixed(1)}+ Average Rating`];
+  };
 
   const getNextLevel = () => {
     if (profile.mentorlevel === "Verified") return "Standard";
@@ -97,23 +126,37 @@ export default function MentorHomePage() {
                 <Image source={require("../../app-assets/bg-pattern-inverted.svg")} style={styles.headerBgPattern} />
             </View>
             <View style={styles.headerContent}>
-                <TouchableOpacity 
-                    style={styles.profileSummary} 
-                    onPress={() => navigation.navigate("MentorProfilePage")}
-                >
-                    <View style={styles.avatarWrapper}>
-                        <Image 
-                            source={profile.photo_url || require("../../app-assets/avatar-placeholder.svg")} 
-                            style={styles.headerAvatar} 
+                <View style={styles.headerTopRow}>
+                    <TouchableOpacity 
+                        style={styles.profileSummary} 
+                        onPress={() => navigation.navigate("MentorProfilePage")}
+                    >
+                        <View style={styles.avatarWrapper}>
+                            <Image 
+                                source={profile.photo_url || require("../../app-assets/avatar-placeholder.svg")} 
+                                style={styles.headerAvatar} 
+                            />
+                            <Image source={require("../../app-assets/verified-check.svg")} style={styles.verifiedBadge} />
+                        </View>
+                        <View style={styles.nameContainer}>
+                            <Text style={styles.greetingText}>Hi {profile.user?.name?.split(" ")[0] || "Mentor"}</Text>
+                            <Text style={styles.collegeText}>{profile.iit_name}</Text>
+                        </View>
+                        <Image source={require("../../app-assets/edit-icon.svg")} style={styles.editIcon} tintColor="white" />
+                    </TouchableOpacity>
+
+                    <View style={styles.onlineToggleContainer}>
+                        <Text style={[styles.onlineStatusText, { color: isOnline ? '#25d366' : '#fff' }]}>
+                            {isOnline ? 'Online' : 'Offline'}
+                        </Text>
+                        <Switch
+                            trackColor={{ false: "#767577", true: "#25d366" }}
+                            thumbColor={"#f4f3f4"}
+                            onValueChange={toggleOnlineStatus}
+                            value={isOnline}
                         />
-                        <Image source={require("../../app-assets/verified-check.svg")} style={styles.verifiedBadge} />
                     </View>
-                    <View style={styles.nameContainer}>
-                        <Text style={styles.greetingText}>Hi {profile.user?.name?.split(" ")[0] || "Mentor"}</Text>
-                        <Text style={styles.collegeText}>{profile.iit_name}</Text>
-                    </View>
-                    <Image source={require("../../app-assets/edit-icon.svg")} style={styles.editIcon} tintColor="white" />
-                </TouchableOpacity>
+                </View>
 
                 <TouchableOpacity style={styles.withdrawButton}>
                     <Image source={require("../../app-assets/wallet-fill.svg")} style={styles.walletIcon} tintColor="#444653" />
@@ -208,16 +251,30 @@ export default function MentorHomePage() {
             <PlanCard 
                 level="Verified" 
                 rate={7} 
-                requirements={["KYC Verified", "College Verified"]} 
+                requirements={getRequirements("Verified")} 
                 benefits={["Start earning immediately", "Get listed on the platform"]}
                 active={profile.mentorlevel === 'Verified'} 
             />
             <PlanCard 
                 level="Standard" 
                 rate={10} 
-                requirements={["35 Completed Calls", "4.5+ Average Rating"]} 
-                benefits={["Charge higher up to 10/min", "Better ranking in search results"]}
+                requirements={getRequirements("Standard")} 
+                benefits={["Charge up to ₹10/min", "Better ranking in search"]}
                 active={profile.mentorlevel === 'Standard'} 
+            />
+            <PlanCard 
+                level="Signature" 
+                rate={15} 
+                requirements={getRequirements("Signature")} 
+                benefits={["Charge up to ₹15/min", "Featured in search results"]}
+                active={profile.mentorlevel === 'Signature'} 
+            />
+            <PlanCard 
+                level="Fellow" 
+                rate={20} 
+                requirements={getRequirements("Fellow")} 
+                benefits={["Highest earning potential", "Direct platform support"]}
+                active={profile.mentorlevel === 'Fellow'} 
             />
         </View>
 
@@ -247,36 +304,67 @@ function StatCard({ title, amount, subtitle }: any) {
 }
 
 function PlanCard({ level, rate, requirements, benefits, active }: any) {
-    return (
-        <View style={[styles.planCard, active && styles.activePlanCard]}>
-            <View style={styles.planHeader}>
-                <Text style={styles.planRateLabel}>Charge</Text>
-                <Text style={[styles.planRateValue, active && {color: '#2563eb'}]}>₹{rate}/min</Text>
-            </View>
-            
-            <View style={styles.planSection}>
-                <Text style={[styles.planSectionTitle, active && {color: '#2563eb'}]}>Requirements</Text>
-                {requirements.map((req: string) => (
-                    <View key={req} style={styles.planRow}>
-                        <Image source={require("../../app-assets/verified-check.svg")} style={styles.tickIcon} />
-                        <Text style={styles.planRowText}>{req}</Text>
-                    </View>
-                ))}
-            </View>
+    const getPlanBgColor = (lvl: string) => {
+        if (lvl === 'Standard' || lvl === 'Signature') return '#3b4b6b';
+        if (lvl === 'Fellow') return '#0a192f';
+        return '#2563eb'; // Verified
+    }
 
-            <View style={styles.planSection}>
-                <Text style={[styles.planSectionTitle, active && {color: '#2563eb'}]}>Benefits</Text>
-                {benefits.map((ben: string) => (
-                    <View key={ben} style={styles.planRow}>
-                        <Image source={require("../../app-assets/verified-check.svg")} style={styles.tickIcon} />
-                        <Text style={styles.planRowText}>{ben}</Text>
-                    </View>
-                ))}
+    const getPlanLeftBgColor = (lvl: string) => {
+        if (lvl === 'Standard' || lvl === 'Signature') return '#fffdf0';
+        if (lvl === 'Fellow') return '#fdf6d5';
+        return 'white';
+    }
+
+    return (
+        <View style={styles.planCardWrapper}>
+            <View style={[styles.planBanner, { backgroundColor: getPlanBgColor(level) }]}>
+                <View style={[styles.planBannerLeft, { backgroundColor: getPlanLeftBgColor(level) }]}>
+                    <Image source={require("../../app-assets/logo.svg")} style={styles.planBannerIcon} />
+                </View>
+                
+                <View style={styles.planBannerMiddle}>
+                    <Text style={styles.planBannerLevel}>{level.toUpperCase()}</Text>
+                    <Text style={styles.planBannerChargeLabel}>Charge up to</Text>
+                    <Text style={styles.planBannerChargeValue}>₹{rate}<Text style={styles.planBannerChargeUnit}>/min</Text></Text>
+                </View>
+
+                <View style={styles.planBannerRight}>
+                    {requirements.slice(0, 2).map((req: string, index: number) => (
+                        <View key={index} style={styles.planBannerReqRow}>
+                            <Image source={require("../../app-assets/tick-circle.svg")} style={styles.bannerTickIcon} tintColor="white" />
+                            <Text style={styles.planBannerReqText} numberOfLines={1}>{req}</Text>
+                        </View>
+                    ))}
+                </View>
             </View>
 
             {active && (
-                <View style={styles.currentBadge}>
-                    <Text style={styles.currentBadgeText}>CURRENT</Text>
+                <View style={styles.planDetailsCard}>
+                    <View style={styles.planDetailsHeader}>
+                        <Text style={styles.planDetailsLabel}>Charge</Text>
+                        <Text style={styles.planDetailsRate}>₹{rate}/min</Text>
+                    </View>
+                    
+                    <View style={styles.planSection}>
+                        <Text style={[styles.planSectionTitle, {color: '#2563eb'}]}>Requirements</Text>
+                        {requirements.map((req: string) => (
+                            <View key={req} style={styles.planRow}>
+                                <Image source={require("../../app-assets/tick-circle.svg")} style={styles.tickIcon} tintColor="#25d366" />
+                                <Text style={styles.planRowText}>{req}</Text>
+                            </View>
+                        ))}
+                    </View>
+
+                    <View style={styles.planSection}>
+                        <Text style={[styles.planSectionTitle, {color: '#2563eb'}]}>Benefits</Text>
+                        {benefits.map((ben: string) => (
+                            <View key={ben} style={styles.planRow}>
+                                <Image source={require("../../app-assets/tick-circle.svg")} style={styles.tickIcon} tintColor="#25d366" />
+                                <Text style={styles.planRowText}>{ben}</Text>
+                            </View>
+                        ))}
+                    </View>
                 </View>
             )}
         </View>
@@ -323,9 +411,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
   },
+  headerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   profileSummary: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+  },
+  onlineToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  onlineStatusText: {
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   avatarWrapper: {
     position: 'relative',
@@ -562,38 +670,104 @@ const styles = StyleSheet.create({
   },
   plansContainer: {
     paddingHorizontal: 20,
-    gap: 20,
+    gap: 16,
   },
-  planCard: {
+  planCardWrapper: {
+    marginBottom: 0,
+  },
+  planBanner: {
+    flexDirection: 'row',
+    height: 70,
+    borderRadius: 8,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  planBannerLeft: {
+    width: 70,
+    height: 70,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  planBannerIcon: {
+    width: 32,
+    height: 32,
+  },
+  planBannerMiddle: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingLeft: 12,
+  },
+  planBannerLevel: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '300',
+    marginBottom: 2,
+  },
+  planBannerChargeLabel: {
+    color: 'white',
+    fontSize: 11,
+  },
+  planBannerChargeValue: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  planBannerChargeUnit: {
+    fontSize: 12,
+    fontWeight: 'normal',
+  },
+  planBannerRight: {
+    justifyContent: 'center',
+    paddingRight: 12,
+    width: 130,
+  },
+  planBannerReqRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  bannerTickIcon: {
+    width: 12,
+    height: 12,
+    marginRight: 4,
+  },
+  planBannerReqText: {
+    color: 'white',
+    fontSize: 11,
+    flex: 1,
+  },
+  planDetailsCard: {
     backgroundColor: 'white',
     borderRadius: 8,
-    padding: 20,
+    padding: 24,
+    marginTop: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 5,
-    position: 'relative',
+    elevation: 3,
+    width: '90%',
+    alignSelf: 'center',
   },
-  activePlanCard: {
-    borderWidth: 1,
-    borderColor: '#2563eb',
-  },
-  planHeader: {
+  planDetailsHeader: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 10,
+    gap: 30,
     marginBottom: 20,
   },
-  planRateLabel: {
+  planDetailsLabel: {
     fontSize: 12,
     color: '#4a4a4a',
   },
-  planRateValue: {
+  planDetailsRate: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#4a4a4a',
+    color: '#2563eb',
   },
   planSection: {
     marginBottom: 16,
@@ -601,15 +775,14 @@ const styles = StyleSheet.create({
   planSectionTitle: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#3b507d',
     marginBottom: 10,
-    marginLeft: 24,
+    marginLeft: 10,
   },
   planRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 6,
-    marginLeft: 24,
+    marginLeft: 10,
   },
   tickIcon: {
     width: 12,
@@ -619,20 +792,6 @@ const styles = StyleSheet.create({
   planRowText: {
     fontSize: 12,
     color: '#4a4a4a',
-  },
-  currentBadge: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  currentBadgeText: {
-    fontSize: 8,
-    fontWeight: 'bold',
-    color: 'white',
   },
   logoutButton: {
     alignSelf: 'center',
