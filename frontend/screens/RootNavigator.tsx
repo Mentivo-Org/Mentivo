@@ -40,6 +40,7 @@ import notifee, { EventType } from "@notifee/react-native";
 import { navigationRef, navigate } from "../services/navigation";
 
 import linking from "../linking";
+import { socketManager } from "../services/socketManager";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -242,6 +243,15 @@ export default function RootNavigator() {
       }
     });
 
+    // Handle Socket.io incoming calls
+    const socketHandler = (data: any) => {
+      const { callId, channelName, callerName } = data;
+      console.log('[Socket] Incoming call received:', callId);
+      navigate('IncomingCall', { callId, channelName, callerName });
+    };
+
+    socketManager.on('incoming_call', socketHandler);
+
     const checkInitialNotification = async () => {
       const initialNotification = await notifee.getInitialNotification();
       if (initialNotification?.notification?.data?.callId) {
@@ -250,18 +260,20 @@ export default function RootNavigator() {
       }
 
       // Check for accepted call from background
-      const pendingCallId = await AsyncStorage.getItem('pendingCallId');
-      if (pendingCallId) {
-        await AsyncStorage.removeItem('pendingCallId');
-        // This was an "Accept" action, ideally we should have stored more data
-        // but for now we'll fetch what's needed in InCallScreen
-        navigate('InCall', { callId: pendingCallId, role: 'callee' });
+      const pendingCallData = await AsyncStorage.getItem('pendingCallData');
+      if (pendingCallData) {
+        await AsyncStorage.removeItem('pendingCallData');
+        const { callId, channelName, callerName } = JSON.parse(pendingCallData);
+        navigate('InCall', { callId, channelName, callerName, role: 'callee' });
       }
     };
 
     checkInitialNotification();
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      socketManager.off('incoming_call', socketHandler);
+    };
   }, [isSignedIn]);
 
   useEffect (() => {

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-na
 import InCallManager from 'react-native-incall-manager';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import api from '../services/api';
+import { socketManager } from '../services/socketManager';
 import { CallEndpoints } from '../constants/endpoint';
 
 const IncomingCallScreen = () => {
@@ -14,10 +15,22 @@ const IncomingCallScreen = () => {
     // Start playing ringtone
     InCallManager.startRingtone('_BUNDLE_');
 
+    // Listen for remote cancellation or timeout
+    const statusHandler = (data: any) => {
+      if (data.callId === callId && (data.status === 'completed' || data.status === 'rejected' || data.status === 'missed')) {
+        console.log('[Socket] Incoming call closed remotely:', data.status);
+        InCallManager.stopRingtone();
+        navigation.goBack();
+      }
+    };
+
+    socketManager.on('call_status_changed', statusHandler);
+
     return () => {
       InCallManager.stopRingtone();
+      socketManager.off('call_status_changed', statusHandler);
     };
-  }, []);
+  }, [callId]);
 
   const handleAccept = async () => {
     InCallManager.stopRingtone();
