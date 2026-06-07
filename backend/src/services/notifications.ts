@@ -58,6 +58,20 @@ export async function sendIncomingCallAlert(fcmToken: string, studentName: strin
   } catch(e) {}
 }
 
+export async function sendMentorPromotionAlert(fcmToken: string, level: string) {
+  if (!admin.apps.length || !fcmToken) return;
+  try {
+    await admin.messaging().send({
+      token: fcmToken,
+      notification: {
+        title: 'Level Up! 🚀',
+        body: `Congratulations! You have been promoted to ${level} Mentor.`,
+      },
+      data: { type: 'promotion', level },
+    });
+  } catch (e) {}
+}
+
 export async function sendCallSignalingMessage(fcmToken: string, data: { callId: string, channelName: string, callerName: string }) {
   if (!admin.apps.length || !fcmToken) return;
   try {

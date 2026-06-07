@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import prisma from '../config/db.ts';
 import { settleBilling } from '../services/billing.ts';
 import { setAvailable } from '../services/presence.ts';
+import { startPromotionJob } from './promotionJob.ts';
 
 /**
  * Abandoned Call Sweeper
@@ -124,6 +125,9 @@ export function startJobs() {
     cron.schedule('0 3 * * 1', () => {
         processWeeklyPayouts().catch(err => console.error('Unhandled Payouts error:', err));
     });
+
+    // 3. Run mentor promotion job
+    startPromotionJob();
 
     // No need to return a promise that resolves after adding jobs since they are in-memory
     return Promise.resolve();
