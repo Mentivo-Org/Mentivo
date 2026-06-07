@@ -16,8 +16,11 @@ export const syncFcmToken = async (req: Request, res: Response): Promise<any> =>
 
     // Check existing tokens for this user
     const existingTokens = await prisma.fCMToken.findMany({
-      where: { userId, 
-        OR: token
+      where: { 
+        OR: [
+          { userId: userId},
+          {token: token}
+        ]
       },
     });
 
