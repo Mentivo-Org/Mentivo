@@ -1,6 +1,6 @@
 // export const baseUrl = 'http://10.150.63.231:3000/api';
-export const baseUrl = 'http://192.168.29.18:3000/api';
-// export const baseUrl = 'https://api.mentivo.in/api';
+// export const baseUrl = 'http://192.168.29.18:3000/api';
+export const baseUrl = 'https://api.mentivo.in/api';
 
 export const AGORA_APP_ID = '1f1c2710de9a48bd88bc0470aa0204fc';
 
@@ -31,7 +31,10 @@ export const MentorEndpoints = {
     getFavoriteMentors: `${baseUrl}/mentors/favorites`,
     toggleFavoriteMentor: `${baseUrl}/mentors/`, // append :id/favorite
     getMentorById: `${baseUrl}/mentors/`, // append id
-    heartbeat: `${baseUrl}/mentors/me/heartbeat`
+    setStatus: `${baseUrl}/mentors/me/status`,
+    getMeStats: `${baseUrl}/mentors/me/stats`,
+    getPromotionConditions: `${baseUrl}/mentors/promotion-conditions`,
+    uploadProfilePicture: `${baseUrl}/mentors/me/profile-picture`
 }
 
 export const WalletEndpoints = {
@@ -44,6 +47,7 @@ export const CallEndpoints = {
     initiate: `${baseUrl}/calls/initiate`,
     schedule: `${baseUrl}/calls/schedule`,
     getMentorSchedule: (id: string) => `${baseUrl}/calls/mentor/${id}/schedule`,
+    getMentorSessions: `${baseUrl}/calls/mentor/sessions`,
     getStudentSchedule: `${baseUrl}/calls/student/schedule`,
     getStudentSessions: `${baseUrl}/calls/student/sessions`,
     getUpcoming: `${baseUrl}/calls/student/upcoming`,
@@ -56,6 +60,5 @@ export const CallEndpoints = {
 }
 
 export const NotificationEndpoints = {
-    addFcmToken: `${baseUrl}/auth/fcm-token`,    // POST
-    updateFcmToken: `${baseUrl}/auth/fcm-token`  // PUT
+    syncFcmToken: `${baseUrl}/auth/fcm-token`
 }
