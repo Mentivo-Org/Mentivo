@@ -192,7 +192,7 @@ const MentorSignupPage = () => {
                 </TouchableOpacity>
               </View>
               <View style={styles.hintContainer}>
-                <Image source={require('../../app-assets/info-dot.svg')} style={styles.hintIcon} />
+                <Image source={require('../../app-assets/info-dot.svg')} style={styles.hintIcon} tintColor="#444653" />
                 <Text style={styles.hintText}>At least 8 characters</Text>
               </View>
             </View>
