@@ -26,7 +26,7 @@ const StudentLoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const { setIsSignedIn, setRole } = useAuth();
+  const { setIsSignedIn, setRole, requestNotificationPermissions } = useAuth();
   const {showLoading, hideLoading}  = useLoading();
 
   const [alertData, setAlertData] = useState({title: '', message: ''});
@@ -76,6 +76,7 @@ const StudentLoginPage = () => {
         }
         else {
           await AsyncStorage.setItem('verifiedEmail', 'true')
+          requestNotificationPermissions();
           setIsSignedIn(true);
         }
       }
@@ -118,6 +119,7 @@ const StudentLoginPage = () => {
         await AsyncStorage.setItem('accessToken', accessToken);
         await AsyncStorage.setItem('refreshToken', refreshToken);
         await AsyncStorage.setItem('user', JSON.stringify(user));
+        requestNotificationPermissions();
         setIsSignedIn(true);
       }
     } catch (error: any) {
