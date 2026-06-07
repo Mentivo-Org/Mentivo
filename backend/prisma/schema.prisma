@@ -11,6 +11,13 @@ enum UserRole {
   mentor
 }
 
+enum MentorLevel {
+  Verified
+  Standard
+  Signature
+  Fellow
+}
+
 model User {
   id              String    @id @default(uuid()) @db.Uuid
   email           String?   @unique
@@ -94,27 +101,38 @@ model RefreshToken {
 }
 
 model MentorProfile {
-  mentorId       String    @id @db.Uuid
+  mentorId       String      @id @db.Uuid
   iit_name       String
   branch         String?
   year           Int?
-  verified       Boolean   @default(false)
+  verified       Boolean     @default(false)
+  mentorlevel    MentorLevel @default(Verified)
   verified_by    String?
   verified_at    DateTime?
   id_doc_url     String?
-  upiId          String?   @map("upi_id")
+  upiId          String?     @map("upi_id")
   bio            String?
   expertise      String
   photo_url      String?
-  rate_per_min   Decimal   @default(10.00) @db.Decimal(6, 2)
-  avg_rating     Decimal   @default(0) @db.Decimal(3, 2)
-  total_calls    Int       @default(0)
-  isOnline       Boolean   @default(false)
+  rate_per_min   Decimal     @default(10.00) @db.Decimal(6, 2)
+  avg_rating     Decimal     @default(0) @db.Decimal(3, 2)
+  total_calls    Int         @default(0)
+  isOnline       Boolean     @default(false)
   lastOnlineAt   DateTime?
   
-  user           User      @relation(fields: [mentorId], references: [id])
+  user           User        @relation(fields: [mentorId], references: [id])
 
   @@map("mentor_profiles")
+}
+
+model MentorPromotionCondition {
+  id          String      @id @default(uuid()) @db.Uuid
+  level       MentorLevel @unique
+  minCalls    Int         @default(0) @map("min_calls")
+  minRating   Decimal     @default(0) @db.Decimal(3, 2) @map("min_rating")
+  updatedAt   DateTime    @default(now()) @updatedAt @map("updated_at")
+
+  @@map("mentor_promotion_conditions")
 }
 
 model Wallet {
