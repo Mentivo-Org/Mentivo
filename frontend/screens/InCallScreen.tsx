@@ -4,6 +4,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { joinChannel, leaveChannel, getAgoraEngine, setSpeakerphoneOn } from '../services/agora';
 import api from '../services/api';
+import { socketManager } from '../services/socketManager';
 import { CallEndpoints } from '../constants/endpoint';
 
 const InCallScreen = () => {
@@ -20,6 +21,16 @@ const InCallScreen = () => {
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    // Listen for remote hangup
+    const statusHandler = (data: any) => {
+      if (data.callId === callId && data.status === 'completed') {
+        console.log('[Socket] Call completed remotely');
+        handleEndCall(false); // Don't call end API again if remote already ended it
+      }
+    };
+
+    socketManager.on('call_status_changed', statusHandler);
+
     const startCall = async () => {
       try {
         let token = initialToken;
@@ -48,13 +59,13 @@ const InCallScreen = () => {
 
         engine.addListener('onUserOffline', (connection, remoteUid, reason) => {
           console.log('Remote user went offline', remoteUid);
-          handleEndCall();
+          handleEndCall(true);
         });
 
         engine.addListener('onError', (err, msg) => {
           console.error('Agora Error:', err, msg);
           Alert.alert('Call Error', 'An error occurred during the call.');
-          handleEndCall();
+          handleEndCall(true);
         });
 
         await joinChannel(token, channelName, uid);
@@ -71,8 +82,9 @@ const InCallScreen = () => {
       stopTimer();
       stopHeartbeat();
       leaveChannel();
+      socketManager.off('call_status_changed', statusHandler);
     };
-  }, []);
+  }, [callId]);
 
   const notifyCallStart = async () => {
     try {
@@ -107,14 +119,16 @@ const InCallScreen = () => {
     if (heartbeatRef.current) clearInterval(heartbeatRef.current);
   };
 
-  const handleEndCall = async () => {
+  const handleEndCall = async (notifyBackend = true) => {
     stopTimer();
     stopHeartbeat();
     leaveChannel();
-    try {
-      await api.post(CallEndpoints.end(callId));
-    } catch (error) {
-      console.error('Failed to end call on backend:', error);
+    if (notifyBackend) {
+      try {
+        await api.post(CallEndpoints.end(callId));
+      } catch (error) {
+        console.error('Failed to end call on backend:', error);
+      }
     }
     navigation.goBack();
   };
@@ -160,7 +174,7 @@ const InCallScreen = () => {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.endButton} onPress={handleEndCall}>
+        <TouchableOpacity style={styles.endButton} onPress={() => handleEndCall(true)}>
           <Text style={styles.endButtonText}>End Call</Text>
         </TouchableOpacity>
       </View>

@@ -72,7 +72,8 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
   if (type === EventType.ACTION_PRESS) {
     if (pressAction.id === 'accept') {
       console.log('User accepted call from background');
-      await AsyncStorage.setItem('pendingCallId', notification.data.callId);
+      const { callId, channelName, callerName } = notification.data;
+      await AsyncStorage.setItem('pendingCallData', JSON.stringify({ callId, channelName, callerName }));
       // App will be launched by launchActivity: 'default'
     } else if (pressAction.id === 'reject') {
       console.log('User rejected call from background');
