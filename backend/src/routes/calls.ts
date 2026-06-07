@@ -4,9 +4,42 @@ import { generateToken, generateChannelName } from '../services/agora.ts';
 import { lockToBusy, getPresenceState, setAvailable } from '../services/presence.ts';
 import { settleBilling } from '../services/billing.ts';
 import { sendCallSignalingMessage } from '../services/notifications.ts';
+import { emitToUser } from '../config/socket.ts';
 import prisma from '../config/db.ts';
 
 const router = Router();
+
+/**
+ * Missed Call Timeout Handler
+ * Marks call as missed if not accepted within 60s
+ */
+function scheduleMissedCallTimeout(sessionId: string, studentId: string, mentorId: string) {
+  setTimeout(async () => {
+    try {
+      const session = await prisma.callSession.findUnique({ where: { id: sessionId } });
+      
+      // Only transition to 'missed' if it's still in 'calling' or 'pending' state
+      if (session && (session.status === 'calling' || session.status === 'pending')) {
+        await prisma.callSession.update({
+          where: { id: sessionId },
+          data: { status: 'missed', endedAt: new Date() }
+        });
+
+        // Release mentor busy lock
+        await setAvailable(mentorId);
+
+        // Notify both parties
+        const payload = { callId: sessionId, status: 'missed' };
+        emitToUser(studentId, 'call_status_changed', payload);
+        emitToUser(mentorId, 'call_status_changed', payload);
+        
+        console.log(`[Timeout] Call ${sessionId} marked as missed after 60s.`);
+      }
+    } catch (err) {
+      console.error(`[Timeout Error] Failed to handle timeout for call ${sessionId}:`, err);
+    }
+  }, 60000);
+}
 
 // POST /api/calls/initiate
 router.post('/initiate', authenticateUser, async (req, res) => {
@@ -44,24 +77,31 @@ router.post('/initiate', authenticateUser, async (req, res) => {
         student_id: studentId as string,
         mentor_id: mentorId as string,
         agoraChannelId: channelName,
-        status: 'pending',
+        status: 'calling', // Set to calling immediately
         is_free: isFree
       }
     });
 
     // 6. Calculate Max Affordable Duration (INR 10/min)
     const affordableMinutes = Math.floor(Number(wallet.balance) / 10);
-    // Buffer for first free call (if applicable) or standard call
-    // We add 300s (5min) if it is free, and set the token to expire 60s after their max money runs out
     const bufferSeconds = 60;
     const maxAllowedSeconds = (affordableMinutes * 60) + (isFree ? 300 : 0) + bufferSeconds;
 
-    // 7. Generate Agora Tokens with Dynamic Expiry
+    // 7. Generate Agora Tokens
     const studentToken = generateToken(channelName, studentId as string, maxAllowedSeconds);
-    const mentorToken = generateToken(channelName, mentorId, 3600); // Mentor can stay 1hr
+    const mentorToken = generateToken(channelName, mentorId, 3600);
 
-    // 8. Trigger Signaling (FCM)
+    // 8. Trigger Signaling (Socket.io + FCM)
     const student = await prisma.user.findUnique({ where: { id: studentId }, select: { name: true } });
+    
+    // 8a. Socket emission for instant ringing
+    emitToUser(mentorId, 'incoming_call', {
+      callId: session.id,
+      channelName,
+      callerName: student?.name || 'Student'
+    });
+
+    // 8b. FCM push for background wake-up
     const mentorFcmToken = await prisma.fCMToken.findFirst({
       where: { userId: mentorId },
       orderBy: { updatedAt: 'desc' },
@@ -75,6 +115,9 @@ router.post('/initiate', authenticateUser, async (req, res) => {
         callerName: student?.name || 'Student'
       });
     }
+
+    // 9. Start Missed Call Timeout (60s)
+    scheduleMissedCallTimeout(session.id, studentId as string, mentorId);
 
     res.json({
       sessionId: session.id,
@@ -306,10 +349,15 @@ router.get('/student/upcoming', authenticateUser, async (req, res) => {
 // POST /api/calls/:id/start
 router.post('/:id/start', authenticateUser, async (req, res) => {
   try {
-    await prisma.callSession.update({
+    const session = await prisma.callSession.update({
       where: { id: req.params.id as string},
       data: { status: 'active', startedAt: new Date(), lastHeartbeatAt: new Date() }
     });
+
+    // Notify the other party that call is connected
+    const otherPartyId = req.user?.id === session.student_id ? session.mentor_id : session.student_id;
+    emitToUser(otherPartyId, 'call_status_changed', { callId: session.id, status: 'active' });
+
     res.sendStatus(200);
   } catch (e) {
     res.status(500).json({ error: 'Server Error' });
@@ -339,8 +387,8 @@ router.patch('/:id/heartbeat', authenticateUser, async (req, res) => {
 router.post('/:id/end', authenticateUser, async (req, res) => {
   try {
     const session = await prisma.callSession.findUnique({ where: { id: req.params.id as string} });
-    if (!session || session.status !== 'active') {
-      return res.status(400).json({ error: 'Call is not active' });
+    if (!session || (session.status !== 'active' && session.status !== 'calling')) {
+      return res.status(400).json({ error: 'Call is not active or ringing' });
     }
 
     const endedAt = new Date();
@@ -348,11 +396,15 @@ router.post('/:id/end', authenticateUser, async (req, res) => {
 
     await prisma.callSession.update({
       where: { id: req.params.id as string},
-      data: { endedAt }
+      data: { endedAt, status: 'completed' }
     });
 
     // Release mentor
     await setAvailable(session.mentor_id);
+
+    // Notify the other party
+    const otherPartyId = req.user?.id === session.student_id ? session.mentor_id : session.student_id;
+    emitToUser(otherPartyId, 'call_status_changed', { callId: session.id, status: 'completed' });
 
     // Atomic billing
     await settleBilling(session.id, durationSecs);
@@ -377,6 +429,10 @@ router.post('/:id/reject', authenticateUser, async (req, res) => {
 
     // Release mentor
     await setAvailable(session.mentor_id);
+
+    // Notify the caller
+    const callerId = req.user?.id === session.mentor_id ? session.student_id : session.mentor_id;
+    emitToUser(callerId, 'call_status_changed', { callId: session.id, status: 'rejected' });
 
     res.sendStatus(200);
   } catch (e) {
