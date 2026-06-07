@@ -16,6 +16,7 @@ interface AuthContextType {
   setRole: (value: string | null) => void;
   checkLoginStatus: () => Promise<void>;
   handleLogout: () => Promise<void>;
+  requestNotificationPermissions: () => Promise<void>;
   isLoading: boolean
 }
 
@@ -79,24 +80,45 @@ const handleLogout = async ()=> {
       forceCodeForRefreshToken: true,
     });
     
-    // Request notification permission and setup channel on first launch
-    const initializeNotifications = async () => {
-      try {
-        await notifee.requestPermission();
-        await notifee.createChannel({
-          id: 'default',
-          name: 'Default Channel',
-          importance: AndroidImportance.HIGH,
-        });
-        console.log('Notifications initialized on app launch');
-      } catch (err) {
-        console.error('Failed to initialize notifications on launch:', err);
-      }
-    };
-    initializeNotifications();
-    
     setIsLoading(false);
   }, []);
+
+  const requestNotificationPermissions = async () => {
+    try {
+      console.log('Requesting notification permissions...');
+      await notifee.requestPermission();
+      await notifee.createChannel({
+        id: 'default',
+        name: 'Default Channel',
+        importance: AndroidImportance.HIGH,
+      });
+      console.log('Notifee initialized');
+
+      console.log('Starting FCM setup...');
+      const messagingInstance = getMessaging();
+      
+      const authStatus = await requestPermission(messagingInstance);
+      const enabled =
+        authStatus === AuthorizationStatus.AUTHORIZED ||
+        authStatus === AuthorizationStatus.PROVISIONAL;
+
+      console.log('FCM Authorization status:', authStatus, 'Enabled:', enabled);
+
+      if (enabled) {
+        const token = await getToken(messagingInstance);
+        if (token) {
+          console.log('FCM Token obtained:', token);
+          const response = await api.post(NotificationEndpoints.syncFcmToken, { token });
+          if (response.status === 200 || response.status === 201) {
+            await AsyncStorage.setItem('fcmToken', token);
+            console.log('FCM token synced with backend');
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to request notification permissions:', err);
+    }
+  };
 
   // 3. FCM Token Management
   useEffect(() => {
@@ -104,45 +126,26 @@ const handleLogout = async ()=> {
 
     const setupFCM = async () => {
       try {
-        console.log('Starting FCM setup...');
+        console.log('Starting background FCM setup check...');
         const messagingInstance = getMessaging();
+        const token = await getToken(messagingInstance);
         
-        const authStatus = await requestPermission(messagingInstance);
-        const enabled =
-          authStatus === AuthorizationStatus.AUTHORIZED ||
-          authStatus === AuthorizationStatus.PROVISIONAL;
-
-        console.log('FCM Authorization status:', authStatus, 'Enabled:', enabled);
-
-        if (enabled) {
-          const token = await getToken(messagingInstance);
-          console.log('FCM Token obtained:', token ? 'YES' : 'NO');
-          
-          if (token) {
-            const storedToken = await AsyncStorage.getItem('fcmToken');
-            
-            // Send to backend if new or changed
-            if (token !== storedToken) {
-              console.log('Syncing FCM token with backend...');
-              try {
-                const response = await api.post(NotificationEndpoints.syncFcmToken, { token });
-                
-                if (response.status === 200 || response.status === 201) {
-                  await AsyncStorage.setItem('fcmToken', token);
-                  console.log(`FCM token synced (Status: ${response.status})`);
-                }
-              } catch (err) {
-                console.error('Failed to sync FCM token with backend:', err);
+        if (token) {
+          const storedToken = await AsyncStorage.getItem('fcmToken');
+          if (token !== storedToken) {
+            console.log('Syncing FCM token with backend...');
+            try {
+              const response = await api.post(NotificationEndpoints.syncFcmToken, { token });
+              if (response.status === 200 || response.status === 201) {
+                await AsyncStorage.setItem('fcmToken', token);
               }
-            } else {
-              console.log('FCM token unchanged, skipping sync');
+            } catch (err) {
+              console.error('Failed to sync FCM token:', err);
             }
           }
-        } else {
-          console.warn('FCM permissions not granted');
         }
       } catch (error) {
-        console.error('FCM Setup Error:', error);
+        console.error('FCM background check Error:', error);
       }
     };
 
@@ -170,8 +173,8 @@ const handleLogout = async ()=> {
           console.log('Notifee Permission Status:', settings.authorizationStatus);
 
           await notifee.displayNotification({
-            title: title || 'Mentivo Notification',
-            body: body || 'You have a new message',
+            title: title as string || 'Mentivo Notification',
+            body: body as string|| 'You have a new message',
             data: remoteMessage.data,
             android: {
               channelId: 'default',
@@ -239,7 +242,7 @@ const handleLogout = async ()=> {
   }, [isSignedIn]);
 
   return (
-    <AuthContext.Provider value={{ isSignedIn, setIsSignedIn, role, setRole, checkLoginStatus, handleLogout, isLoading }}>
+    <AuthContext.Provider value={{ isSignedIn, setIsSignedIn, role, setRole, checkLoginStatus, handleLogout, requestNotificationPermissions, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

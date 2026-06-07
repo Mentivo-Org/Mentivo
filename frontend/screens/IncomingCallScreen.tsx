@@ -5,6 +5,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import api from '../services/api';
 import { socketManager } from '../services/socketManager';
 import { CallEndpoints } from '../constants/endpoint';
+import { requestMicrophonePermission } from '../services/permissions';
 
 const IncomingCallScreen = () => {
   const navigation = useNavigation<any>();
@@ -33,6 +34,13 @@ const IncomingCallScreen = () => {
   }, [callId]);
 
   const handleAccept = async () => {
+    const hasPermission = await requestMicrophonePermission();
+    
+    if (!hasPermission) {
+      handleReject();
+      return;
+    }
+
     InCallManager.stopRingtone();
     // Navigate to InCallScreen which will handle joining the Agora channel
     navigation.replace('InCall', { callId, channelName, callerName, role: 'callee' });

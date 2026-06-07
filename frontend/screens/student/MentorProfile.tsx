@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Alert, PermissionsAndroid, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import api from '../../services/api';
 import { MentorEndpoints, CallEndpoints } from '../../constants/endpoint';
 import { useLoading } from '../../context/LoadingContext';
+import { requestMicrophonePermission } from '../../services/permissions';
 
 const { width, height } = Dimensions.get("window");
 
@@ -56,27 +57,8 @@ export default function MentorProfile() {
     }
 
     // Check permissions
-    if (Platform.OS === 'android') {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-          {
-            title: 'Microphone Permission',
-            message: 'Mentivo needs access to your microphone so you can talk to mentors.',
-            buttonNeutral: 'Ask Me Later',
-            buttonNegative: 'Cancel',
-            buttonPositive: 'OK',
-          },
-        );
-        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          Alert.alert('Permission Denied', 'Microphone permission is required to make calls.');
-          return;
-        }
-      } catch (err) {
-        console.warn(err);
-        return;
-      }
-    }
+    const hasPermission = await requestMicrophonePermission();
+    if (!hasPermission) return;
 
     setIsInitiating(true);
     showLoading('Initiating call...');

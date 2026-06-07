@@ -25,7 +25,7 @@ const MentorLoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const { setIsSignedIn, setRole } = useAuth();
+  const { setIsSignedIn, setRole, requestNotificationPermissions } = useAuth();
   const {showLoading, hideLoading}  = useLoading();
 
   const [alertData, setAlertData] = useState({title: '', message: ''});
@@ -81,6 +81,7 @@ const MentorLoginPage = () => {
         }
         else {
           await AsyncStorage.setItem('verifiedEmail', 'true')
+          requestNotificationPermissions();
           setIsSignedIn(true);
         }
       }

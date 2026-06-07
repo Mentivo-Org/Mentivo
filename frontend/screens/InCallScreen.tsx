@@ -6,6 +6,7 @@ import { joinChannel, leaveChannel, getAgoraEngine, setSpeakerphoneOn } from '..
 import api from '../services/api';
 import { socketManager } from '../services/socketManager';
 import { CallEndpoints } from '../constants/endpoint';
+import { requestMicrophonePermission } from '../services/permissions';
 
 const InCallScreen = () => {
   const navigation = useNavigation<any>();
@@ -33,6 +34,12 @@ const InCallScreen = () => {
 
     const startCall = async () => {
       try {
+        const hasPermission = await requestMicrophonePermission();
+        if (!hasPermission) {
+          handleEndCall(true);
+          return;
+        }
+
         let token = initialToken;
         let channelName = initialChannelName;
 
