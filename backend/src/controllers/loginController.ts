@@ -39,6 +39,13 @@ export const logout = async (req: Request, res: Response) => {
 };
 
 export const whoAmI = async (req:Request, res: Response) => {
+  if (req.user?.role === 'mentor') {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { mentorProfile: true }
+    });
+    return res.status(200).json({ user });
+  }
   return res.status(200).json({
     user: req.user
   })
