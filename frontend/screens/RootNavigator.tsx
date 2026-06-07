@@ -22,6 +22,8 @@ import InCallScreen from "./InCallScreen";
 import StudentHomePage from "./student/StudentHomePage";
 import YourSession from "./student/YourSession";
 import MentorProfile from "./student/MentorProfile";
+import MentorProfilePage from "./mentor/MentorProfilePage";
+import MentorAskPage from "./mentor/MentorAskPage";
 import ScheduleCall from "./student/ScheduleCall";
 import PaymentPage from "./student/PaymentPage";
 import StudentChatPage from "./student/StudentChatPage";
@@ -29,7 +31,7 @@ import StudentAskPage from "./student/StudentAskPage";
 import MentorHomePage from "./mentor/MentorHomePage";
 import SplashScreen from "./SplashScreen";
 import api from "../services/api";
-import { LoginEndpoints } from "../constants/endpoint";
+import { LoginEndpoints, MentorEndpoints } from "../constants/endpoint";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DialogBox from "../components/DialogBox";
 import { Image } from "expo-image";
@@ -183,6 +185,8 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 }
 
 function AuthenticatedTabs() {
+  const { role } = useAuth();
+  
   return (
     <Tab.Navigator
       id="authenticated-tabs"
@@ -195,16 +199,26 @@ function AuthenticatedTabs() {
     >
       <Tab.Screen
         name="Home"
-        component={StudentHomePage}
+        component={role === "mentor" ? MentorHomePage : StudentHomePage}
       />
-      <Tab.Screen
-        name="Chat"
-        component={StudentChatPage}
-      />
-      <Tab.Screen
-        name="Ask"
-        component={StudentAskPage}
-      />
+      {role === "student" && (
+        <>
+          <Tab.Screen
+            name="Chat"
+            component={StudentChatPage}
+          />
+          <Tab.Screen
+            name="Ask"
+            component={StudentAskPage}
+          />
+        </>
+      )}
+      {role === "mentor" && (
+        <Tab.Screen
+          name="Ask"
+          component={MentorAskPage}
+        />
+      )}
     </Tab.Navigator>
   );
 }
@@ -264,9 +278,22 @@ export default function RootNavigator() {
         if (response.status === 200) {
           if (response.data?.user?.isEmailVerified === true) {
             await AsyncStorage.setItem('verifiedEmail', 'true');
+            const user = response.data?.user;
+            console.log("user information ", user);
+            
+            // Prefetch stats if role is mentor
+            if (user.role === "mentor") {
+              try {
+                const statsRes = await api.get(MentorEndpoints.getMeStats);
+                if (statsRes.status === 200) {
+                  await AsyncStorage.setItem('stats', JSON.stringify(statsRes.data));
+                }
+              } catch (statsErr) {
+                console.error("Failed to prefetch mentor stats:", statsErr);
+              }
+            }
+
             if (response.data?.user?.profile_completed === false) {
-              const user = response.data?.user;
-              console.log("user information ", user);
               setProfileData({full_name: user.name,email: user.email,role: user.role,phone: user.phone, state: 'loaded'});
               if (user.role === "mentor") {
                 const iit = await api.post(LoginEndpoints.getIIT, { email: user.email });
@@ -324,6 +351,7 @@ export default function RootNavigator() {
           <AuthStack.Screen name="Main" component={AuthenticatedTabs} />
           <AuthStack.Screen name="YourSession" component={YourSession} />
           <AuthStack.Screen name="MentorProfile" component={MentorProfile} />
+          <AuthStack.Screen name="MentorProfilePage" component={MentorProfilePage} />
           <AuthStack.Screen name="ScheduleCall" component={ScheduleCall} />
           <AuthStack.Screen name="Payment" component={PaymentPage} />
           <AuthStack.Screen name="IncomingCall" component={IncomingCallScreen} />
