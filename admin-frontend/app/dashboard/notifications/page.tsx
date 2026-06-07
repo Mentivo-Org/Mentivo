@@ -16,6 +16,7 @@ export default function NotificationCenterPage() {
   const { user: admin } = useAuth();
   const [mode, setMode] = useState<"group" | "specific">("group");
   const [filters, setFilters] = useState<any>({ role: "", grade: "", verified: undefined });
+  const [priority, setPriority] = useState<"normal" | "high">("normal");
 
   // Specific Recipients State
   const [searchText, setSearchText] = useState("");
@@ -118,14 +119,14 @@ export default function NotificationCenterPage() {
     e.preventDefault();
     const count = mode === "group" ? recipientCount : selectedUsers.length;
 
-    if (!confirm(`Are you sure you want to send this notification to ${count} recipient(s)?`)) return;
+    if (!confirm(`Are you sure you want to send this ${priority} priority notification to ${count} recipient(s)?`)) return;
     
     setLoading(true);
     try {
       const endpoint = mode === "group" ? "/notifications/send-group" : "/notifications/send-batch";
       const payload = mode === "group" 
-        ? { filters, title, body } 
-        : { userIds: selectedUsers.map(u => u.id), title, body };
+        ? { filters, title, body, priority } 
+        : { userIds: selectedUsers.map(u => u.id), title, body, priority };
 
       await api.post(endpoint, payload);
       
@@ -297,7 +298,7 @@ export default function NotificationCenterPage() {
           <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex gap-3">
              <AlertTriangle className="text-amber-600 flex-shrink-0" size={20} />
              <p className="text-xs text-amber-800 leading-relaxed">
-               <strong>Note:</strong> Notifications are sent as Push Alerts (FCM) and stored in the user's in-app inbox.
+               <strong>Note:</strong> Notifications are sent as Push Alerts (FCM) and stored in the user's in-app inbox. High priority notifications bypass battery saving modes on Android.
              </p>
           </div>
         </div>
@@ -321,12 +322,27 @@ export default function NotificationCenterPage() {
                   <label className="block text-sm font-medium text-text mb-1">Notification Body</label>
                   <textarea
                     required
-                    rows={12}
+                    rows={10}
                     placeholder="Write your message here..."
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary transition-all font-sans resize-none"
                     value={body}
                     onChange={(e) => setBody(e.target.value)}
                   />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-text mb-1">Priority Level</label>
+                    <select 
+                      className="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-primary"
+                      value={priority}
+                      onChange={(e) => setPriority(e.target.value as "normal" | "high")}
+                    >
+                      <option value="normal">Normal Priority (Recommended for standard alerts)</option>
+                      <option value="high">High Priority (Use for critical/urgent time-sensitive alerts)</option>
+                    </select>
+                    <p className="text-[10px] text-secondary mt-1 ml-1 italic">
+                        High priority should be used sparingly to respect user battery and delivery policies.
+                    </p>
                 </div>
              </div>
 
