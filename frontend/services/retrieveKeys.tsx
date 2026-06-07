@@ -11,6 +11,8 @@ import { useLoading } from '../context/LoadingContext';
 interface AuthContextType {
   isSignedIn: boolean | null;
   setIsSignedIn: (value: boolean | null) => void;
+  role: string | null;
+  setRole: (value: string | null) => void;
   checkLoginStatus: () => Promise<void>;
   handleLogout: () => Promise<void>;
   isLoading: boolean
@@ -21,6 +23,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { showLoading, hideLoading } = useLoading();
   const [isSignedIn, setIsSignedIn] = useState<boolean | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   // Inside AuthProvider
 const checkLoginStatus = async () => {
@@ -29,6 +32,7 @@ const checkLoginStatus = async () => {
     const access = await AsyncStorage.getItem('accessToken');
     const refresh = await AsyncStorage.getItem('refreshToken');
     const user = await AsyncStorage.getItem('user');
+    const storedRole = await AsyncStorage.getItem('role');
     var verifiedEmail = await AsyncStorage.getItem('verifiedEmail');
     if(verifiedEmail !== 'true') {
       verifiedEmail = null;
@@ -36,6 +40,7 @@ const checkLoginStatus = async () => {
     console.log("Tokens found:", { access: !!access, refresh: !!refresh, user: !!user,  verifiedEmail: !!verifiedEmail });
 
     setIsSignedIn(!!(access && refresh && verifiedEmail && user));
+    setRole(storedRole);
     console.log("Logged in status: ", !!(access && refresh && user && verifiedEmail) ? "ACTIVE" : "LOGGED OUT")
   } catch (e) {
     console.error("AsyncStorage Error:", e);
@@ -46,12 +51,13 @@ const checkLoginStatus = async () => {
 const handleLogout = async ()=> {
   showLoading("Logging out...");
   try {
-    await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user', 'verifiedEmail', 'fcmToken']);
+    await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user', 'verifiedEmail', 'fcmToken', 'role']);
     const isGoogleSignedIn = await GoogleSignin.hasPreviousSignIn();
     if(isGoogleSignedIn) {
       await GoogleSignin.signOut();
     }
     setIsSignedIn(false);
+    setRole(null);
     console.log("User successfully signed out");
   }
   catch(e) {
@@ -214,7 +220,7 @@ const handleLogout = async ()=> {
   }, [isSignedIn]);
 
   return (
-    <AuthContext.Provider value={{ isSignedIn, setIsSignedIn, checkLoginStatus, handleLogout, isLoading }}>
+    <AuthContext.Provider value={{ isSignedIn, setIsSignedIn, role, setRole, checkLoginStatus, handleLogout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
