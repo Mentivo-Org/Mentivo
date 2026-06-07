@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import { createServer } from 'http';
 import { rateLimit } from 'express-rate-limit';
 import authrouter from './routes/auth.ts';
 import coachingRouter from './routes/coaching.ts';
@@ -12,8 +13,13 @@ import agoraRouter from './routes/agora.ts'
 import webhookRouter from './routes/webhooks.ts';
 import prisma from './config/db.ts';
 import { startJobs } from './jobs/index.ts';
+import { initSocket } from './config/socket.ts';
 
 const app = express();
+const httpServer = createServer(app);
+
+// Initialize Socket.io
+initSocket(httpServer);
 
 app.use(cookieParser());
 
@@ -133,7 +139,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, async () => {
+httpServer.listen(PORT, async () => {
   console.log(`Mentivo API running on port ${PORT}`);
   try {
     await startJobs();

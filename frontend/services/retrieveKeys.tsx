@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getMessaging, requestPermission, getToken, onTokenRefresh, AuthorizationStatus, onMessage } from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import api from './api';
+import { socketManager } from './socketManager';
 import { NotificationEndpoints } from '../constants/endpoint';
 import { useLoading } from '../context/LoadingContext';
 
@@ -217,6 +218,24 @@ const handleLogout = async ()=> {
       if (unsubscribeTokenRefresh) unsubscribeTokenRefresh();
       unsubscribeOnMessage();
     };
+  }, [isSignedIn]);
+
+  // 4. Socket.io lifecycle management
+  useEffect(() => {
+    if (isSignedIn) {
+      const initSocket = async () => {
+        const token = await AsyncStorage.getItem('accessToken');
+        const userJson = await AsyncStorage.getItem('user');
+        const user = userJson ? JSON.parse(userJson) : null;
+        
+        if (token && user?.id) {
+          socketManager.connect(token, user.id);
+        }
+      };
+      initSocket();
+    } else if (isSignedIn === false) {
+      socketManager.disconnect();
+    }
   }, [isSignedIn]);
 
   return (
