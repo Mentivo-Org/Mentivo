@@ -247,6 +247,7 @@ export default function StudentHomePage() {
           price: m.rate_per_min || 10,
           isFavorite: false, // Update if you have a favorites system
           isOnline: m.isOnline,
+          photoUrl: m.photo_url,
         }));
 
         if (formattedMentors.length < LIMIT) {
