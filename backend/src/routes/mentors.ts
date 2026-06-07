@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { authenticateUser } from '../auth/authenticateUser.ts';
 import { getAvailableMentors, setAvailable } from '../services/presence.ts';
 import prisma from '../config/db.ts';
+import { uploadProfilePicMiddleware, uploadProfilePicture } from '../controllers/mentorController.ts';
 
 const router = Router();
 
@@ -93,6 +94,19 @@ router.get('/online/paginated', authenticateUser, async (req: Request, res: Resp
     res.json(mentors);
   } catch (err) {
     console.error('Error fetching paginated mentors:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// GET /api/mentors/promotion-conditions
+router.get('/promotion-conditions', authenticateUser, async (req: Request, res: Response) => {
+  try {
+    const conditions = await prisma.mentorPromotionCondition.findMany({
+      orderBy: { level: 'asc' }
+    });
+    res.json(conditions);
+  } catch (err) {
+    console.error('Error fetching promotion conditions:', err);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
@@ -209,21 +223,90 @@ router.get('/:id', authenticateUser, async (req:Request, res:Response) => {
   }
 });
 
-// PATCH /api/mentors/me/heartbeat
-router.patch('/me/heartbeat', authenticateUser, async (req: Request, res:Response) => {
+// GET /api/mentors/me/stats
+router.get('/me/stats', authenticateUser, async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id as string;
-    // Verify the user is a mentor
-    if(req.user?.role!=='mentor') {
-      return res.status(400).json({
-        error: "You are not allowed to request at this endpoint"
-      })
+    if (req.user?.role !== 'mentor') {
+      return res.status(403).json({ error: 'Access denied' });
     }
-    await setAvailable(userId);
-    res.json({ success: true });
+
+    const mentor = await prisma.mentorProfile.findUnique({
+      where: { mentorId: userId },
+      include: { user: true }
+    });
+
+    if (!mentor) {
+      return res.status(404).json({ error: 'Mentor profile not found' });
+    }
+
+    const conditions = await prisma.mentorPromotionCondition.findMany();
+    
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // Fix startOfWeek calculation
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const [todayCalls, weekCalls, allTimeCalls] = await Promise.all([
+        prisma.callSession.aggregate({
+            where: { mentor_id: userId, status: 'completed', endedAt: { gte: startOfToday } },
+            _count: true,
+            _sum: { mentorEarning: true }
+        }),
+        prisma.callSession.aggregate({
+            where: { mentor_id: userId, status: 'completed', endedAt: { gte: startOfWeek } },
+            _count: true,
+            _sum: { mentorEarning: true }
+        }),
+        prisma.callSession.aggregate({
+            where: { mentor_id: userId, status: 'completed' },
+            _count: true,
+            _sum: { mentorEarning: true }
+        })
+    ]);
+
+    res.json({
+      profile: mentor,
+      conditions,
+      stats: {
+          today: { count: todayCalls._count, earnings: todayCalls._sum.mentorEarning || 0 },
+          week: { count: weekCalls._count, earnings: weekCalls._sum.mentorEarning || 0 },
+          allTime: { count: allTimeCalls._count, earnings: allTimeCalls._sum.mentorEarning || 0 }
+      }
+    });
   } catch (err) {
+    console.error('Error fetching mentor stats:', err);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
+// POST /api/mentors/me/status
+router.post('/me/status', authenticateUser, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id as string;
+    const { isOnline } = req.body;
+
+    if (req.user?.role !== 'mentor') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    if (isOnline) {
+      await setAvailable(userId);
+    } else {
+      await setOffline(userId);
+    }
+
+    res.json({ success: true, isOnline });
+  } catch (err) {
+    console.error('Error updating mentor status:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// POST /api/mentors/me/profile-picture
+router.post('/me/profile-picture', authenticateUser, uploadProfilePicMiddleware, uploadProfilePicture);
 
 export default router;
