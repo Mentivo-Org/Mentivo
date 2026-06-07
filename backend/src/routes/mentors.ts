@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { authenticateUser } from '../auth/authenticateUser.ts';
-import { getAvailableMentors, setAvailable } from '../services/presence.ts';
+import { getAvailableMentors, setAvailable, setOffline } from '../services/presence.ts';
 import prisma from '../config/db.ts';
 import { uploadProfilePicMiddleware, uploadProfilePicture } from '../controllers/mentorController.ts';
 
@@ -183,11 +183,11 @@ router.post('/:id/favorite', authenticateUser, async (req: Request, res: Respons
     }
 
     let updatedFavorites = [...(user.favouriteMentors || [])];
-    const index = updatedFavorites.indexOf(mentorId);
+    const index = updatedFavorites.indexOf(mentorId as string);
 
     if (index === -1) {
       // Add to favorites
-      updatedFavorites.push(mentorId);
+      updatedFavorites.push(mentorId as string);
     } else {
       // Remove from favorites
       updatedFavorites.splice(index, 1);
