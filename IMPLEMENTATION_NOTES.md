@@ -1,18 +1,29 @@
+# Mentivo Implementation Notes
+
+## 1. Monorepo Structure
+The project is organized as a monorepo containing multiple independent services and applications:
+- `/backend`: Core API (Node/Express/Prisma) serving the mobile applications.
+- `/frontend`: React Native (Expo) mobile application for Students and Mentors.
+- `/admin-backend`: Dedicated administrative API with its own Prisma configuration.
+- `/admin-frontend`: Next.js Admin Dashboard for platform management.
+- `/website`: Next.js portal for coaching partners and referral management.
+- `/supabase`: Database migrations and configuration.
+
 ## 8. API Endpoints Generated
 - **POST /auth/verify:** Receives email, role, name, uid. Finds or creates the user in the database. Returns user object. Used as a mock authentication setup.
 - **POST /auth/coaching/login:** Receives unique coaching center code. Returns session token for partner dashboard.
 - **GET /coaching/dashboard:** Returns aggregated student usage data and revenue share details.
 
 ## 9. Screens Generated
-- LandingPage (`src/screens/LandingPage.js`): Homepage for discovery
-- FindAMentor (`src/screens/FindAMentor.js`): Discovery page for viewing available mentors
-- BookYourSession (`src/screens/BookYourSession.js`): Calendar/Slot selection flow
-- MentorDashboard (`src/screens/MentorDashboard.js`): Analytics and session tracking for mentors
-- SessionChat (`src/screens/SessionChat.js`): In-session messaging view (using Agora Chat)
-- AudioCall (`src/screens/AudioCall.js`): Live mentor-student call view (using Agora SDK with on-screen timer).
-- CoachingDashboard (`website/app/coaching/dashboard/page.tsx`): Web-based dashboard for coaching centers.
-- TelegramAdminDashboard (`website/app/admin/referrals/page.tsx`): Web-based dashboard for Telegram admins.
-- SystemAdminDashboard (`website/app/superadmin/page.tsx`): Comprehensive management dashboard for platform owners.
+- **LandingPage** (`frontend/screens/LandingPage.tsx`): Homepage for discovery.
+- **FindAMentor** (`frontend/screens/student/StudentHomePage.tsx`): Discovery page for viewing available mentors.
+- **BookYourSession** (`frontend/screens/student/ScheduleCall.tsx`): Calendar/Slot selection flow.
+- **MentorDashboard** (`frontend/screens/mentor/MentorHomePage.tsx`): Analytics and session tracking for mentors.
+- **SessionChat** (`frontend/screens/student/StudentChatPage.tsx`): In-session messaging view (using Agora Chat).
+- **AudioCall** (`frontend/screens/InCallScreen.tsx`): Live mentor-student call view (using Agora SDK with on-screen timer).
+- **CoachingDashboard** (`website/app/coaching/dashboard/page.tsx`): Web-based dashboard for coaching centers.
+- **TelegramAdminDashboard** (`website/app/admin/referrals/page.tsx`): Web-based dashboard for Telegram admins.
+- **SystemAdminDashboard** (`website/app/superadmin/page.tsx`): Comprehensive management dashboard for platform owners.
 
 ## 10. Referral System Technical Details
 

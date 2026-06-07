@@ -43,6 +43,9 @@ Mentivo is a per-minute voice mentorship marketplace connecting JEE aspirants wi
 ## Project Structure
 - `/backend`: API server, Prisma schema, services (Agora, Razorpay, Firebase).
 - `/frontend`: React Native Expo application.
+- `/admin-backend`: Admin-specific Express API with separate Prisma setup.
+- `/admin-frontend`: Next.js Admin Dashboard for platform management.
+- `/website`: Next.js web dashboards for partners and admins.
 - `/supabase`: Supabase configuration and migrations.
 
 ## Development Guidelines
