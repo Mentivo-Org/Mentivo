@@ -18,8 +18,8 @@ function scheduleMissedCallTimeout(sessionId: string, studentId: string, mentorI
     try {
       const session = await prisma.callSession.findUnique({ where: { id: sessionId } });
       
-      // Only transition to 'missed' if it's still in 'calling' or 'pending' state
-      if (session && (session.status === 'calling' || session.status === 'pending')) {
+      // Only transition to 'missed' if it's still in 'calling', 'ringing' or 'pending' state
+      if (session && (session.status === 'calling' || session.status === 'ringing' || session.status === 'pending')) {
         await prisma.callSession.update({
           where: { id: sessionId },
           data: { status: 'missed', endedAt: new Date() }
@@ -364,6 +364,29 @@ router.post('/:id/start', authenticateUser, async (req, res) => {
   }
 });
 
+// POST /api/calls/:id/ringing
+router.post('/:id/ringing', authenticateUser, async (req, res) => {
+  try {
+    const session = await prisma.callSession.findUnique({ where: { id: req.params.id as string } });
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    
+    if (session.status !== 'ringing') {
+      await prisma.callSession.update({
+        where: { id: req.params.id as string},
+        data: { status: 'ringing' }
+      });
+      console.log(`[Ringing] Call ${session.id} status updated to ringing`);
+      // Notify the student that mentor's phone is ringing
+      emitToUser(session.student_id, 'call_status_changed', { callId: session.id, status: 'ringing' });
+    }
+
+    res.sendStatus(200);
+  } catch (e) {
+    console.error('Ringing status update error:', e);
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
 // PATCH /api/calls/:id/heartbeat
 router.patch('/:id/heartbeat', authenticateUser, async (req, res) => {
   try {
@@ -387,8 +410,8 @@ router.patch('/:id/heartbeat', authenticateUser, async (req, res) => {
 router.post('/:id/end', authenticateUser, async (req, res) => {
   try {
     const session = await prisma.callSession.findUnique({ where: { id: req.params.id as string} });
-    if (!session || (session.status !== 'active' && session.status !== 'calling')) {
-      return res.status(400).json({ error: 'Call is not active or ringing' });
+    if (!session || !['active', 'calling', 'ringing'].includes(session.status)) {
+      return res.status(400).json({ error: 'Call is not in a terminatable state' });
     }
 
     const endedAt = new Date();

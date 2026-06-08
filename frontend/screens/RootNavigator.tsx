@@ -35,7 +35,7 @@ import { LoginEndpoints, MentorEndpoints } from "../constants/endpoint";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DialogBox from "../components/DialogBox";
 import { Image } from "expo-image";
-import { StyleSheet, View, TouchableOpacity, Animated } from "react-native";
+import { StyleSheet, View, TouchableOpacity, Animated, AppState } from "react-native";
 import notifee, { EventType } from "@notifee/react-native";
 import { navigationRef, navigate } from "../services/navigation";
 
@@ -246,9 +246,14 @@ export default function RootNavigator() {
 
     // Handle Socket.io incoming calls
     const socketHandler = (data: any) => {
-      const { callId, channelName, callerName } = data;
-      console.log('[Socket] Incoming call received:', callId);
-      navigate('IncomingCall', { callId, channelName, callerName });
+      // Only navigate via socket if the app is actively in the foreground
+      if (AppState.currentState === 'active') {
+        const { callId, channelName, callerName } = data;
+        console.log('[Socket] Incoming call received in foreground:', callId);
+        navigate('IncomingCall', { callId, channelName, callerName });
+      } else {
+        console.log('[Socket] Ignored incoming call because app is in background. Waiting for FCM push.');
+      }
     };
 
     socketManager.on('incoming_call', socketHandler);

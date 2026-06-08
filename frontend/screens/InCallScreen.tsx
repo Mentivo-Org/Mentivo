@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { joinChannel, leaveChannel, getAgoraEngine, setSpeakerphoneOn } from '../services/agora';
@@ -17,16 +18,26 @@ const InCallScreen = () => {
   const [isSpeakerOn, setIsSpeakerOn] = useState(false);
   const [duration, setDuration] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
+  const [callStatus, setCallStatus] = useState<'calling' | 'ringing' | 'active'>(role === 'caller' ? 'calling' : 'active');
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Listen for remote hangup
+    // Listen for remote hangup or status changes
     const statusHandler = (data: any) => {
-      if (data.callId === callId && data.status === 'completed') {
-        console.log('[Socket] Call completed remotely');
-        handleEndCall(false); // Don't call end API again if remote already ended it
+      if (data.callId === callId) {
+        if (data.status === 'completed' || data.status === 'rejected' || data.status === 'missed') {
+          console.log(`[Socket] Call ${data.status} remotely`);
+          handleEndCall(false);
+        } else if (data.status === 'ringing' && callStatus === 'calling') {
+          console.log('[Socket] Mentor phone is ringing');
+          setCallStatus('ringing');
+        } else if (data.status === 'active' && callStatus !== 'active') {
+          console.log('[Socket] Call is now active');
+          setCallStatus('active');
+          if (!timerRef.current) startTimer();
+        }
       }
     };
 
@@ -60,8 +71,18 @@ const InCallScreen = () => {
         engine.addListener('onJoinChannelSuccess', (connection, elapsed) => {
           console.log('Joined channel successfully');
           setIsConnected(true);
-          startTimer();
-          notifyCallStart();
+          // If we are the callee, we should notify backend and start timer immediately
+          if (role === 'callee') {
+            setCallStatus('active');
+            startTimer();
+            notifyCallStart();
+          }
+        });
+
+        engine.addListener('onUserJoined', (connection, remoteUid, elapsed) => {
+          console.log('Remote user joined', remoteUid);
+          setCallStatus('active');
+          if (!timerRef.current) startTimer();
         });
 
         engine.addListener('onUserOffline', (connection, remoteUid, reason) => {
@@ -103,6 +124,8 @@ const InCallScreen = () => {
   };
 
   const startTimer = () => {
+    if (timerRef.current) return;
+    console.log('[Timer] Starting session timer');
     timerRef.current = setInterval(() => {
       setDuration(prev => prev + 1);
     }, 1000);
@@ -158,10 +181,19 @@ const InCallScreen = () => {
     return `${mins}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  const getStatusText = () => {
+    switch (callStatus) {
+      case 'calling': return 'Calling...';
+      case 'ringing': return 'Ringing...';
+      case 'active': return 'In Call';
+      default: return 'Connecting...';
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.statusText}>{isConnected ? 'In Call' : 'Connecting...'}</Text>
+        <Text style={styles.statusText}>{getStatusText()}</Text>
         <Text style={styles.callerName}>{callerName || 'Mentorship Session'}</Text>
         <Text style={styles.timerText}>{formatDuration(duration)}</Text>
         
