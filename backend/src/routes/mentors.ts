@@ -252,17 +252,17 @@ router.get('/me/stats', authenticateUser, async (req: Request, res: Response) =>
 
     const [todayCalls, weekCalls, allTimeCalls] = await Promise.all([
         prisma.callSession.aggregate({
-            where: { mentor_id: userId, status: 'completed', endedAt: { gte: startOfToday } },
+            where: { mentor_id: userId, status: { in:['completed', 'settled'] }, endedAt: { gte: startOfToday } },
             _count: true,
             _sum: { mentorEarning: true }
         }),
         prisma.callSession.aggregate({
-            where: { mentor_id: userId, status: 'completed', endedAt: { gte: startOfWeek } },
+            where: { mentor_id: userId, status: { in:['completed', 'settled'] }, endedAt: { gte: startOfWeek } },
             _count: true,
             _sum: { mentorEarning: true }
         }),
         prisma.callSession.aggregate({
-            where: { mentor_id: userId, status: 'completed' },
+            where: { mentor_id: userId, status: { in:['completed', 'settled'] } },
             _count: true,
             _sum: { mentorEarning: true }
         })

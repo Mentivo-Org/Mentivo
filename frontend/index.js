@@ -41,10 +41,13 @@ setBackgroundMessageHandler(messaging, async (remoteMessage) => {
       android: {
         channelId: 'calls',
         importance: AndroidImportance.HIGH,
+        priority: 'high',
+        category: 'call',
         fullScreenAction: {
           id: 'default',
           launchActivity: 'default',
         },
+        asForegroundService: true,
         actions: [
           {
             title: 'Accept',

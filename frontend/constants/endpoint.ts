@@ -1,6 +1,6 @@
-// export const baseUrl = 'http://10.150.63.231:3000/api';
-export const baseUrl = 'http://192.168.29.18:3000/api';
-// export const baseUrl = 'https://api.mentivo.in/api';
+export const baseUrl = 'http://192.168.29.18:3000/api'; //For local development purposes
+// export const baseUrl = 'https://dev.mentivo.in/api'; //For development purposes
+// export const baseUrl = 'https://api.mentivo.in/api'; //For production
 
 export const AGORA_APP_ID = '1f1c2710de9a48bd88bc0470aa0204fc';
 
@@ -53,6 +53,7 @@ export const CallEndpoints = {
     getUpcoming: `${baseUrl}/calls/student/upcoming`,
     token: (id: string) => `${baseUrl}/calls/${id}/token`,
     start: (id: string) => `${baseUrl}/calls/${id}/start`,
+    ringing: (id: string) => `${baseUrl}/calls/${id}/ringing`,
     heartbeat: (id: string) => `${baseUrl}/calls/${id}/heartbeat`,
     end: (id: string) => `${baseUrl}/calls/${id}/end`,
     reject: (id: string) => `${baseUrl}/calls/${id}/reject`,

@@ -83,6 +83,15 @@ export async function sendCallSignalingMessage(fcmToken: string, data: { callId:
       },
       android: {
         priority: 'high',
+        ttl: 60 * 1000, // 60 seconds
+      },
+      apns: {
+        payload: {
+          aps: {
+            'content-available': 1,
+            priority: 10,
+          },
+        },
       },
     });
   } catch (error) {
