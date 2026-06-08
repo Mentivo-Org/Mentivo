@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import InCallManager from 'react-native-incall-manager';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import api from '../services/api';
@@ -15,6 +16,16 @@ const IncomingCallScreen = () => {
   useEffect(() => {
     // Start playing ringtone
     InCallManager.startRingtone('_BUNDLE_');
+
+    // Notify backend that phone is ringing
+    const notifyRinging = async () => {
+      try {
+        await api.post(CallEndpoints.ringing(callId));
+      } catch (error) {
+        console.error('Failed to notify ringing status:', error);
+      }
+    };
+    notifyRinging();
 
     // Listen for remote cancellation or timeout
     const statusHandler = (data: any) => {

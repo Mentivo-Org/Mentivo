@@ -9,7 +9,10 @@ export async function settleBilling(sessionId: string, durationSecs: number, rec
     // 1. ATOMIC LOCK: Attempt to update the status to a temporary state 'settling'
     // This prevents race conditions where two processes read 'active' at the same time.
     const lock = await tx.callSession.updateMany({
-      where: { id: sessionId, status: 'active' },
+      where: { 
+        id: sessionId, 
+        status: { in: ['active', 'completed', 'ringing', 'calling'] } 
+      },
       data: { status: 'settling' }
     });
 

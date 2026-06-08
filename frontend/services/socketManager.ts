@@ -7,6 +7,7 @@ const socketUrl = baseUrl.replace('/api', '');
 class SocketManager {
   private socket: Socket | null = null;
   private userId: string | null = null;
+  private queuedListeners: { event: string, handler: (data: any) => void }[] = [];
 
   /**
    * Connect to the Socket.io server
@@ -43,6 +44,12 @@ class SocketManager {
     this.socket.on('disconnect', (reason) => {
       console.log('[Socket] Disconnected. Reason:', reason);
     });
+
+    // Register queued listeners
+    this.queuedListeners.forEach(({ event, handler }) => {
+      this.socket?.on(event, handler);
+    });
+    this.queuedListeners = [];
   }
 
   /**
@@ -50,7 +57,8 @@ class SocketManager {
    */
   on<T>(event: string, handler: (data: T) => void) {
     if (!this.socket) {
-      console.warn('[Socket] Attempted to register listener before connecting');
+      console.warn('[Socket] Attempted to register listener before connecting. Queueing...');
+      this.queuedListeners.push({ event, handler });
       return;
     }
     this.socket.on(event, handler);
@@ -60,6 +68,10 @@ class SocketManager {
    * Remove an event listener
    */
   off<T>(event: string, handler: (data: T) => void) {
+    if (!this.socket) {
+       this.queuedListeners = this.queuedListeners.filter(l => l.event !== event || l.handler !== handler);
+       return;
+    }
     this.socket?.off(event, handler);
   }
 
