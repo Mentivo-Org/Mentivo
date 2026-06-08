@@ -462,6 +462,7 @@ module.exports = async (req, res, next) => {
 ### 6.1 Agora — VoIP Calling & Chat
 
 **How it works:** Mentivo uses Agora for in-app VoIP calls. When a student initiates a call, the server generates an Agora RTC token for a specific channel. Both student and mentor join this channel to communicate. Initial chat is also handled via Agora Chat.
+**Note:** VoIP calling is currently implemented for **Android Only**. Socket.io is used for real-time signaling, while FCM Data Messages and Notifee manage background incoming call notifications.
 
 **Setup steps:**
 1. Sign up at [agora.io](https://agora.io)

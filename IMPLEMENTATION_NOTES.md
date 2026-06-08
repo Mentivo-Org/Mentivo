@@ -9,6 +9,11 @@ The project is organized as a monorepo containing multiple independent services 
 - `/website`: Next.js portal for coaching partners and referral management.
 - `/supabase`: Database migrations and configuration.
 
+## 2. Agora Calling Constraint
+The VoIP calling feature powered by Agora and Socket.io is currently implemented for **Android Only**. iOS support involves complex PushKit and CallKit integrations which are deferred to future development phases. 
+- **Android Signaling:** Uses Socket.io for active sessions and FCM Data Messages (High Priority) + Notifee Full Screen Intents for background wake-ups.
+- **Ringtone:** Managed via `react-native-incall-manager`.
+
 ## 8. API Endpoints Generated
 - **POST /auth/verify:** Receives email, role, name, uid. Finds or creates the user in the database. Returns user object. Used as a mock authentication setup.
 - **POST /auth/coaching/login:** Receives unique coaching center code. Returns session token for partner dashboard.
