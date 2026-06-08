@@ -62,7 +62,7 @@ app.use(express.json());
 app.set('trust proxy', 1);
 
 // Rate Limiting
-const globalLimiter = rateLimit({
+const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per window
   message: { error: 'Too many requests from this IP, please try again after 15 minutes' },
@@ -70,8 +70,8 @@ const globalLimiter = rateLimit({
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
-// Apply rate limiter to all API routes
-app.use('/api', globalLimiter);
+// Apply rate limiter to authentication routes only
+app.use('/api/auth', authLimiter);
 
 function getClientIp(req: express.Request): string {
   const forwarded = req.headers['x-forwarded-for'];
