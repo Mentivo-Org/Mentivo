@@ -29,7 +29,7 @@ const CompleteProfile = () => {
   const [alertData, setAlertData] = useState({title: '', message: ''});
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
 
-  const {setIsSignedIn, handleLogout, requestNotificationPermissions} = useAuth();
+  const {setIsSignedIn, handleLogout, requestNotificationPermissions, setRole} = useAuth();
 
   const handleStartFresh = async () => {
     await handleLogout();
@@ -113,6 +113,8 @@ const CompleteProfile = () => {
         setAlertVisible(true);
       } else {
         await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+        await AsyncStorage.setItem('role', 'mentor');
+        setRole('mentor');
         requestNotificationPermissions();
         setIsSignedIn(true);
       }
@@ -146,6 +148,8 @@ const CompleteProfile = () => {
         setAlertVisible(true);
       }
       await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+      await AsyncStorage.setItem('role', response.data.user.role);
+      setRole(response.data.user.role);
       requestNotificationPermissions();
       setIsSignedIn(true);
     }

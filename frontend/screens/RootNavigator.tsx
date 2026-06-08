@@ -225,7 +225,7 @@ function AuthenticatedTabs() {
 }
 
 export default function RootNavigator() {
-  const { isSignedIn, setIsSignedIn } = useAuth();
+  const { isSignedIn, setIsSignedIn, setRole } = useAuth();
   const [profileData, setProfileData] = useState<ProfileInfoParams>({full_name: '',email: '',role: '',phone: '', state: ''});
   const [initialScreen, setInitialScreen] = useState<string | null>(null);
   const [alertData, setAlertData] = useState({ title: "", message: "" });
@@ -233,6 +233,7 @@ export default function RootNavigator() {
   
   
   useEffect (() => {
+    if(!isSignedIn) return;
     // Handle foreground and initial notifications
     const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
       if (type === EventType.PRESS) {
@@ -319,6 +320,8 @@ export default function RootNavigator() {
               setInitialScreen("CompleteProfile");
               return;
             } else {
+              await AsyncStorage.setItem('role', user.role);
+              setRole(user.role);
               setIsSignedIn(true);
               setInitialScreen('');
               // setInitialScreen("Landing"); // Profile already completed, TabNavigator will take over if isSignedIn is true
