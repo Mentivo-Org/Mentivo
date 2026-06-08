@@ -72,7 +72,7 @@ const StudentLoginPage = () => {
       }
       else {
         if(user.profile_completed===false) {
-          navigation.navigate("CompleteProfile", {full_name: user.name, email: user.email, phone: user.phone})
+          navigation.navigate("CompleteProfile", {full_name: user.name, email: user.email, phone: user.phone, role: "student"})
         }
         else {
           await AsyncStorage.setItem('verifiedEmail', 'true')
@@ -119,6 +119,8 @@ const StudentLoginPage = () => {
         await AsyncStorage.setItem('accessToken', accessToken);
         await AsyncStorage.setItem('refreshToken', refreshToken);
         await AsyncStorage.setItem('user', JSON.stringify(user));
+        await AsyncStorage.setItem('role', response.data.user.role);
+        setRole(response.data.user.role)
         requestNotificationPermissions();
         setIsSignedIn(true);
       }

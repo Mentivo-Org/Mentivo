@@ -53,6 +53,11 @@ const checkLoginStatus = async () => {
 const handleLogout = async ()=> {
   showLoading("Logging out...");
   try {
+    const fcmToken = await AsyncStorage.getItem('fcmToken');
+    const response = await api.patch(NotificationEndpoints.syncFcmToken, {token: fcmToken});
+    if(response.status!==200) {
+      console.error("Error removing fcm token from database");
+    }
     await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user', 'verifiedEmail', 'fcmToken', 'role']);
     const isGoogleSignedIn = await GoogleSignin.hasPreviousSignIn();
     if(isGoogleSignedIn) {
