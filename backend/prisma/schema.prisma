@@ -114,7 +114,7 @@ model MentorProfile {
   bio            String?
   expertise      String
   photo_url      String?
-  rate_per_min   Decimal     @default(10.00) @db.Decimal(6, 2)
+  rate_per_min   Decimal     @default(7.00) @db.Decimal(6, 2)
   avg_rating     Decimal     @default(0) @db.Decimal(3, 2)
   total_calls    Int         @default(0)
   isOnline       Boolean     @default(false)
