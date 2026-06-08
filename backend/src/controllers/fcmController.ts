@@ -6,70 +6,58 @@ export const syncFcmToken = async (req: Request, res: Response): Promise<any> =>
     const { token } = req.body;
     const userId = req.user?.id;
 
-    if (!token) {
-      return res.status(400).json({ error: "FCM token is required" });
-    }
+    if (!token) return res.status(400).json({ error: "FCM token is required" });
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-    if (!userId) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    await prisma.$transaction(async (tx) => {
+      // Step 1: Detach this token from any other user (device switched accounts)
+      await tx.fCMToken.deleteMany({
+        where: { token, userId: { not: userId } },
+      });
 
-    // Check existing tokens for this user
-    const existingTokens = await prisma.fCMToken.findMany({
-      where: { 
-        OR: [
-          { userId: userId},
-          {token: token}
-        ]
-      },
-    });
+      // Step 2: Upsert — update if this user already has this token, else create
+      await tx.fCMToken.upsert({
+        where: { token },
+        update: { updatedAt: new Date() },
+        create: { token, userId },
+      });
 
-    const matchingToken = existingTokens.find((t) => t.token === token);
+      // Step 3: Enforce one token per user — delete all older tokens for this user
+      const allUserTokens = await tx.fCMToken.findMany({
+        where: { userId },
+        orderBy: { updatedAt: "desc" },
+      });
 
-    if (matchingToken) {
-      // If one matches -> delete all of the rest
-      if (existingTokens.length > 1) {
-        await prisma.fCMToken.deleteMany({
-          where: {
-            userId,
-            token: { not: token },
-          },
+      if (allUserTokens.length > 1) {
+        const oldTokenIds = allUserTokens.slice(1).map((t) => t.id);
+        await tx.fCMToken.deleteMany({
+          where: { id: { in: oldTokenIds } },
         });
       }
-      return res.status(200).json({ message: "FCM token already up to date" });
-    }
-
-    // No match found
-    // First, ensure the new token isn't associated with any other user/session
-    await prisma.fCMToken.deleteMany({
-      where: { token }
     });
 
-    if (existingTokens.length > 1) {
-      // Multiple entries -> delete all and make a new one
-      await prisma.fCMToken.deleteMany({
-        where: { userId },
-      });
-      await prisma.fCMToken.create({
-        data: { token, userId },
-      });
-      return res.status(201).json({ message: "Cleared duplicates and created new FCM token" });
-    } else if (existingTokens.length === 1) {
-      // Only one entry which doesn't match -> update it
-      await prisma.fCMToken.update({
-        where: { token: existingTokens[0].token },
-        data: { token, updatedAt: new Date() },
-      });
-      return res.status(201).json({ message: "Updated existing FCM token" });
-    } else {
-      // No existing tokens -> create new
-      await prisma.fCMToken.create({
-        data: { token, userId },
-      });
-      return res.status(201).json({ message: "Created new FCM token" });
-    }
+    return res.status(200).json({ message: "FCM token synced" });
   } catch (error) {
     console.error("Error syncing FCM token:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// Call this on logout
+export const removeFcmToken = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { token } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    await prisma.fCMToken.deleteMany({
+      where: { token, userId },
+    });
+
+    return res.status(200).json({ message: "FCM token removed" });
+  } catch (error) {
+    console.error("Error removing FCM token:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
