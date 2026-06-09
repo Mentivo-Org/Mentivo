@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   // Check if production mode is enabled via environment variable
   const isProductionMode = process.env.PRODUCTION_MODE === 'true';
 
@@ -17,8 +17,9 @@ export function proxy(request: NextRequest) {
       pathname.includes('.'); // Usually files have extensions
 
     const isMaintenancePage = pathname.startsWith('/maintenance');
+    const isPrivacyPage = pathname.startsWith('/privacy');
 
-    if (!isStaticAsset && !isMaintenancePage) {
+    if (!isStaticAsset && !isMaintenancePage && !isPrivacyPage) {
       // Rewrite the request to the maintenance page
       // This keeps the URL in the browser address bar but serves the maintenance content
       return NextResponse.rewrite(new URL('/maintenance', request.url));
