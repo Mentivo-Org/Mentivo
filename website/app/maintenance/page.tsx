@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Sparkles, Users, Layers, Zap } from 'lucide-react';
+import Link from 'next/link';
 
 export default function MaintenancePage() {
   const percentage = process.env.PERCENTAGE_COMPLETED || "0";
@@ -88,15 +89,15 @@ export default function MaintenancePage() {
       <footer className="border-t border-[#c4c5d5] bg-[#f8f9ff] py-10 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex flex-col items-center md:items-start space-y-1">
-            <span className="text-2xl font-extrabold text-[#00288e] tracking-tight">IITian Mentor</span>
+            <span className="text-2xl font-extrabold text-[#00288e] tracking-tight">Mentivo</span>
             <p className="text-[#006591] text-sm text-center md:text-left font-medium opacity-80">
-              © 2026 IITian Mentor. Empowering the next generation of engineers.
+              © 2026 Mentivo. Empowering the next generation of engineers.
             </p>
           </div>
           <nav className="flex items-center space-x-8 text-[#444653] text-sm font-semibold opacity-80">
-            <a href="#" className="hover:text-[#00288e] transition-colors duration-200">About Us</a>
-            <a href="#" className="hover:text-[#00288e] transition-colors duration-200">Privacy Policy</a>
-            <a href="#" className="hover:text-[#00288e] transition-colors duration-200">Contact</a>
+            <Link href="/" className="hover:text-[#00288e] transition-colors duration-200">Home</Link>
+            <Link href="/privacy" className="hover:text-[#00288e] transition-colors duration-200">Privacy Policy</Link>
+            <a href="mailto:support@mentivo.in" className="hover:text-[#00288e] transition-colors duration-200">Contact</a>
           </nav>
         </div>
       </footer>
