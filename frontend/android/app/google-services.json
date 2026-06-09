@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "865059452188",
+    "project_id": "mentivo-iitg",
+    "storage_bucket": "mentivo-iitg.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:865059452188:android:8acfdb614967681680b6d9",
+        "android_client_info": {
+          "package_name": "com.mentivo.in"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "865059452188-ihi0esm55o04dlrud0ps6eebnr3d28ue.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mentivo.in",
+            "certificate_hash": "7c90e2103933c1386aa199e0088dee6b68c1e1e2"
+          }
+        },
+        {
+          "client_id": "865059452188-ol0sjdko4mrqev8qf16daoo3lk5jsh0k.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mentivo.in",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "865059452188-k8gi046e0eaodb8pd5i19d6jan19r4fd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDwDv2nfYpG4S4gYUwC-JGqBpM7saaP31E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "865059452188-k8gi046e0eaodb8pd5i19d6jan19r4fd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
