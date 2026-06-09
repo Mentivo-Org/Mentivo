@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import InCallManager from 'react-native-incall-manager';
+import notifee from '@notifee/react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import api from '../services/api';
 import { socketManager } from '../services/socketManager';
@@ -14,8 +15,17 @@ const IncomingCallScreen = () => {
   const { callId, channelName, callerName } = route.params;
 
   useEffect(() => {
+    // Keep screen on during incoming call
+    InCallManager.setKeepScreenOn(true);
+
+    // Cancel the background notification sound if it exists
+    if (callId) {
+      notifee.cancelNotification(callId).catch(err => console.error('Failed to cancel notification:', err));
+    }
+
     // Start playing ringtone
     InCallManager.startRingtone('_BUNDLE_');
+    InCallManager.setForceSpeakerphoneOn(false);
 
     // Notify backend that phone is ringing
     const notifyRinging = async () => {
@@ -32,6 +42,7 @@ const IncomingCallScreen = () => {
       if (data.callId === callId && (data.status === 'completed' || data.status === 'rejected' || data.status === 'missed')) {
         console.log('[Socket] Incoming call closed remotely:', data.status);
         InCallManager.stopRingtone();
+        InCallManager.setKeepScreenOn(false);
         navigation.goBack();
       }
     };
@@ -40,6 +51,7 @@ const IncomingCallScreen = () => {
 
     return () => {
       InCallManager.stopRingtone();
+      InCallManager.setKeepScreenOn(false);
       socketManager.off('call_status_changed', statusHandler);
     };
   }, [callId]);

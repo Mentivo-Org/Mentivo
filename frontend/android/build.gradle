@@ -4,6 +4,7 @@ buildscript {
   repositories {
     google()
     mavenCentral()
+    maven { url "$rootDir/../node_modules/@notifee/react-native/android/libs" }
   }
   dependencies {
         classpath 'com.google.gms:google-services:4.4.1'

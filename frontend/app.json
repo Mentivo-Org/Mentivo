@@ -2,7 +2,7 @@
   "expo": {
     "name": "Mentivo",
     "slug": "mentivo",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -50,10 +50,11 @@
         "CHANGE_NETWORK_STATE",
         "VIBRATE",
         "USE_FULL_SCREEN_INTENT",
+        "SYSTEM_ALERT_WINDOW",
         "FOREGROUND_SERVICE",
         "RECEIVE_BOOT_COMPLETED",
       ],
-      "versionCode": 2
+      "versionCode": 7
     },
     "web": {
       "favicon": "./assets/icon.png"
@@ -62,9 +63,7 @@
       "@react-native-google-signin/google-signin",
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
-      "@react-native-firebase/messaging",
-      "./plugins/withAndroidNativeConfig",
-      "./plugins/withNotifee"
+      "@react-native-firebase/messaging"
     ]
   }
 }
