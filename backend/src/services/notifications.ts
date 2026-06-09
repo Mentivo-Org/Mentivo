@@ -77,19 +77,30 @@ export async function sendCallSignalingMessage(fcmToken: string, data: { callId:
   try {
     await admin.messaging().send({
       token: fcmToken,
+      notification: {
+        title: 'Incoming Call',
+        body: `${data.callerName} is calling you!`,
+      },
       data: { 
         type: 'incoming_call',
-        ...data
+        callId: data.callId,
+        channelName: data.channelName,
+        callerName: data.callerName,
       },
       android: {
         priority: 'high',
-        ttl: 60 * 1000, // 60 seconds
+        ttl: 60 * 1000,
+        channelId: 'incoming_calls',
+        defaultSound: true,
+        defaultVibrateTimings: true,
+        visibility: 'PUBLIC',
       },
       apns: {
         payload: {
           aps: {
             'content-available': 1,
             priority: 10,
+            sound: 'default',
           },
         },
       },
