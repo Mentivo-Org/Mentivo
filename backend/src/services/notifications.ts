@@ -90,10 +90,12 @@ export async function sendCallSignalingMessage(fcmToken: string, data: { callId:
       android: {
         priority: 'high',
         ttl: 60 * 1000,
-        channelId: 'incoming_calls',
-        defaultSound: true,
-        defaultVibrateTimings: true,
-        visibility: 'PUBLIC',
+        notification: {
+          channelId: 'incoming_calls',
+          defaultSound: true,
+          defaultVibrateTimings: true,
+          visibility: 'public',
+        }
       },
       apns: {
         payload: {
