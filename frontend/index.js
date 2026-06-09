@@ -35,6 +35,7 @@ setBackgroundMessageHandler(messaging, async (remoteMessage) => {
     const { callId, channelName, callerName } = remoteMessage.data;
 
     await notifee.displayNotification({
+      id: callId, // Use callId as notification ID to allow easy cancellation
       title: `Incoming call from ${callerName}`,
       body: 'Tap to answer',
       data: { callId, channelName, callerName },
@@ -43,6 +44,12 @@ setBackgroundMessageHandler(messaging, async (remoteMessage) => {
         importance: AndroidImportance.HIGH,
         priority: 'high',
         category: 'call',
+        ongoing: true,
+        autoCancel: false,
+        loopSound: true,
+        sound: 'default', 
+        showWhenLocked: true,
+        turnScreenOn: true,
         fullScreenAction: {
           id: 'default',
           launchActivity: 'default',

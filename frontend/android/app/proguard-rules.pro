@@ -11,4 +11,18 @@
 -keep class com.swmansion.reanimated.** { *; }
 -keep class com.facebook.react.turbomodule.** { *; }
 
+# notifee
+-keep class com.notifee.** { *; }
+-keep class io.notifee.** { *; }
+
+# react-native-firebase/messaging
+-keep class com.google.firebase.messaging.** { *; }
+-keep class com.google.android.gms.tasks.** { *; }
+
+# react-native-incall-manager
+-keep class com.reactnativeincallmanager.** { *; }
+
+# Agora RTC
+-keep class io.agora.** { *; }
+
 # Add any project specific keep options here:

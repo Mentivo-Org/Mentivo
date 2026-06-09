@@ -8,6 +8,7 @@ import api from '../services/api';
 import { socketManager } from '../services/socketManager';
 import { CallEndpoints } from '../constants/endpoint';
 import { requestMicrophonePermission } from '../services/permissions';
+import notifee from '@notifee/react-native';
 
 const InCallScreen = () => {
   const navigation = useNavigation<any>();
@@ -68,9 +69,27 @@ const InCallScreen = () => {
         const engine = getAgoraEngine();
         
         // Setup listeners
-        engine.addListener('onJoinChannelSuccess', (connection, elapsed) => {
+        engine.addListener('onJoinChannelSuccess', async (connection, elapsed) => {
           console.log('Joined channel successfully');
           setIsConnected(true);
+          
+          // Display ongoing call notification
+          try {
+            await notifee.displayNotification({
+              title: 'Call in Progress',
+              body: `Connected with ${callerName || 'Mentorship Session'}`,
+              android: {
+                channelId: 'ongoing_calls',
+                ongoing: true,
+                onlyAlertOnce: true,
+                pressAction: { id: 'default', launchActivity: 'default' },
+              },
+              data: { callId, screen: 'InCall' },
+            });
+          } catch (e) {
+            console.error('Failed to show ongoing call notification:', e);
+          }
+          
           // If we are the callee, we should notify backend and start timer immediately
           if (role === 'callee') {
             setCallStatus('active');
@@ -153,6 +172,14 @@ const InCallScreen = () => {
     stopTimer();
     stopHeartbeat();
     leaveChannel();
+    
+    // Cancel ongoing notification
+    try {
+      await notifee.cancelNotification(callId);
+    } catch (e) {
+      console.error('Failed to cancel ongoing notification:', e);
+    }
+    
     if (notifyBackend) {
       try {
         await api.post(CallEndpoints.end(callId));

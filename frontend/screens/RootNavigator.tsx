@@ -36,11 +36,42 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import DialogBox from "../components/DialogBox";
 import { Image } from "expo-image";
 import { StyleSheet, View, TouchableOpacity, Animated, AppState } from "react-native";
-import notifee, { EventType } from "@notifee/react-native";
+import notifee, { EventType, AndroidImportance } from "@notifee/react-native";
 import { navigationRef, navigate } from "../services/navigation";
 
 import linking from "../linking";
 import { socketManager } from "../services/socketManager";
+
+const INCOMING_CALL_CHANNEL = 'incoming_calls';
+const ONGOING_CALL_CHANNEL = 'ongoing_calls';
+
+notifee.onBackgroundEvent(async ({ type, detail }) => {
+  if (type === 'MESSAGE' && detail?.message?.data?.type === 'incoming_call') {
+    const { callId, channelName, callerName } = detail.message.data;
+    await notifee.displayNotification({
+      title: 'Incoming Call',
+      body: `${callerName} is calling you!`,
+      android: {
+        channelId: INCOMING_CALL_CHANNEL,
+        asForegroundService: true,
+        pressAction: { id: 'default' },
+        fullScreenIntent: true,
+      },
+      data: { callId, channelName, callerName },
+    });
+  }
+  
+  if (type === EventType.PRESS) {
+    const { callId, channelName, callerName } = detail.notification?.data || {};
+    if (callId) {
+      try {
+        await AsyncStorage.setItem('pendingCallData', JSON.stringify({ callId, channelName, callerName }));
+      } catch (e) {
+        console.error('Failed to store pending call data:', e);
+      }
+    }
+  }
+});
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -232,53 +263,95 @@ export default function RootNavigator() {
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
   
   
-  useEffect (() => {
-    if(!isSignedIn) return;
-    // Handle foreground and initial notifications
-    const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
+  useEffect(() => {
+    if (!isSignedIn) return;
+
+    // 1. Create notifee channels
+    const createChannels = async () => {
+      await notifee.createChannel({
+        id: INCOMING_CALL_CHANNEL,
+        name: 'Incoming Calls',
+        importance: AndroidImportance.HIGH,
+        vibration: true,
+        vibrationPattern: [300, 100, 300, 100, 300],
+        sound: 'default',
+        fullScreenIntent: true,
+      });
+
+      await notifee.createChannel({
+        id: ONGOING_CALL_CHANNEL,
+        name: 'Ongoing Calls',
+        importance: AndroidImportance.LOW,
+        vibration: false,
+        sound: null,
+        ongoing: true,
+        onlyAlertOnce: true,
+      });
+    };
+    createChannels();
+
+    // 2. Foreground notification press
+    const unsubscribeForeground = notifee.onForegroundEvent(({ type, detail }) => {
       if (type === EventType.PRESS) {
-        const { callId, channelName, callerName } = detail.notification?.data || {};
-        if (callId) {
-          navigate('IncomingCall', { callId, channelName, callerName });
-        }
+        const data = detail.notification?.data || detail.data || {};
+        const { callId, channelName, callerName } = data;
+        if (callId) navigate('IncomingCall', { callId, channelName, callerName });
       }
     });
 
-    // Handle Socket.io incoming calls
-    const socketHandler = (data: any) => {
-      // Only navigate via socket if the app is actively in the foreground
-      if (AppState.currentState === 'active') {
-        const { callId, channelName, callerName } = data;
-        console.log('[Socket] Incoming call received in foreground:', callId);
-        navigate('IncomingCall', { callId, channelName, callerName });
-      } else {
-        console.log('[Socket] Ignored incoming call because app is in background. Waiting for FCM push.');
-      }
-    };
-
-    socketManager.on('incoming_call', socketHandler);
-
+    // 3. Cold start - app opened from killed state
     const checkInitialNotification = async () => {
       const initialNotification = await notifee.getInitialNotification();
-      if (initialNotification?.notification?.data?.callId) {
-        const { callId, channelName, callerName } = initialNotification.notification.data;
-        navigate('IncomingCall', { callId, channelName, callerName });
-      }
+      const data = initialNotification?.notification?.data || initialNotification?.data || {};
+      const { callId, channelName, callerName } = data;
+      if (callId) navigate('IncomingCall', { callId, channelName, callerName });
 
-      // Check for accepted call from background
+      // Also check pending call from background press
       const pendingCallData = await AsyncStorage.getItem('pendingCallData');
       if (pendingCallData) {
         await AsyncStorage.removeItem('pendingCallData');
-        const { callId, channelName, callerName } = JSON.parse(pendingCallData);
-        navigate('InCall', { callId, channelName, callerName, role: 'callee' });
+        const { callId: pCallId, channelName: pChannelName, callerName: pCallerName } = JSON.parse(pendingCallData);
+        navigate('InCall', { callId: pCallId, channelName: pChannelName, callerName: pCallerName, role: 'callee' });
       }
     };
-
     checkInitialNotification();
 
+    // 4. Socket handler - wait for connection
+    const setupSocketHandler = async () => {
+      const waitForSocket = () => new Promise<void>(resolve => {
+        if (socketManager.isConnected()) return resolve();
+        let attempts = 0;
+        const check = setInterval(() => {
+          attempts++;
+          if (socketManager.isConnected() || attempts > 25) {
+            clearInterval(check);
+            resolve();
+          }
+        }, 200);
+      });
+
+      await waitForSocket();
+
+      const socketHandler = (data: any) => {
+        if (AppState.currentState === 'active') {
+          const { callId, channelName, callerName } = data;
+          console.log('[Socket] Incoming call received in foreground:', callId);
+          navigate('IncomingCall', { callId, channelName, callerName });
+        } else {
+          console.log('[Socket] App background - FCM will handle');
+        }
+      };
+
+      socketManager.on('incoming_call', socketHandler);
+      return () => socketManager.off('incoming_call', socketHandler);
+    };
+
+    let socketCleanup: (() => void) | undefined;
+    setupSocketHandler().then(cleanup => { socketCleanup = cleanup; });
+
     return () => {
-      unsubscribe();
-      socketManager.off('incoming_call', socketHandler);
+      unsubscribeForeground();
+      if (socketCleanup) socketCleanup();
     };
   }, [isSignedIn]);
 

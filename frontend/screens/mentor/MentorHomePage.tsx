@@ -7,6 +7,8 @@ import api from "../../services/api";
 import { MentorEndpoints, CallEndpoints } from "../../constants/endpoint";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import notifee, { AndroidImportance } from "@notifee/react-native";
+import { Alert, Linking } from "react-native";
 
 const { width } = Dimensions.get("window");
 
@@ -17,6 +19,38 @@ export default function MentorHomePage() {
   const [history, setHistory] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
+
+  // Check for Overlay permission (Display over other apps)
+  const checkOverlayPermission = async () => {
+    // Note: Notifee doesn't have a direct "isOverlayGranted" boolean, 
+    // but it provides helpers to open the settings.
+    // For mentors, we want to proactively ask for this.
+    const powerManagement = await notifee.getPowerManagementInfo();
+    
+    // If background restrictions are active or we haven't prompted yet
+    const hasPrompted = await AsyncStorage.getItem('hasPromptedOverlay');
+    
+    if (!hasPrompted) {
+        Alert.alert(
+            "Enable Full-Screen Calls",
+            "To receive incoming calls while using other apps or when your screen is locked, please enable 'Display over other apps' in your system settings.",
+            [
+                { 
+                    text: "Maybe Later", 
+                    onPress: () => AsyncStorage.setItem('hasPromptedOverlay', 'true') 
+                },
+                { 
+                    text: "Open Settings", 
+                    onPress: async () => {
+                        await AsyncStorage.setItem('hasPromptedOverlay', 'true');
+                        // Open the specific Android overlay settings
+                        Linking.openSettings();
+                    }
+                }
+            ]
+        );
+    }
+  };
 
   const loadCachedData = async () => {
     try {
@@ -80,6 +114,7 @@ export default function MentorHomePage() {
   useEffect(() => {
     loadCachedData();
     fetchData(true); // Background fetch on mount
+    checkOverlayPermission(); // Prompt mentor for full-screen permission
   }, []);
 
   useFocusEffect(
@@ -374,8 +409,13 @@ function PlanCard({ level, rate, requirements, benefits, active }: any) {
 function formatRelativeDate(dateStr: string) {
     const date = new Date(dateStr);
     const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    // Normalize both dates to midnight local time for a true calendar day comparison
+    const d1 = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const d2 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const diffMs = d2.getTime() - d1.getTime();
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
     
     if (diffDays === 0) return "Today";
     if (diffDays === 1) return "1d";

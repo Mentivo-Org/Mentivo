@@ -1,5 +1,5 @@
-export const baseUrl = 'http://192.168.29.18:3000/api'; //For local development purposes
-// export const baseUrl = 'https://dev.mentivo.in/api'; //For development purposes
+// export const baseUrl = 'http://192.168.29.18:3000/api'; //For local development purposes
+export const baseUrl = 'https://dev.mentivo.in/api'; //For development purposes
 // export const baseUrl = 'https://api.mentivo.in/api'; //For production
 
 export const AGORA_APP_ID = '1f1c2710de9a48bd88bc0470aa0204fc';

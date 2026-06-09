@@ -36,6 +36,18 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# Android secrets
+android/app/*.keystore
+android/app/*.jks
+android/app/upload_certificate.pem
+android/gradle.properties
+android/local.properties
+
+# Build outputs
+android/app/build/
+android/.gradle/
+android/*.iml
+
 node_modules/
 
 package-lock.json
