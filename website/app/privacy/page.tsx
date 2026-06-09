@@ -4,7 +4,7 @@ import { Shield, Mail, Globe, Clock, UserCheck, Lock } from 'lucide-react';
 export default function PrivacyPolicy() {
   return (
     <div className="min-h-screen bg-slate-50 py-16 px-6">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="bg-white rounded-[40px] border border-slate-200 shadow-xl shadow-blue-500/5 overflow-hidden">
           {/* Header */}
           <div className="bg-[#00288e] p-8 sm:p-12 text-white relative overflow-hidden">
