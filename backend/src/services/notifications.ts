@@ -77,10 +77,6 @@ export async function sendCallSignalingMessage(fcmToken: string, data: { callId:
   try {
     await admin.messaging().send({
       token: fcmToken,
-      notification: {
-        title: 'Incoming Call',
-        body: `${data.callerName} is calling you!`,
-      },
       data: { 
         type: 'incoming_call',
         callId: data.callId,
@@ -90,24 +86,42 @@ export async function sendCallSignalingMessage(fcmToken: string, data: { callId:
       android: {
         priority: 'high',
         ttl: 60 * 1000,
-        notification: {
-          channelId: 'incoming_calls',
-          defaultSound: true,
-          defaultVibrateTimings: true,
-          visibility: 'public',
-        }
       },
       apns: {
         payload: {
           aps: {
             'content-available': 1,
             priority: 10,
-            sound: 'default',
           },
         },
       },
     });
   } catch (error) {
     console.error('Failed to send call signaling message:', error);
+  }
+}
+
+export async function sendCallCancelledMessage(fcmToken: string, callId: string) {
+  if (!admin.apps.length || !fcmToken) return;
+  try {
+    await admin.messaging().send({
+      token: fcmToken,
+      data: { 
+        type: 'call_cancelled',
+        callId,
+      },
+      android: {
+        priority: 'high',
+      },
+      apns: {
+        payload: {
+          aps: {
+            'content-available': 1,
+          },
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Failed to send call cancelled message:', error);
   }
 }

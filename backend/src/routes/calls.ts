@@ -3,7 +3,7 @@ import { authenticateUser } from '../auth/authenticateUser.ts';
 import { generateToken, generateChannelName } from '../services/agora.ts';
 import { lockToBusy, getPresenceState, setAvailable } from '../services/presence.ts';
 import { settleBilling } from '../services/billing.ts';
-import { sendCallSignalingMessage } from '../services/notifications.ts';
+import { sendCallSignalingMessage, sendCallCancelledMessage } from '../services/notifications.ts';
 import { emitToUser } from '../config/socket.ts';
 import prisma from '../config/db.ts';
 
@@ -32,6 +32,16 @@ function scheduleMissedCallTimeout(sessionId: string, studentId: string, mentorI
         const payload = { callId: sessionId, status: 'missed' };
         emitToUser(studentId, 'call_status_changed', payload);
         emitToUser(mentorId, 'call_status_changed', payload);
+        
+        // Send FCM cancellation to mentor to dismiss notification
+        const mentorFcmToken = await prisma.fCMToken.findFirst({
+          where: { userId: mentorId },
+          orderBy: { updatedAt: 'desc' },
+          select: { token: true }
+        });
+        if (mentorFcmToken) {
+          await sendCallCancelledMessage(mentorFcmToken.token, sessionId);
+        }
         
         console.log(`[Timeout] Call ${sessionId} marked as missed after 60s.`);
       }
@@ -429,6 +439,16 @@ router.post('/:id/end', authenticateUser, async (req, res) => {
     const otherPartyId = req.user?.id === session.student_id ? session.mentor_id : session.student_id;
     emitToUser(otherPartyId, 'call_status_changed', { callId: session.id, status: 'completed' });
 
+    // Send FCM cancellation to mentor to dismiss notification
+    const mentorFcmToken = await prisma.fCMToken.findFirst({
+      where: { userId: session.mentor_id },
+      orderBy: { updatedAt: 'desc' },
+      select: { token: true }
+    });
+    if (mentorFcmToken) {
+      await sendCallCancelledMessage(mentorFcmToken.token, session.id);
+    }
+
     // Atomic billing
     await settleBilling(session.id, durationSecs);
 
@@ -456,6 +476,16 @@ router.post('/:id/reject', authenticateUser, async (req, res) => {
     // Notify the caller
     const callerId = req.user?.id === session.mentor_id ? session.student_id : session.mentor_id;
     emitToUser(callerId, 'call_status_changed', { callId: session.id, status: 'rejected' });
+
+    // Send FCM cancellation to mentor to dismiss notification
+    const mentorFcmToken = await prisma.fCMToken.findFirst({
+      where: { userId: session.mentor_id },
+      orderBy: { updatedAt: 'desc' },
+      select: { token: true }
+    });
+    if (mentorFcmToken) {
+      await sendCallCancelledMessage(mentorFcmToken.token, session.id);
+    }
 
     res.sendStatus(200);
   } catch (e) {
@@ -485,6 +515,21 @@ router.get('/:id/token', authenticateUser, async (req, res) => {
     res.json({ token, channelName });
   } catch (e) {
     console.error('Get token error:', e);
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+// GET /api/calls/:id/status
+router.get('/:id/status', authenticateUser, async (req, res) => {
+  try {
+    const session = await prisma.callSession.findUnique({ 
+      where: { id: req.params.id as string },
+      select: { status: true }
+    });
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    res.json({ status: session.status });
+  } catch (e) {
+    console.error('Get call status error:', e);
     res.status(500).json({ error: 'Server Error' });
   }
 });
