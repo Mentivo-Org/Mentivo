@@ -1,5 +1,5 @@
-import { authenticateUser } from "auth/authenticateUser";
-import { uploadProfilePicMiddleware, uploadProfilePicture } from "controllers/profilePictureController";
+import { authenticateUser } from "../auth/authenticateUser.ts";
+import { uploadProfilePicMiddleware, uploadProfilePicture } from "../controllers/profilePictureController.ts";
 import { Router } from "express";
 const app = Router();
 
