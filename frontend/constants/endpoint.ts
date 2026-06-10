@@ -34,7 +34,7 @@ export const MentorEndpoints = {
     setStatus: `${baseUrl}/mentors/me/status`,
     getMeStats: `${baseUrl}/mentors/me/stats`,
     getPromotionConditions: `${baseUrl}/mentors/promotion-conditions`,
-    uploadProfilePicture: `${baseUrl}/mentors/me/profile-picture`
+    updateProfile: `${baseUrl}/mentors/me/profile`,
 }
 
 export const WalletEndpoints = {
@@ -58,8 +58,13 @@ export const CallEndpoints = {
     end: (id: string) => `${baseUrl}/calls/${id}/end`,
     reject: (id: string) => `${baseUrl}/calls/${id}/reject`,
     rate: (id: string) => `${baseUrl}/calls/${id}/rate`,
+    status: (id: string) => `${baseUrl}/calls/${id}/status`,
 }
 
 export const NotificationEndpoints = {
     syncFcmToken: `${baseUrl}/auth/fcm-token`
+}
+
+export const ProfilePictureEndpoints = {
+    uploadProfilePicture: `${baseUrl}/profile-picture`
 }
