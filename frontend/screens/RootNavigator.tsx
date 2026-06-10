@@ -18,6 +18,7 @@ import ForgotPassword from "./ForgotPassword";
 import ResetPassword from "./ResetPassword";
 import IncomingCallScreen from "./IncomingCallScreen";
 import InCallScreen from "./InCallScreen";
+import RatingScreen from "./student/RatingScreen";
 
 import StudentHomePage from "./student/StudentHomePage";
 import YourSession from "./student/YourSession";
@@ -29,6 +30,7 @@ import PaymentPage from "./student/PaymentPage";
 import StudentChatPage from "./student/StudentChatPage";
 import StudentAskPage from "./student/StudentAskPage";
 import MentorHomePage from "./mentor/MentorHomePage";
+import MentorSessionsPage from "./mentor/MentorSessionsPage";
 import SplashScreen from "./SplashScreen";
 import api from "../services/api";
 import { LoginEndpoints, MentorEndpoints } from "../constants/endpoint";
@@ -59,6 +61,17 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
       },
       data: { callId, channelName, callerName },
     });
+  }
+  
+  // Handle call cancellation - dismiss notification
+  if (type === 'MESSAGE' && detail?.message?.data?.type === 'call_cancelled') {
+    const { callId } = detail.message.data;
+    await notifee.cancelNotification(callId);
+    try {
+      await AsyncStorage.removeItem('pendingCallData');
+    } catch (e) {
+      console.error('Failed to remove pending call data:', e);
+    }
   }
   
   if (type === EventType.PRESS) {
@@ -294,8 +307,8 @@ export default function RootNavigator() {
     const unsubscribeForeground = notifee.onForegroundEvent(({ type, detail }) => {
       if (type === EventType.PRESS) {
         const data = detail.notification?.data || detail.data || {};
-        const { callId, channelName, callerName } = data;
-        if (callId) navigate('IncomingCall', { callId, channelName, callerName });
+        const { callId, channelName, callerName, callerPhoto } = data;
+        if (callId) navigate('IncomingCall', { callId, channelName, callerName, callerPhoto });
       }
     });
 
@@ -303,15 +316,15 @@ export default function RootNavigator() {
     const checkInitialNotification = async () => {
       const initialNotification = await notifee.getInitialNotification();
       const data = initialNotification?.notification?.data || initialNotification?.data || {};
-      const { callId, channelName, callerName } = data;
-      if (callId) navigate('IncomingCall', { callId, channelName, callerName });
+      const { callId, channelName, callerName, callerPhoto } = data;
+      if (callId) navigate('IncomingCall', { callId, channelName, callerName, callerPhoto });
 
       // Also check pending call from background press
       const pendingCallData = await AsyncStorage.getItem('pendingCallData');
       if (pendingCallData) {
         await AsyncStorage.removeItem('pendingCallData');
-        const { callId: pCallId, channelName: pChannelName, callerName: pCallerName } = JSON.parse(pendingCallData);
-        navigate('InCall', { callId: pCallId, channelName: pChannelName, callerName: pCallerName, role: 'callee' });
+        const { callId: pCallId, channelName: pChannelName, callerName: pCallerName, callerPhoto: pCallerPhoto } = JSON.parse(pendingCallData);
+        navigate('InCall', { callId: pCallId, channelName: pChannelName, callerName: pCallerName, role: 'callee', mentorPhoto: pCallerPhoto });
       }
     };
     checkInitialNotification();
@@ -334,16 +347,28 @@ export default function RootNavigator() {
 
       const socketHandler = (data: any) => {
         if (AppState.currentState === 'active') {
-          const { callId, channelName, callerName } = data;
+          const { callId, channelName, callerName, callerPhoto } = data;
           console.log('[Socket] Incoming call received in foreground:', callId);
-          navigate('IncomingCall', { callId, channelName, callerName });
+          navigate('IncomingCall', { callId, channelName, callerName, callerPhoto });
         } else {
           console.log('[Socket] App background - FCM will handle');
         }
       };
 
+      // Global handler to cancel notification when call ends (for foreground app with notification in shade)
+      const globalStatusHandler = (data: any) => {
+        if (data.status === 'completed' || data.status === 'rejected' || data.status === 'missed') {
+          console.log('[Socket] Global: Call ended, cancelling notification:', data.callId);
+          notifee.cancelNotification(data.callId).catch(err => console.error('Failed to cancel notification:', err));
+        }
+      };
+
       socketManager.on('incoming_call', socketHandler);
-      return () => socketManager.off('incoming_call', socketHandler);
+      socketManager.on('call_status_changed', globalStatusHandler);
+      return () => {
+        socketManager.off('incoming_call', socketHandler);
+        socketManager.off('call_status_changed', globalStatusHandler);
+      };
     };
 
     let socketCleanup: (() => void) | undefined;
@@ -449,6 +474,8 @@ export default function RootNavigator() {
           <AuthStack.Screen name="Payment" component={PaymentPage} />
           <AuthStack.Screen name="IncomingCall" component={IncomingCallScreen} />
           <AuthStack.Screen name="InCall" component={InCallScreen} />
+          <AuthStack.Screen name="RatingScreen" component={RatingScreen} />
+          <AuthStack.Screen name="MentorSessionsPage" component={MentorSessionsPage} />
         </AuthStack.Navigator>
       ) : (
         <Stack.Navigator

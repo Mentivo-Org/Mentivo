@@ -12,7 +12,7 @@ import { requestMicrophonePermission } from '../services/permissions';
 const IncomingCallScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { callId, channelName, callerName } = route.params;
+  const { callId, channelName, callerName, callerPhoto } = route.params;
 
   useEffect(() => {
     // Keep screen on during incoming call
@@ -43,6 +43,7 @@ const IncomingCallScreen = () => {
         console.log('[Socket] Incoming call closed remotely:', data.status);
         InCallManager.stopRingtone();
         InCallManager.setKeepScreenOn(false);
+        notifee.cancelNotification(callId).catch(err => console.error('Failed to cancel notification:', err));
         navigation.goBack();
       }
     };
@@ -66,7 +67,7 @@ const IncomingCallScreen = () => {
 
     InCallManager.stopRingtone();
     // Navigate to InCallScreen which will handle joining the Agora channel
-    navigation.replace('InCall', { callId, channelName, callerName, role: 'callee' });
+    navigation.replace('InCall', { callId, channelName, callerName, role: 'callee', mentorPhoto: callerPhoto });
   };
 
   const handleReject = async () => {
