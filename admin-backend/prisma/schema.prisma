@@ -28,6 +28,7 @@ model User {
   name            String?
   role            UserRole
   grade           String?
+  photo_url       String?
   coachingCenterId String?   @db.Uuid
   created_at      DateTime  @default(now())
   profile_completed Boolean @default(false)

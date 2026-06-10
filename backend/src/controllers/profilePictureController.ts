@@ -20,17 +20,13 @@ export const uploadProfilePicture = async (req: Request, res: Response) => {
     const user = req.user;
     const file = req.file;
 
-    if (!user || user.role !== 'mentor') {
-        return res.status(403).json({ error: "Access denied" });
-    }
-
     if (!file) {
         return res.status(400).json({ error: "No profile picture uploaded" });
     }
 
     try {
         const fileExtension = mime.extension(file.mimetype) || 'jpg';
-        const fileName = `${user.id}-${Date.now()}.${fileExtension}`;
+        const fileName = `${user?.id}-${Date.now()}.${fileExtension}`;
         const destinationPath = `mentors/${fileName}`;
 
         const { data, error: uploadError } = await supabaseAdmin.storage
@@ -52,8 +48,8 @@ export const uploadProfilePicture = async (req: Request, res: Response) => {
             .from(bucketName)
             .getPublicUrl(destinationPath);
 
-        const updatedProfile = await prisma.mentorProfile.update({
-            where: { mentorId: user.id },
+        const updatedProfile = await prisma.user.update({
+            where: { id: user?.id },
             data: { photo_url: urlData.publicUrl }
         });
 
