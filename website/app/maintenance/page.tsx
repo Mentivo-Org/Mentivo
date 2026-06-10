@@ -41,13 +41,18 @@ export default function MaintenancePage() {
             </div>
 
             {/* Headline */}
-            <div className="space-y-2">
-              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-[#0b1c30] tracking-tight">
-                Something Great is
+            <div className="space-y-4">
+              <h1 className="text-7xl sm:text-8xl lg:text-[8rem] font-black text-[#00288e] tracking-tighter leading-none mb-6">
+                Mentivo
               </h1>
-              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-[#00288e] tracking-tight">
-                in the Works
-              </h1>
+              <div className="space-y-2">
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#0b1c30] tracking-tight">
+                  Something Great is
+                </h2>
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#00288e] tracking-tight">
+                  in the Works
+                </h2>
+              </div>
             </div>
 
             {/* Subtext */}
