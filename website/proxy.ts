@@ -17,7 +17,7 @@ export function proxy(request: NextRequest) {
       pathname.includes('.'); // Usually files have extensions
 
     const isMaintenancePage = pathname.startsWith('/maintenance');
-    const isPrivacyPage = pathname.startsWith('/privacy');
+    const isPrivacyPage = pathname.endsWith('/privacy');
     const isAboutPage = pathname.startsWith('/about');
 
     if (!isStaticAsset && !isMaintenancePage && !isPrivacyPage && !isAboutPage) {

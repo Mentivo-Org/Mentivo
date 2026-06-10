@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import LoadingModal from "../components/LoadingModal";
 import { usePathname } from "next/navigation";
+import MaintenancePage from "../maintenance/page";
 
 export default function AppWrapper({
   children,
@@ -34,7 +35,7 @@ export default function AppWrapper({
     <>
       {!isMaintenanceMode && <Navbar />}
       <main className={isMaintenanceMode ? "" : "min-h-screen pt-16"}>
-        {children}
+        {isMaintenanceMode ? <MaintenancePage /> : children}
       </main>
       {!isMaintenanceMode && <Footer />}
       <LoadingModal />

@@ -7,13 +7,27 @@ import AppWrapper from "./components/AppWrapper";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata: Metadata = {
-  title: "Mentivo | Learn from IITians",
-  description: "Unlock your potential with personalized mentorship from the prestigious IIT community.",
-  icons: {
-    icon: "/logo.svg",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const isMaintenanceMode = process.env.PRODUCTION_MODE === 'true';
+  
+  if (isMaintenanceMode) {
+    return {
+      title: "Mentivo | Coming Soon",
+      description: "Something great is in the works. We are building a platform to connect the next generation of engineers with expert mentors from the IIT community.",
+      icons: {
+        icon: "/logo.svg",
+      },
+    };
+  }
+
+  return {
+    title: "Mentivo | Learn from IITians",
+    description: "Unlock your potential with personalized mentorship from the prestigious IIT community.",
+    icons: {
+      icon: "/logo.svg",
+    },
+  };
+}
 
 export default function RootLayout({
   children,
