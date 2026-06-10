@@ -66,15 +66,16 @@ export default function MentorProfile() {
       const response = await api.post(CallEndpoints.initiate, { mentorId: mentor.id });
       
       if (response.status === 200) {
-        const { sessionId, channelName, studentToken, maxDurationSeconds } = response.data;
+        const { sessionId, channelName, studentToken, maxDurationSeconds, mentorPhoto } = response.data;
         
         navigation.navigate('InCall', {
           callId: sessionId,
           channelName,
-          callerName: mentor.name, // Displaying mentor's name on student's screen
+          callerName: mentor.name,
           role: 'caller',
           initialToken: studentToken,
-          maxDuration: maxDurationSeconds
+          maxDuration: maxDurationSeconds,
+          mentorPhoto: mentorPhoto || mentor.photoUrl
         });
       }
     } catch (error: any) {
