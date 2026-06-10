@@ -15,7 +15,7 @@ const Footer = () => {
           <Link href="/about" className="text-slate-500 hover:text-[#00288e] text-sm font-semibold transition-colors">
             About Us
           </Link>
-          <Link href="/privacy-policy" className="text-slate-500 hover:text-[#00288e] text-sm font-semibold transition-colors">
+          <Link href="/privacy" className="text-slate-500 hover:text-[#00288e] text-sm font-semibold transition-colors">
             Privacy Policy
           </Link>
           <a href="mailto:support@mentivo.in" className="text-slate-500 hover:text-[#00288e] text-sm font-semibold transition-colors">
