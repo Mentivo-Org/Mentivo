@@ -55,5 +55,6 @@ Mentivo is a per-minute voice mentorship marketplace connecting JEE aspirants wi
 
 ## SVG & Asset Guidelines
 - **Component**: Always use `Image` from `expo-image` for rendering SVG assets in the frontend. The standard `Image` component from `react-native` does not support SVGs natively.
+- **MCP Server Assets**: When using assets from the Figma MCP server (`https://www.figma.com/api/mcp/asset/...`), always download them and save them locally to `frontend/app-assets`. Remote URLs from the MCP server are short-lived (7 days) and should never be committed to the repository.
 - **Preparation**: Ensure SVG files do not contain CSS variables (e.g., `var(--fill-0, #color)`). Use standard hex codes for colors.
 - **Styling**: For monochromatic icons (like arrows), use the `tintColor` prop on the `Image` component to ensure proper contrast against different background colors.
