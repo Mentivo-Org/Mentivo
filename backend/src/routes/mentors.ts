@@ -6,6 +6,28 @@ import prisma from '../config/db.ts';
 
 const router = Router();
 
+const mentorInclude = {
+  user: {
+    select: {
+      name: true,
+      email: true,
+      photo_url: true,
+      _count: {
+        select: {
+          callSessionsMentor: {
+            where: { status: { in: ['completed', 'settled'] } }
+          }
+        }
+      }
+    }
+  }
+};
+
+const formatMentor = (m: any) => ({
+  ...m,
+  total_calls: m.user?._count?.callSessionsMentor || 0
+});
+
 // GET /api/mentors
 router.get('/', authenticateUser, async (req:Request, res:Response) => {
   try {
@@ -16,10 +38,10 @@ router.get('/', authenticateUser, async (req:Request, res:Response) => {
 
     const mentors = await prisma.mentorProfile.findMany({
       where: { mentorId: { in: availableIds } },
-      include: { user: { select: { name: true, email: true, photo_url: true } } }
+      include: mentorInclude
     });
     
-    res.json(mentors);
+    res.json(mentors.map(formatMentor));
   } catch (err) {
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -51,9 +73,7 @@ router.get('/paginated', authenticateUser, async (req: Request, res: Response) =
 
     const mentors = await prisma.mentorProfile.findMany({
       where: whereClause,
-      include: { 
-        user: { select: { name: true, email: true, photo_url: true } } 
-      },
+      include: mentorInclude,
       orderBy: {
         avg_rating: 'desc'
       },
@@ -61,7 +81,7 @@ router.get('/paginated', authenticateUser, async (req: Request, res: Response) =
       take: limit,
     });
     
-    res.json(mentors);
+    res.json(mentors.map(formatMentor));
   } catch (err) {
     console.error('Error fetching paginated mentors:', err);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -80,9 +100,7 @@ router.get('/online/paginated', authenticateUser, async (req: Request, res: Resp
       where: { 
         mentorId: { in: availableIds },
       },
-      include: { 
-        user: { select: { name: true, email: true, photo_url: true } } 
-      },
+      include: mentorInclude,
       orderBy: {
         avg_rating: 'desc'
       },
@@ -90,7 +108,7 @@ router.get('/online/paginated', authenticateUser, async (req: Request, res: Resp
       take: limit,
     });
     
-    res.json(mentors);
+    res.json(mentors.map(formatMentor));
   } catch (err) {
     console.error('Error fetching paginated mentors:', err);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -126,15 +144,13 @@ router.get('/search', authenticateUser, async (req: Request, res: Response) => {
           mode: 'insensitive',
         }
       },
-      include: { 
-        user: { select: { name: true, email: true, photo_url: true } } 
-      },
+      include: mentorInclude,
       orderBy: {
         avg_rating: 'desc'
       }
     });
     
-    res.json(mentors);
+    res.json(mentors.map(formatMentor));
   } catch (err) {
     console.error('Error searching mentors:', err);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -156,10 +172,10 @@ router.get('/favorites', authenticateUser, async (req: Request, res: Response) =
 
     const mentors = await prisma.mentorProfile.findMany({
       where: { mentorId: { in: user.favouriteMentors } },
-      include: { user: { select: { name: true, email: true, photo_url: true } } }
+      include: mentorInclude
     });
 
-    res.json(mentors);
+    res.json(mentors.map(formatMentor));
   } catch (err) {
     console.error('Error fetching favorite mentors:', err);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -209,14 +225,14 @@ router.get('/:id', authenticateUser, async (req:Request, res:Response) => {
   try {
     const mentor = await prisma.mentorProfile.findUnique({
       where: { mentorId: req.params.id as string },
-      include: { user: { select: { name: true, email: true, photo_url: true } } }
+      include: mentorInclude
     });
     
     if (!mentor) {
       return res.status(404).json({ error: 'Mentor not found' });
     }
     
-    res.json(mentor);
+    res.json(formatMentor(mentor));
   } catch (err) {
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -267,7 +283,7 @@ router.get('/me/stats', authenticateUser, async (req: Request, res: Response) =>
         })
     ]);
 
-    res.json({
+    const responseData = {
       profile: mentor,
       conditions,
       stats: {
@@ -275,7 +291,14 @@ router.get('/me/stats', authenticateUser, async (req: Request, res: Response) =>
           week: { count: weekCalls._count, earnings: weekCalls._sum.mentorEarning || 0 },
           allTime: { count: allTimeCalls._count, earnings: allTimeCalls._sum.mentorEarning || 0 }
       }
-    });
+    };
+
+    // Ensure profile.total_calls reflects the actual all-time count for consistency
+    if (responseData.profile) {
+      responseData.profile.total_calls = responseData.stats.allTime.count;
+    }
+
+    res.json(responseData);
   } catch (err) {
     console.error('Error fetching mentor stats:', err);
     res.status(500).json({ error: 'Internal Server Error' });

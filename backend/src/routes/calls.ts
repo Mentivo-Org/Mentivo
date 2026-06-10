@@ -305,14 +305,29 @@ router.get('/student/sessions', authenticateUser, async (req, res) => {
       include: {
         mentor: {
           include: {
-            mentorProfile: true
+            mentorProfile: true,
+            _count: {
+              select: {
+                callSessionsMentor: {
+                  where: { status: { in: ['completed', 'settled'] } }
+                }
+              }
+            }
           }
         }
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    res.json(sessions);
+    const formattedSessions = sessions.map(s => {
+      const session: any = { ...s };
+      if (session.mentor?.mentorProfile) {
+        session.mentor.mentorProfile.total_calls = session.mentor._count?.callSessionsMentor || 0;
+      }
+      return session;
+    });
+
+    res.json(formattedSessions);
   } catch (e) {
     console.error('Fetch student sessions error:', e);
     res.status(500).json({ error: 'Server Error' });

@@ -29,7 +29,14 @@ export const checkAndPromoteMentors = async () => {
       include: {
         user: {
           include: {
-            fcmTokens: true
+            fcmTokens: true,
+            _count: {
+              select: {
+                callSessionsMentor: {
+                  where: { status: { in: ['completed', 'settled'] } }
+                }
+              }
+            }
           }
         }
       }
@@ -37,15 +44,16 @@ export const checkAndPromoteMentors = async () => {
 
     for (const mentor of mentors) {
       let finalLevel: 'Standard' | 'Signature' | null = null;
+      const actualTotalCalls = (mentor.user as any)._count?.callSessionsMentor || 0;
 
       // Check for Signature first if they are Standard or if they might jump from Verified to Signature
-      if (signatureCond && mentor.total_calls >= signatureCond.minCalls && Number(mentor.avg_rating) >= Number(signatureCond.minRating)) {
+      if (signatureCond && actualTotalCalls >= signatureCond.minCalls && Number(mentor.avg_rating) >= Number(signatureCond.minRating)) {
         if (mentor.mentorlevel !== 'Signature') {
           finalLevel = 'Signature';
         }
       } 
       // Else check for Standard if they are Verified
-      else if (mentor.mentorlevel === 'Verified' && standardCond && mentor.total_calls >= standardCond.minCalls && Number(mentor.avg_rating) >= Number(standardCond.minRating)) {
+      else if (mentor.mentorlevel === 'Verified' && standardCond && actualTotalCalls >= standardCond.minCalls && Number(mentor.avg_rating) >= Number(standardCond.minRating)) {
         finalLevel = 'Standard';
       }
 
