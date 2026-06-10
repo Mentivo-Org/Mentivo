@@ -80,7 +80,7 @@ export default function MentorLevelsPage() {
                 level={level}
                 initialCalls={cond.minCalls}
                 initialRating={Number(cond.minRating)}
-                onSave={(calls, rating) => handleUpdateCondition(level, calls, rating)}
+                onSave={(calls: any, rating: any) => handleUpdateCondition(level, calls, rating)}
               />
             );
           })}
