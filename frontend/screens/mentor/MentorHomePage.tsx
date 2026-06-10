@@ -70,7 +70,7 @@ export default function MentorHomePage() {
     try {
       const [statsRes, historyRes, conditionsRes] = await Promise.all([
         api.get(MentorEndpoints.getMeStats),
-        api.get(CallEndpoints.getMentorSessions),
+        api.get(`${CallEndpoints.getMentorSessions}?limit=3`),
         api.get(MentorEndpoints.getPromotionConditions)
       ]);
       
@@ -168,7 +168,7 @@ export default function MentorHomePage() {
                     >
                         <View style={styles.avatarWrapper}>
                             <Image 
-                                source={profile.photo_url || require("../../app-assets/avatar-placeholder.svg")} 
+                                source={profile.user?.photo_url || require("../../app-assets/avatar-placeholder.svg")} 
                                 style={styles.headerAvatar} 
                             />
                             <Image source={require("../../app-assets/verified-check.svg")} style={styles.verifiedBadge} />
@@ -177,19 +177,19 @@ export default function MentorHomePage() {
                             <Text style={styles.greetingText}>Hi {profile.user?.name?.split(" ")[0] || "Mentor"}</Text>
                             <Text style={styles.collegeText}>{profile.iit_name}</Text>
                         </View>
-                        <Image source={require("../../app-assets/edit-icon.svg")} style={styles.editIcon} tintColor="white" />
+                        {/* <Image source={require("../../app-assets/edit-icon.svg")} style={styles.editIcon} tintColor="white" /> */}
                     </TouchableOpacity>
 
                     <View style={styles.onlineToggleContainer}>
-                        <Text style={[styles.onlineStatusText, { color: isOnline ? '#25d366' : '#fff' }]}>
+                        <Text style={[styles.onlineStatusText, { color: isOnline ? '#25D366' : '#FF0000' }]}>
                             {isOnline ? 'Online' : 'Offline'}
                         </Text>
-                        <Switch
+                        {/* <Switch
                             trackColor={{ false: "#767577", true: "#25d366" }}
                             thumbColor={"#f4f3f4"}
                             onValueChange={toggleOnlineStatus}
                             value={isOnline}
-                        />
+                        /> */}
                     </View>
                 </View>
 
@@ -273,7 +273,7 @@ export default function MentorHomePage() {
             ) : (
                 <Text style={styles.emptyText}>No recent calls</Text>
             )}
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate("MentorSessionsPage")}>
                 <Text style={styles.moreText}>more</Text>
             </TouchableOpacity>
         </View>
@@ -469,10 +469,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.1)',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 20,
+    borderRadius: 40,
   },
   onlineStatusText: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   avatarWrapper: {

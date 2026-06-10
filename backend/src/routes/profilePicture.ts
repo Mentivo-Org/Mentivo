@@ -3,7 +3,7 @@ import { uploadProfilePicMiddleware, uploadProfilePicture } from "../controllers
 import { Router } from "express";
 const app = Router();
 
-// POST /api/mentors/me/profile-picture
+// POST /api/profile-picture
 app.post('/', authenticateUser, uploadProfilePicMiddleware, uploadProfilePicture);
 
 export default app;

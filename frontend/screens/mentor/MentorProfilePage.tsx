@@ -1,15 +1,15 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, RefreshControl, Alert, Modal, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from "../../services/retrieveKeys";
 import api from '../../services/api';
-import { MentorEndpoints } from '../../constants/endpoint';
+import { MentorEndpoints, ProfilePictureEndpoints } from '../../constants/endpoint';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from 'expo-image-picker';
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 
 export default function MentorProfilePage() {
   const navigation = useNavigation<any>();
@@ -18,6 +18,17 @@ export default function MentorProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [mentorData, setMentorData] = useState<any>(null);
+  
+  // Image Viewer State
+  const [isViewerVisible, setIsViewerVisible] = useState(false);
+
+  // Edit State
+  const [isEditingUpi, setIsEditingUpi] = useState(false);
+  const [tempUpi, setTempUpi] = useState("");
+  const [savingUpi, setSavingUpi] = useState(false);
+
+  // Online Status
+  const [isOnline, setIsOnline] = useState(false);
 
   const loadCachedData = async () => {
     try {
@@ -25,6 +36,8 @@ export default function MentorProfilePage() {
       if (cachedStats) {
         const parsedData = JSON.parse(cachedStats);
         setMentorData(parsedData.profile);
+        setTempUpi(parsedData.profile.upiId || "");
+        setIsOnline(parsedData.profile.isOnline || false);
         setLoading(false);
       }
     } catch (err) {
@@ -39,6 +52,8 @@ export default function MentorProfilePage() {
       if (response.status === 200) {
         const newData = response.data;
         setMentorData(newData.profile);
+        setTempUpi(newData.profile.upiId || "");
+        setIsOnline(newData.profile.isOnline || false);
         await AsyncStorage.setItem("stats", JSON.stringify(newData));
       }
     } catch (error) {
@@ -46,6 +61,22 @@ export default function MentorProfilePage() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const toggleOnlineStatus = async () => {
+    const nextValue = !isOnline;
+    try {
+      setIsOnline(nextValue);
+      const response = await api.post(MentorEndpoints.setStatus, { isOnline: nextValue });
+      if (response.status !== 200) {
+        // Rollback
+        setIsOnline(!nextValue);
+        Alert.alert("Error", "Failed to update online status");
+      }
+    } catch (err) {
+      setIsOnline(!nextValue);
+      console.error("Error toggling online status:", err);
     }
   };
 
@@ -93,7 +124,7 @@ export default function MentorProfilePage() {
 
       formData.append('profilePic', { uri, name: filename, type } as any);
 
-      const response = await api.post(MentorEndpoints.uploadProfilePicture, formData, {
+      const response = await api.post(ProfilePictureEndpoints.uploadProfilePicture, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -108,6 +139,28 @@ export default function MentorProfilePage() {
       Alert.alert('Error', 'Failed to upload profile picture');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleUpdateUpi = async () => {
+    if (tempUpi === mentorData.upiId) {
+      setIsEditingUpi(false);
+      return;
+    }
+
+    setSavingUpi(true);
+    try {
+      const response = await api.patch(MentorEndpoints.updateProfile, { upiId: tempUpi });
+      if (response.status === 200) {
+        Alert.alert('Success', 'UPI ID updated successfully');
+        fetchData(true);
+        setIsEditingUpi(false);
+      }
+    } catch (error) {
+      console.error('Failed to update UPI:', error);
+      Alert.alert('Error', 'Failed to update UPI ID');
+    } finally {
+      setSavingUpi(false);
     }
   };
 
@@ -129,6 +182,8 @@ export default function MentorProfilePage() {
       </SafeAreaView>
     );
   }
+
+  const profilePic = mentorData.user?.photo_url || require('../../app-assets/avatar-placeholder.svg');
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -155,25 +210,29 @@ export default function MentorProfilePage() {
 
         {/* Avatar Section */}
         <View style={styles.avatarSection}>
-          <TouchableOpacity 
-            style={styles.avatarWrapper} 
-            onPress={handlePickImage}
-            disabled={uploading}
-          >
-            {uploading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <>
-                <Image 
-                  source={mentorData.photo_url || require('../../app-assets/avatar-placeholder.svg')} 
-                  style={styles.avatar} 
-                />
-                <View style={styles.editBadge}>
-                    <Image source={require("../../app-assets/edit-icon.svg")} style={styles.editBadgeIcon} tintColor="white" />
-                </View>
-              </>
-            )}
-          </TouchableOpacity>
+          <View style={styles.avatarWrapper}>
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => setIsViewerVisible(true)}
+            >
+              <Image 
+                source={profilePic} 
+                style={styles.avatar} 
+              />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.editBadge} 
+              onPress={handlePickImage}
+              disabled={uploading}
+            >
+              {uploading ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <Image source={require("../../app-assets/edit-icon.svg")} style={styles.editBadgeIcon} tintColor="white" />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Name & Title */}
@@ -195,7 +254,40 @@ export default function MentorProfilePage() {
           <DetailRow label="Current Year" value={mentorData.year ? mentorData.year.toString() : "Not provided"} />
           <DetailRow label="Branch" value={mentorData.branch || "Not provided"} />
           <DetailRow label="Expertise" value={mentorData.expertise || "Not provided"} />
-          <DetailRow label="UPI ID" value={mentorData.upiId || "Not provided"} />
+          
+          {/* UPI ID Row with Edit capability */}
+          <View style={styles.detailRow}>
+            <View style={styles.detailLabelRow}>
+              <Text style={styles.detailLabel}>UPI ID</Text>
+              {!isEditingUpi && (
+                <TouchableOpacity onPress={() => setIsEditingUpi(true)}>
+                  <Text style={styles.editLink}>Edit</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            {isEditingUpi ? (
+              <View style={styles.editInputContainer}>
+                <TextInput
+                  style={styles.upiInput}
+                  value={tempUpi}
+                  onChangeText={setTempUpi}
+                  placeholder="Enter UPI ID"
+                  autoCapitalize="none"
+                />
+                <View style={styles.editActions}>
+                  <TouchableOpacity onPress={() => { setIsEditingUpi(false); setTempUpi(mentorData.upiId || ""); }} style={styles.cancelBtn}>
+                    <Text style={styles.cancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleUpdateUpi} disabled={savingUpi} style={styles.saveBtn}>
+                    {savingUpi ? <ActivityIndicator size="small" color="#2563eb" /> : <Text style={styles.saveText}>Save</Text>}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <Text style={styles.detailValue}>{mentorData.upiId || "Not provided"}</Text>
+            )}
+          </View>
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -203,6 +295,50 @@ export default function MentorProfilePage() {
         </TouchableOpacity>
 
       </ScrollView>
+
+      {/* Profile Picture Viewer Modal */}
+      <Modal
+        visible={isViewerVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsViewerVisible(false)}
+      >
+        <View style={styles.viewerContainer}>
+          <TouchableOpacity 
+            style={styles.viewerOverlay} 
+            activeOpacity={1} 
+            onPress={() => setIsViewerVisible(false)} 
+          />
+          <View style={styles.viewerContent}>
+            <Image 
+              source={profilePic} 
+              style={styles.fullImage} 
+              contentFit="contain"
+            />
+            <TouchableOpacity 
+              style={styles.closeViewerBtn} 
+              onPress={() => setIsViewerVisible(false)}
+            >
+              <Image source={require("../../app-assets/x-icon.svg")} style={styles.closeIcon} tintColor="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Availability Toggle matching Node 408:9 */}
+      <TouchableOpacity 
+        style={styles.onlineToggle} 
+        onPress={toggleOnlineStatus}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.switchTrack, isOnline && styles.switchTrackOnline]}>
+          <View style={[styles.switchThumb, isOnline && styles.switchThumbOnline]} />
+        </View>
+        <Text style={styles.toggleText}>
+          {isOnline ? 'ONLINE' : 'OFFLINE'}
+        </Text>
+      </TouchableOpacity>
+
     </SafeAreaView>
   );
 }
@@ -297,6 +433,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 20,
     elevation: 10,
+    position: 'relative',
   },
   avatar: {
     width: 164,
@@ -316,6 +453,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 3,
     borderColor: 'white',
+    zIndex: 10,
   },
   editBadgeIcon: {
     width: 16,
@@ -363,10 +501,52 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     fontWeight: '400',
   },
+  detailLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   detailValue: {
     fontSize: 16,
     color: '#444653',
     fontWeight: '400',
+  },
+  editLink: {
+    fontSize: 12,
+    color: '#2563eb',
+    fontWeight: 'bold',
+  },
+  editInputContainer: {
+    marginTop: 4,
+  },
+  upiInput: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#2563eb',
+    fontSize: 16,
+    color: '#444653',
+    paddingVertical: 4,
+  },
+  editActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 16,
+    marginTop: 8,
+  },
+  cancelBtn: {
+    padding: 4,
+  },
+  cancelText: {
+    fontSize: 12,
+    color: '#7e7e7e',
+  },
+  saveBtn: {
+    padding: 4,
+  },
+  saveText: {
+    fontSize: 12,
+    color: '#2563eb',
+    fontWeight: 'bold',
   },
   logoutButton: {
       alignSelf: 'center',
@@ -391,5 +571,70 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  viewerContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  viewerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  viewerContent: {
+    width: width,
+    height: height * 0.7,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: '100%',
+    height: '100%',
+  },
+  closeViewerBtn: {
+    position: 'absolute',
+    top: -40,
+    right: 20,
+    padding: 10,
+  },
+  closeIcon: {
+    width: 24,
+    height: 24,
+  },
+  onlineToggle: {
+    position: 'absolute',
+    right: 24,
+    bottom: 40,
+    alignItems: 'center',
+    gap: 4,
+  },
+  switchTrack: {
+    width: 28,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#FF0000',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  switchTrackOnline: {
+    backgroundColor: '#25D366',
+  },
+  switchThumb: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'white',
+  },
+  switchThumbOnline: {
+    alignSelf: 'flex-end',
+  },
+  toggleText: {
+    fontSize: 12,
+    color: '#7e7e7e',
+    fontWeight: '400',
   },
 });

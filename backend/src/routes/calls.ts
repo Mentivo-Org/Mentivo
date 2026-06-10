@@ -102,13 +102,17 @@ router.post('/initiate', authenticateUser, async (req, res) => {
     const mentorToken = generateToken(channelName, mentorId, 3600);
 
     // 8. Trigger Signaling (Socket.io + FCM)
-    const student = await prisma.user.findUnique({ where: { id: studentId }, select: { name: true } });
+    const [student, mentor] = await Promise.all([
+      prisma.user.findUnique({ where: { id: studentId }, select: { name: true, photo_url: true } }),
+      prisma.mentorProfile.findUnique({ where: { mentorId }, select: { photo_url: true } })
+    ]);
     
     // 8a. Socket emission for instant ringing
     emitToUser(mentorId, 'incoming_call', {
       callId: session.id,
       channelName,
-      callerName: student?.name || 'Student'
+      callerName: student?.name || 'Student',
+      callerPhoto: student?.photo_url
     });
 
     // 8b. FCM push for background wake-up
@@ -122,7 +126,8 @@ router.post('/initiate', authenticateUser, async (req, res) => {
       await sendCallSignalingMessage(mentorFcmToken.token, {
         callId: session.id,
         channelName,
-        callerName: student?.name || 'Student'
+        callerName: student?.name || 'Student',
+        callerPhoto: student?.photo_url
       });
     }
 
@@ -135,7 +140,8 @@ router.post('/initiate', authenticateUser, async (req, res) => {
       studentToken,
       mentorToken,
       isFree,
-      maxDurationSeconds: maxAllowedSeconds
+      maxDurationSeconds: maxAllowedSeconds,
+      mentorPhoto: mentor?.photo_url
     });
   } catch (error) {
     console.error('Call initiation error:', error);
@@ -262,6 +268,9 @@ router.get('/mentor/:mentorId/schedule', async (req, res) => {
 // GET /api/calls/mentor/sessions
 router.get('/mentor/sessions', authenticateUser, async (req, res) => {
   try {
+    const limit = parseInt(req.query.limit as string) || 10;
+    const offset = parseInt(req.query.offset as string) || 0;
+
     const sessions = await prisma.callSession.findMany({
       where: { 
         mentor_id: req.user?.id,
@@ -273,7 +282,8 @@ router.get('/mentor/sessions', authenticateUser, async (req, res) => {
         }
       },
       orderBy: { createdAt: 'desc' },
-      take: 5
+      take: limit,
+      skip: offset
     });
 
     res.json(sessions);
@@ -426,10 +436,11 @@ router.post('/:id/end', authenticateUser, async (req, res) => {
 
     const endedAt = new Date();
     const durationSecs = session.startedAt ? Math.floor((endedAt.getTime() - session.startedAt.getTime()) / 1000) : 0;
+    const finalStatus = session.status === 'active' ? 'completed' : 'cancelled';
 
     await prisma.callSession.update({
       where: { id: req.params.id as string},
-      data: { endedAt, status: 'completed' }
+      data: { endedAt, status: finalStatus }
     });
 
     // Release mentor
@@ -437,7 +448,7 @@ router.post('/:id/end', authenticateUser, async (req, res) => {
 
     // Notify the other party
     const otherPartyId = req.user?.id === session.student_id ? session.mentor_id : session.student_id;
-    emitToUser(otherPartyId, 'call_status_changed', { callId: session.id, status: 'completed' });
+    emitToUser(otherPartyId, 'call_status_changed', { callId: session.id, status: finalStatus });
 
     // Send FCM cancellation to mentor to dismiss notification
     const mentorFcmToken = await prisma.fCMToken.findFirst({
@@ -449,8 +460,10 @@ router.post('/:id/end', authenticateUser, async (req, res) => {
       await sendCallCancelledMessage(mentorFcmToken.token, session.id);
     }
 
-    // Atomic billing
-    await settleBilling(session.id, durationSecs);
+    // Atomic billing (only if completed)
+    if (finalStatus === 'completed') {
+      await settleBilling(session.id, durationSecs);
+    }
 
     res.sendStatus(200);
   } catch (e) {
@@ -564,8 +577,7 @@ router.post('/:id/rate', authenticateUser, async (req, res) => {
       await tx.mentorProfile.update({
         where: { mentorId: session.mentor_id },
         data: {
-          avg_rating: avg._avg.score || 0,
-          total_calls: { increment: 1 }
+          avg_rating: avg._avg.score || 0
         }
       });
     });

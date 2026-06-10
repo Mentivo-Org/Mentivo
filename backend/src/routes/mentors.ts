@@ -282,7 +282,7 @@ router.get('/me/stats', authenticateUser, async (req: Request, res: Response) =>
   }
 });
 
-// POST /api/mentors/me/status
+// PATCH /api/mentors/me/status
 router.post('/me/status', authenticateUser, async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id as string;
@@ -301,6 +301,32 @@ router.post('/me/status', authenticateUser, async (req: Request, res: Response) 
     res.json({ success: true, isOnline });
   } catch (err) {
     console.error('Error updating mentor status:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// PATCH /api/mentors/me/profile
+router.patch('/me/profile', authenticateUser, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id as string;
+    const { upiId, expertise, bio } = req.body;
+
+    if (req.user?.role !== 'mentor') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const updatedProfile = await prisma.mentorProfile.update({
+      where: { mentorId: userId },
+      data: {
+        upiId: upiId !== undefined ? upiId : undefined,
+        expertise: expertise !== undefined ? expertise : undefined,
+        bio: bio !== undefined ? bio : undefined
+      }
+    });
+
+    res.json({ success: true, profile: updatedProfile });
+  } catch (err) {
+    console.error('Error updating mentor profile:', err);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });

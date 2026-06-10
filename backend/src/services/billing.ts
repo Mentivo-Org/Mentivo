@@ -79,6 +79,12 @@ export async function settleBilling(sessionId: string, durationSecs: number, rec
         }
       });
 
+      // Update mentor profile stats
+      await tx.mentorProfile.update({
+        where: { mentorId: session.mentor_id },
+        data: { total_calls: { increment: 1 } }
+      });
+
       // 4. Handle 5% revenue share for CoachingCenterBalance if applicable
       const coachingCenterId = session.student.coachingCenterId;
       if (coachingCenterId) {
