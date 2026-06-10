@@ -10,6 +10,7 @@ import mentorRouter from './routes/mentors.ts';
 import callsRouter from './routes/calls.ts';
 import walletRouter from './routes/wallet.ts';
 import agoraRouter from './routes/agora.ts'
+import profilePictureRouter from './routes/profilePicture.ts'
 import webhookRouter from './routes/webhooks.ts';
 import prisma from './config/db.ts';
 import { startJobs } from './jobs/index.ts';
@@ -128,6 +129,7 @@ app.use('/api/coaching', coachingRouter);
 app.use('/api/mentors', mentorRouter);
 app.use('/api/calls', callsRouter);
 app.use('/api/wallet', walletRouter);
+app.use('/api/profile-picture',profilePictureRouter);
 
 //Handle agora token generation
 app.use('/api/agora/token', agoraRouter);

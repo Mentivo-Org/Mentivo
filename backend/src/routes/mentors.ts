@@ -3,7 +3,6 @@ import type { Request, Response } from 'express';
 import { authenticateUser } from '../auth/authenticateUser.ts';
 import { getAvailableMentors, setAvailable, setOffline } from '../services/presence.ts';
 import prisma from '../config/db.ts';
-import { uploadProfilePicMiddleware, uploadProfilePicture } from '../controllers/mentorController.ts';
 
 const router = Router();
 
@@ -305,8 +304,5 @@ router.post('/me/status', authenticateUser, async (req: Request, res: Response) 
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
-
-// POST /api/mentors/me/profile-picture
-router.post('/me/profile-picture', authenticateUser, uploadProfilePicMiddleware, uploadProfilePicture);
 
 export default router;
