@@ -3,10 +3,53 @@ import { authenticateUser } from '../auth/authenticateUser.ts';
 import { generateToken, generateChannelName } from '../services/agora.ts';
 import { lockToBusy, getPresenceState, setAvailable } from '../services/presence.ts';
 import { settleBilling } from '../services/billing.ts';
-import { sendCallSignalingMessage } from '../services/notifications.ts';
+import { sendCallSignalingMessage, sendCallCancelledMessage } from '../services/notifications.ts';
+import { emitToUser } from '../config/socket.ts';
 import prisma from '../config/db.ts';
 
 const router = Router();
+
+/**
+ * Missed Call Timeout Handler
+ * Marks call as missed if not accepted within 60s
+ */
+function scheduleMissedCallTimeout(sessionId: string, studentId: string, mentorId: string) {
+  setTimeout(async () => {
+    try {
+      const session = await prisma.callSession.findUnique({ where: { id: sessionId } });
+      
+      // Only transition to 'missed' if it's still in 'calling', 'ringing' or 'pending' state
+      if (session && (session.status === 'calling' || session.status === 'ringing' || session.status === 'pending')) {
+        await prisma.callSession.update({
+          where: { id: sessionId },
+          data: { status: 'missed', endedAt: new Date() }
+        });
+
+        // Release mentor busy lock
+        await setAvailable(mentorId);
+
+        // Notify both parties
+        const payload = { callId: sessionId, status: 'missed' };
+        emitToUser(studentId, 'call_status_changed', payload);
+        emitToUser(mentorId, 'call_status_changed', payload);
+        
+        // Send FCM cancellation to mentor to dismiss notification
+        const mentorFcmToken = await prisma.fCMToken.findFirst({
+          where: { userId: mentorId },
+          orderBy: { updatedAt: 'desc' },
+          select: { token: true }
+        });
+        if (mentorFcmToken) {
+          await sendCallCancelledMessage(mentorFcmToken.token, sessionId);
+        }
+        
+        console.log(`[Timeout] Call ${sessionId} marked as missed after 60s.`);
+      }
+    } catch (err) {
+      console.error(`[Timeout Error] Failed to handle timeout for call ${sessionId}:`, err);
+    }
+  }, 60000);
+}
 
 // POST /api/calls/initiate
 router.post('/initiate', authenticateUser, async (req, res) => {
@@ -16,6 +59,7 @@ router.post('/initiate', authenticateUser, async (req, res) => {
   try {
     // 1. Check Mentor Availability
     const mentorState = await getPresenceState(mentorId);
+    console.log(mentorState);
     if (mentorState !== 'available') {
       return res.status(400).json({ error: 'Mentor is currently offline or busy' });
     }
@@ -44,24 +88,35 @@ router.post('/initiate', authenticateUser, async (req, res) => {
         student_id: studentId as string,
         mentor_id: mentorId as string,
         agoraChannelId: channelName,
-        status: 'pending',
+        status: 'calling', // Set to calling immediately
         is_free: isFree
       }
     });
 
     // 6. Calculate Max Affordable Duration (INR 10/min)
     const affordableMinutes = Math.floor(Number(wallet.balance) / 10);
-    // Buffer for first free call (if applicable) or standard call
-    // We add 300s (5min) if it is free, and set the token to expire 60s after their max money runs out
     const bufferSeconds = 60;
     const maxAllowedSeconds = (affordableMinutes * 60) + (isFree ? 300 : 0) + bufferSeconds;
 
-    // 7. Generate Agora Tokens with Dynamic Expiry
+    // 7. Generate Agora Tokens
     const studentToken = generateToken(channelName, studentId as string, maxAllowedSeconds);
-    const mentorToken = generateToken(channelName, mentorId, 3600); // Mentor can stay 1hr
+    const mentorToken = generateToken(channelName, mentorId, 3600);
 
-    // 8. Trigger Signaling (FCM)
-    const student = await prisma.user.findUnique({ where: { id: studentId }, select: { name: true } });
+    // 8. Trigger Signaling (Socket.io + FCM)
+    const [student, mentor] = await Promise.all([
+      prisma.user.findUnique({ where: { id: studentId }, select: { name: true, photo_url: true } }),
+      prisma.user.findUnique({ where: { id: mentorId }, select: { photo_url: true } })
+    ]);
+    
+    // 8a. Socket emission for instant ringing
+    emitToUser(mentorId, 'incoming_call', {
+      callId: session.id,
+      channelName,
+      callerName: student?.name || 'Student',
+      callerPhoto: student?.photo_url
+    });
+
+    // 8b. FCM push for background wake-up
     const mentorFcmToken = await prisma.fCMToken.findFirst({
       where: { userId: mentorId },
       orderBy: { updatedAt: 'desc' },
@@ -72,9 +127,13 @@ router.post('/initiate', authenticateUser, async (req, res) => {
       await sendCallSignalingMessage(mentorFcmToken.token, {
         callId: session.id,
         channelName,
-        callerName: student?.name || 'Student'
+        callerName: student?.name || 'Student',
+        callerPhoto: student?.photo_url
       });
     }
+
+    // 9. Start Missed Call Timeout (60s)
+    scheduleMissedCallTimeout(session.id, studentId as string, mentorId);
 
     res.json({
       sessionId: session.id,
@@ -82,7 +141,8 @@ router.post('/initiate', authenticateUser, async (req, res) => {
       studentToken,
       mentorToken,
       isFree,
-      maxDurationSeconds: maxAllowedSeconds
+      maxDurationSeconds: maxAllowedSeconds,
+      mentorPhoto: mentor?.photo_url
     });
   } catch (error) {
     console.error('Call initiation error:', error);
@@ -206,6 +266,34 @@ router.get('/mentor/:mentorId/schedule', async (req, res) => {
   }
 });
 
+// GET /api/calls/mentor/sessions
+router.get('/mentor/sessions', authenticateUser, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 10;
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    const sessions = await prisma.callSession.findMany({
+      where: { 
+        mentor_id: req.user?.id,
+        status: { in: ['completed', 'settled'] }
+      },
+      include: {
+        student: {
+          select: { name: true, email: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip: offset
+    });
+
+    res.json(sessions);
+  } catch (e) {
+    console.error('Fetch mentor sessions error:', e);
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
 // GET /api/calls/student/sessions
 router.get('/student/sessions', authenticateUser, async (req, res) => {
   try {
@@ -217,14 +305,29 @@ router.get('/student/sessions', authenticateUser, async (req, res) => {
       include: {
         mentor: {
           include: {
-            mentorProfile: true
+            mentorProfile: true,
+            _count: {
+              select: {
+                callSessionsMentor: {
+                  where: { status: { in: ['completed', 'settled'] } }
+                }
+              }
+            }
           }
         }
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    res.json(sessions);
+    const formattedSessions = sessions.map(s => {
+      const session: any = { ...s };
+      if (session.mentor?.mentorProfile) {
+        session.mentor.mentorProfile.total_calls = session.mentor._count?.callSessionsMentor || 0;
+      }
+      return session;
+    });
+
+    res.json(formattedSessions);
   } catch (e) {
     console.error('Fetch student sessions error:', e);
     res.status(500).json({ error: 'Server Error' });
@@ -282,12 +385,40 @@ router.get('/student/upcoming', authenticateUser, async (req, res) => {
 // POST /api/calls/:id/start
 router.post('/:id/start', authenticateUser, async (req, res) => {
   try {
-    await prisma.callSession.update({
+    const session = await prisma.callSession.update({
       where: { id: req.params.id as string},
       data: { status: 'active', startedAt: new Date(), lastHeartbeatAt: new Date() }
     });
+
+    // Notify the other party that call is connected
+    const otherPartyId = req.user?.id === session.student_id ? session.mentor_id : session.student_id;
+    emitToUser(otherPartyId, 'call_status_changed', { callId: session.id, status: 'active' });
+
     res.sendStatus(200);
   } catch (e) {
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+// POST /api/calls/:id/ringing
+router.post('/:id/ringing', authenticateUser, async (req, res) => {
+  try {
+    const session = await prisma.callSession.findUnique({ where: { id: req.params.id as string } });
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    
+    if (session.status !== 'ringing') {
+      await prisma.callSession.update({
+        where: { id: req.params.id as string},
+        data: { status: 'ringing' }
+      });
+      console.log(`[Ringing] Call ${session.id} status updated to ringing`);
+      // Notify the student that mentor's phone is ringing
+      emitToUser(session.student_id, 'call_status_changed', { callId: session.id, status: 'ringing' });
+    }
+
+    res.sendStatus(200);
+  } catch (e) {
+    console.error('Ringing status update error:', e);
     res.status(500).json({ error: 'Server Error' });
   }
 });
@@ -315,23 +446,40 @@ router.patch('/:id/heartbeat', authenticateUser, async (req, res) => {
 router.post('/:id/end', authenticateUser, async (req, res) => {
   try {
     const session = await prisma.callSession.findUnique({ where: { id: req.params.id as string} });
-    if (!session || session.status !== 'active') {
-      return res.status(400).json({ error: 'Call is not active' });
+    if (!session || !['active', 'calling', 'ringing'].includes(session.status)) {
+      return res.status(400).json({ error: 'Call is not in a terminatable state' });
     }
 
     const endedAt = new Date();
     const durationSecs = session.startedAt ? Math.floor((endedAt.getTime() - session.startedAt.getTime()) / 1000) : 0;
+    const finalStatus = session.status === 'active' ? 'completed' : 'cancelled';
 
     await prisma.callSession.update({
       where: { id: req.params.id as string},
-      data: { endedAt }
+      data: { endedAt, status: finalStatus }
     });
 
     // Release mentor
     await setAvailable(session.mentor_id);
 
-    // Atomic billing
-    await settleBilling(session.id, durationSecs);
+    // Notify the other party
+    const otherPartyId = req.user?.id === session.student_id ? session.mentor_id : session.student_id;
+    emitToUser(otherPartyId, 'call_status_changed', { callId: session.id, status: finalStatus });
+
+    // Send FCM cancellation to mentor to dismiss notification
+    const mentorFcmToken = await prisma.fCMToken.findFirst({
+      where: { userId: session.mentor_id },
+      orderBy: { updatedAt: 'desc' },
+      select: { token: true }
+    });
+    if (mentorFcmToken) {
+      await sendCallCancelledMessage(mentorFcmToken.token, session.id);
+    }
+
+    // Atomic billing (only if completed)
+    if (finalStatus === 'completed') {
+      await settleBilling(session.id, durationSecs);
+    }
 
     res.sendStatus(200);
   } catch (e) {
@@ -353,6 +501,20 @@ router.post('/:id/reject', authenticateUser, async (req, res) => {
 
     // Release mentor
     await setAvailable(session.mentor_id);
+
+    // Notify the caller
+    const callerId = req.user?.id === session.mentor_id ? session.student_id : session.mentor_id;
+    emitToUser(callerId, 'call_status_changed', { callId: session.id, status: 'rejected' });
+
+    // Send FCM cancellation to mentor to dismiss notification
+    const mentorFcmToken = await prisma.fCMToken.findFirst({
+      where: { userId: session.mentor_id },
+      orderBy: { updatedAt: 'desc' },
+      select: { token: true }
+    });
+    if (mentorFcmToken) {
+      await sendCallCancelledMessage(mentorFcmToken.token, session.id);
+    }
 
     res.sendStatus(200);
   } catch (e) {
@@ -382,6 +544,21 @@ router.get('/:id/token', authenticateUser, async (req, res) => {
     res.json({ token, channelName });
   } catch (e) {
     console.error('Get token error:', e);
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+// GET /api/calls/:id/status
+router.get('/:id/status', authenticateUser, async (req, res) => {
+  try {
+    const session = await prisma.callSession.findUnique({ 
+      where: { id: req.params.id as string },
+      select: { status: true }
+    });
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    res.json({ status: session.status });
+  } catch (e) {
+    console.error('Get call status error:', e);
     res.status(500).json({ error: 'Server Error' });
   }
 });
@@ -416,8 +593,7 @@ router.post('/:id/rate', authenticateUser, async (req, res) => {
       await tx.mentorProfile.update({
         where: { mentorId: session.mentor_id },
         data: {
-          avg_rating: avg._avg.score || 0,
-          total_calls: { increment: 1 }
+          avg_rating: avg._avg.score || 0
         }
       });
     });

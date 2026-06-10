@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Users, ShieldCheck, Mail, LogOut, LayoutDashboard, Bell } from "lucide-react";
+import { Users, ShieldCheck, Mail, LogOut, LayoutDashboard, Bell, TrendingUp } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useAuth } from "@/context/AuthContext";
@@ -16,6 +16,7 @@ const navItems = [
   { name: "Students", href: "/dashboard/students", icon: Users },
   { name: "Mentors", href: "/dashboard/mentors", icon: ShieldCheck },
   { name: "Mentor Verification", href: "/dashboard/mentor-verification", icon: ShieldCheck },
+  { name: "Mentor Levels", href: "/dashboard/mentor-levels", icon: TrendingUp },
   { name: "Email Center", href: "/dashboard/email", icon: Mail },
   { name: "Notification Center", href: "/dashboard/notifications", icon: Bell },
 ];

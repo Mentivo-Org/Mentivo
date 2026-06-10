@@ -43,6 +43,9 @@ Mentivo is a per-minute voice mentorship marketplace connecting JEE aspirants wi
 ## Project Structure
 - `/backend`: API server, Prisma schema, services (Agora, Razorpay, Firebase).
 - `/frontend`: React Native Expo application.
+- `/admin-backend`: Admin-specific Express API with separate Prisma setup.
+- `/admin-frontend`: Next.js Admin Dashboard for platform management.
+- `/website`: Next.js web dashboards for partners and admins.
 - `/supabase`: Supabase configuration and migrations.
 
 ## Development Guidelines
@@ -52,5 +55,6 @@ Mentivo is a per-minute voice mentorship marketplace connecting JEE aspirants wi
 
 ## SVG & Asset Guidelines
 - **Component**: Always use `Image` from `expo-image` for rendering SVG assets in the frontend. The standard `Image` component from `react-native` does not support SVGs natively.
+- **MCP Server Assets**: When using assets from the Figma MCP server (`https://www.figma.com/api/mcp/asset/...`), always download them and save them locally to `frontend/app-assets`. Remote URLs from the MCP server are short-lived (7 days) and should never be committed to the repository.
 - **Preparation**: Ensure SVG files do not contain CSS variables (e.g., `var(--fill-0, #color)`). Use standard hex codes for colors.
 - **Styling**: For monochromatic icons (like arrows), use the `tintColor` prop on the `Image` component to ensure proper contrast against different background colors.

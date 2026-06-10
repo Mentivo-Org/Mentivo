@@ -26,7 +26,7 @@ const StudentLoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const { setIsSignedIn } = useAuth();
+  const { setIsSignedIn, setRole, requestNotificationPermissions } = useAuth();
   const {showLoading, hideLoading}  = useLoading();
 
   const [alertData, setAlertData] = useState({title: '', message: ''});
@@ -55,6 +55,8 @@ const StudentLoginPage = () => {
       await AsyncStorage.setItem('accessToken', accessToken);
       await AsyncStorage.setItem('refreshToken', refreshToken);
       await AsyncStorage.setItem('user', JSON.stringify(user));
+      await AsyncStorage.setItem('role', user.role);
+      setRole(user.role);
 
       if(user.isEmailVerified===false) {
         const response = await api.post(LoginEndpoints.resendOtp, {
@@ -70,10 +72,11 @@ const StudentLoginPage = () => {
       }
       else {
         if(user.profile_completed===false) {
-          navigation.navigate("CompleteProfile", {full_name: user.name, email: user.email, phone: user.phone})
+          navigation.navigate("CompleteProfile", {full_name: user.name, email: user.email, phone: user.phone, role: "student"})
         }
         else {
           await AsyncStorage.setItem('verifiedEmail', 'true')
+          requestNotificationPermissions();
           setIsSignedIn(true);
         }
       }
@@ -116,6 +119,9 @@ const StudentLoginPage = () => {
         await AsyncStorage.setItem('accessToken', accessToken);
         await AsyncStorage.setItem('refreshToken', refreshToken);
         await AsyncStorage.setItem('user', JSON.stringify(user));
+        await AsyncStorage.setItem('role', response.data.user.role);
+        setRole(response.data.user.role)
+        requestNotificationPermissions();
         setIsSignedIn(true);
       }
     } catch (error: any) {

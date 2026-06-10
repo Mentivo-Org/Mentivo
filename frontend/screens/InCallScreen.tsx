@@ -1,67 +1,163 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { joinChannel, leaveChannel, getAgoraEngine, setSpeakerphoneOn } from '../services/agora';
 import api from '../services/api';
+import { socketManager } from '../services/socketManager';
 import { CallEndpoints } from '../constants/endpoint';
+import { requestMicrophonePermission } from '../services/permissions';
+import notifee from '@notifee/react-native';
+import { Image } from 'expo-image';
+
+const { width, height } = Dimensions.get('window');
+
+// Figma assets
+const imgIconstackIoProfileCircle = require('../app-assets/profile-circle.svg');
+const imgMic = require('../app-assets/mic-off.svg');
+const imgEndCall = require('../app-assets/hangup.svg');
+const imgSpeaker = require('../app-assets/speaker.svg');
 
 const InCallScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { callId, channelName: initialChannelName, callerName, role, initialToken } = route.params;
+  const { callId, channelName: initialChannelName, callerName, role, initialToken, mentorPhoto } = route.params;
 
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = useState(false);
   const [duration, setDuration] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
-  
+  const [callStatus, setCallStatus] = useState<'calling' | 'ringing' | 'active'>(role === 'caller' ? 'calling' : 'active');
+  const callStatusRef = useRef(callStatus);
+  const isEndingCallRef = useRef(false);
+
+  useEffect(() => {
+    callStatusRef.current = callStatus;
+  }, [callStatus]);
+
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    // Listen for remote hangup or status changes
+    const statusHandler = (data: any) => {
+      if (data.callId === callId) {
+        if (data.status === 'completed' || data.status === 'rejected' || data.status === 'missed') {
+          console.log(`[Socket] Call ${data.status} remotely`);
+          notifee.cancelNotification(callId).catch(err => console.error('Failed to cancel notification:', err));
+          if (handleEndCallRef.current) handleEndCallRef.current(false, data.status);
+        } else if (data.status === 'ringing' && callStatusRef.current === 'calling') {
+          console.log('[Socket] Mentor phone is ringing');
+          setCallStatus('ringing');
+        } else if (data.status === 'active' && callStatusRef.current !== 'active') {
+          console.log('[Socket] Call is now active');
+          setCallStatus('active');
+          if (!timerRef.current) startTimer();
+        }
+      }
+    };
+
+    socketManager.on('call_status_changed', statusHandler);
+
     const startCall = async () => {
       try {
+        const hasPermission = await requestMicrophonePermission();
+        if (!hasPermission) {
+          handleEndCall(true);
+          return;
+        }
+
+        // Validate call is still active before joining
+        try {
+          const statusRes = await api.get(CallEndpoints.status(callId));
+          if (isEndingCallRef.current) return;
+
+          const callStatus = statusRes.data.status;
+          if (!['calling', 'ringing', 'active'].includes(callStatus)) {
+            Alert.alert('Call Ended', 'This call is no longer active.');
+            navigation.navigate("Main", {screen: "Home"});
+            return;
+          }
+        } catch (e) {
+          if (isEndingCallRef.current) return;
+          console.error('Failed to verify call status:', e);
+          Alert.alert('Error', 'Could not verify call status.');
+          navigation.navigate("Main", {screen: "Home"});
+          return;
+        }
+
         let token = initialToken;
         let channelName = initialChannelName;
 
         // If callee (mentor) and we don't have token, fetch it
         if (role === 'callee' && !token) {
           const response = await api.get(CallEndpoints.token(callId));
+          if (isEndingCallRef.current) return;
           token = response.data.token;
           channelName = response.data.channelName;
         }
 
         const userJson = await AsyncStorage.getItem('user');
         const user = userJson ? JSON.parse(userJson) : null;
+        if (isEndingCallRef.current) return;
         const uid = user?.id || Math.floor(Math.random() * 10000).toString();
 
         const engine = getAgoraEngine();
         
         // Setup listeners
-        engine.addListener('onJoinChannelSuccess', (connection, elapsed) => {
+        engine.addListener('onJoinChannelSuccess', async (connection, elapsed) => {
           console.log('Joined channel successfully');
           setIsConnected(true);
-          startTimer();
-          notifyCallStart();
+          
+          // Display ongoing call notification
+          try {
+            await notifee.displayNotification({
+              title: 'Call in Progress',
+              body: `Connected with ${callerName || 'Mentorship Session'}`,
+              android: {
+                channelId: 'ongoing_calls',
+                ongoing: true,
+                onlyAlertOnce: true,
+                pressAction: { id: 'default', launchActivity: 'default' },
+              },
+              data: { callId, screen: 'InCall' },
+            });
+          } catch (e) {
+            console.error('Failed to show ongoing call notification:', e);
+          }
+          
+          // If we are the callee, we should notify backend and start timer immediately
+          if (role === 'callee') {
+            setCallStatus('active');
+            startTimer();
+            notifyCallStart();
+          }
+        });
+
+        engine.addListener('onUserJoined', (connection, remoteUid, elapsed) => {
+          console.log('Remote user joined', remoteUid);
+          setCallStatus('active');
+          if (!timerRef.current) startTimer();
         });
 
         engine.addListener('onUserOffline', (connection, remoteUid, reason) => {
           console.log('Remote user went offline', remoteUid);
-          handleEndCall();
+          if (handleEndCallRef.current) handleEndCallRef.current(true);
         });
 
         engine.addListener('onError', (err, msg) => {
           console.error('Agora Error:', err, msg);
           Alert.alert('Call Error', 'An error occurred during the call.');
-          handleEndCall();
+          if (handleEndCallRef.current) handleEndCallRef.current(true);
         });
 
         await joinChannel(token, channelName, uid);
       } catch (error) {
+        if (isEndingCallRef.current) return;
         console.error('Failed to start call:', error);
         Alert.alert('Error', 'Failed to join the call.');
-        navigation.goBack();
+        navigation.navigate("Main", {screen: "Home"});
       }
     };
 
@@ -71,8 +167,9 @@ const InCallScreen = () => {
       stopTimer();
       stopHeartbeat();
       leaveChannel();
+      socketManager.off('call_status_changed', statusHandler);
     };
-  }, []);
+  }, [callId]);
 
   const notifyCallStart = async () => {
     try {
@@ -84,6 +181,8 @@ const InCallScreen = () => {
   };
 
   const startTimer = () => {
+    if (timerRef.current) return;
+    console.log('[Timer] Starting session timer');
     timerRef.current = setInterval(() => {
       setDuration(prev => prev + 1);
     }, 1000);
@@ -107,17 +206,64 @@ const InCallScreen = () => {
     if (heartbeatRef.current) clearInterval(heartbeatRef.current);
   };
 
-  const handleEndCall = async () => {
+  const handleEndCallRef = useRef<any>(null);
+
+  const handleEndCall = async (notifyBackend = true, remoteStatus?: string) => {
+    if (isEndingCallRef.current) {
+      console.log('[handleEndCall] Already in progress, ignoring duplicate call');
+      return;
+    }
+    isEndingCallRef.current = true;
+
     stopTimer();
     stopHeartbeat();
     leaveChannel();
+    
+    // Cancel ongoing notification
     try {
-      await api.post(CallEndpoints.end(callId));
-    } catch (error) {
-      console.error('Failed to end call on backend:', error);
+      await notifee.cancelNotification(callId);
+    } catch (e) {
+      console.error('Failed to cancel ongoing notification:', e);
     }
-    navigation.goBack();
+    
+    const currentStatus = callStatusRef.current;
+    // Consider call completed if it was active OR if there was any duration recorded OR if backend says it's completed
+    const wasConnected = currentStatus === 'active' || duration > 0 || remoteStatus === 'completed';
+    let finalStatus = wasConnected ? 'completed' : 'cancelled';
+    
+    console.log(`[handleEndCall] notifyBackend=${notifyBackend}, role=${role}, currentStatus=${currentStatus}, duration=${duration}, wasConnected=${wasConnected}, remoteStatus=${remoteStatus}, finalStatus=${finalStatus}`);
+    
+    if (notifyBackend) {
+      try {
+        const response = await api.post(CallEndpoints.end(callId));
+        // If the backend specifically returns completed, we trust it
+        if (response.data?.status === 'completed') finalStatus = 'completed';
+      } catch (error: any) {
+        // If backend returns 400, it's likely already ended by the other party.
+        // We don't change finalStatus back to cancelled if wasConnected was true.
+        console.log('[handleEndCall] Backend /end notification handled:', error.response?.status || error.message);
+      }
+    }
+
+    if (role === 'caller' && finalStatus === 'completed') {
+      console.log('[handleEndCall] Navigating to RatingScreen');
+      navigation.replace('RatingScreen', { 
+        callId, 
+        mentorName: callerName || 'Mentor',
+        mentorPhoto: mentorPhoto
+      });
+    } else {
+      if (role === 'caller' && remoteStatus === 'rejected') {
+        Alert.alert('Call Rejected', `${callerName || 'Mentor'} rejected the call.`);
+      }
+      console.log('[handleEndCall] Navigating to Home');
+      navigation.navigate("Main", {screen: "Home"});
+    }
   };
+
+  useEffect(() => {
+    handleEndCallRef.current = handleEndCall;
+  }, [handleEndCall]);
 
   const toggleMute = () => {
     const nextMute = !isMuted;
@@ -137,31 +283,65 @@ const InCallScreen = () => {
     return `${mins}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  const getStatusText = () => {
+    switch (callStatus) {
+      case 'calling': return 'Calling...';
+      case 'ringing': return 'Ringing...';
+      case 'active': return formatDuration(duration);
+      default: return 'Connecting...';
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.statusText}>{isConnected ? 'In Call' : 'Connecting...'}</Text>
+      <View style={styles.topInfo}>
         <Text style={styles.callerName}>{callerName || 'Mentorship Session'}</Text>
-        <Text style={styles.timerText}>{formatDuration(duration)}</Text>
-        
-        <View style={styles.controlsContainer}>
-          <TouchableOpacity 
-            style={[styles.controlButton, isMuted && styles.activeControl]} 
-            onPress={toggleMute}
-          >
-            <Text style={styles.controlText}>{isMuted ? 'Unmute' : 'Mute'}</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.controlButton, isSpeakerOn && styles.activeControl]} 
-            onPress={toggleSpeaker}
-          >
-            <Text style={styles.controlText}>{isSpeakerOn ? 'Earpiece' : 'Speaker'}</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.statusText}>{getStatusText()}</Text>
+      </View>
 
-        <TouchableOpacity style={styles.endButton} onPress={handleEndCall}>
-          <Text style={styles.endButtonText}>End Call</Text>
+      <View style={styles.profileContainer}>
+        <View style={styles.profileCircle}>
+          <Image
+            source={
+              role === 'caller' && mentorPhoto 
+                ? { uri: mentorPhoto } 
+                : imgIconstackIoProfileCircle
+            }
+            style={role === 'caller' && mentorPhoto ? styles.profileImageReal : styles.profileImage}
+            contentFit="cover"
+          />
+        </View>
+      </View>
+
+      <View style={styles.controlsContainer}>
+        <TouchableOpacity 
+          style={[styles.controlButton, isMuted && styles.activeControl]} 
+          onPress={toggleMute}
+        >
+          <Image 
+            source={imgMic} 
+            style={styles.icon} 
+            tintColor={isMuted ? "#FFFFFF" : "#2563eb"} 
+          />
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.endButton} onPress={() => handleEndCall(true)}>
+          <Image 
+            source={imgEndCall} 
+            style={styles.icon} 
+            tintColor="#FFFFFF"
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.controlButton, isSpeakerOn && styles.activeControl]} 
+          onPress={toggleSpeaker}
+        >
+          <Image 
+            source={imgSpeaker} 
+            style={styles.icon} 
+            tintColor={isSpeakerOn ? "#FFFFFF" : "#2563eb"} 
+          />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -171,63 +351,87 @@ const InCallScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: '#F5F5F5',
   },
-  content: {
+  topInfo: {
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  statusText: {
+    fontSize: 12,
+    color: '#2563eb',
+  },
+  callerName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2563eb',
+    marginBottom: 4,
+  },
+  profileContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: -80,
   },
-  statusText: {
-    color: '#4CD964',
-    fontSize: 18,
-    marginBottom: 10,
+  profileCircle: {
+    width: 168,
+    height: 168,
+    borderRadius: 84,
+    backgroundColor: '#2563eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 2,
   },
-  callerName: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 20,
+  profileImage: {
+    width: 164,
+    height: 164,
+    borderRadius: 82,
   },
-  timerText: {
-    color: '#FFFFFF',
-    fontSize: 48,
-    fontFamily: 'monospace',
-    marginBottom: 60,
+  profileImageReal: {
+    width: 164,
+    height: 164,
+    borderRadius: 82,
+    backgroundColor: '#e2e8f0',
   },
   controlsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    marginBottom: 60,
-  },
-  controlButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#333333',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 32,
+    paddingBottom: 60,
+  },
+  controlButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   activeControl: {
-    backgroundColor: '#555555',
-  },
-  controlText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+    backgroundColor: '#2563eb',
   },
   endButton: {
-    width: 200,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#FF3B30',
     justifyContent: 'center',
     alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
-  endButtonText: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: 'bold',
+  icon: {
+    width: 50,
+    height: 50,
   },
 });
 

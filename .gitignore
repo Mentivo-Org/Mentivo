@@ -1,4 +1,5 @@
 .secrets
+.gemini/
 .fallow/
 fallow/
 fallow.skill

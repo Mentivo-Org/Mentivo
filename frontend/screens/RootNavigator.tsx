@@ -18,26 +18,73 @@ import ForgotPassword from "./ForgotPassword";
 import ResetPassword from "./ResetPassword";
 import IncomingCallScreen from "./IncomingCallScreen";
 import InCallScreen from "./InCallScreen";
+import RatingScreen from "./student/RatingScreen";
 
 import StudentHomePage from "./student/StudentHomePage";
 import YourSession from "./student/YourSession";
 import MentorProfile from "./student/MentorProfile";
+import MentorProfilePage from "./mentor/MentorProfilePage";
+import MentorAskPage from "./mentor/MentorAskPage";
 import ScheduleCall from "./student/ScheduleCall";
 import PaymentPage from "./student/PaymentPage";
 import StudentChatPage from "./student/StudentChatPage";
 import StudentAskPage from "./student/StudentAskPage";
 import MentorHomePage from "./mentor/MentorHomePage";
+import MentorSessionsPage from "./mentor/MentorSessionsPage";
 import SplashScreen from "./SplashScreen";
 import api from "../services/api";
-import { LoginEndpoints } from "../constants/endpoint";
+import { LoginEndpoints, MentorEndpoints } from "../constants/endpoint";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DialogBox from "../components/DialogBox";
 import { Image } from "expo-image";
-import { StyleSheet, View, TouchableOpacity, Animated } from "react-native";
-import notifee, { EventType } from "@notifee/react-native";
+import { StyleSheet, View, TouchableOpacity, Animated, AppState } from "react-native";
+import notifee, { EventType, AndroidImportance } from "@notifee/react-native";
 import { navigationRef, navigate } from "../services/navigation";
 
 import linking from "../linking";
+import { socketManager } from "../services/socketManager";
+
+const INCOMING_CALL_CHANNEL = 'incoming_calls';
+const ONGOING_CALL_CHANNEL = 'ongoing_calls';
+
+notifee.onBackgroundEvent(async ({ type, detail }) => {
+  if (type === 'MESSAGE' && detail?.message?.data?.type === 'incoming_call') {
+    const { callId, channelName, callerName } = detail.message.data;
+    await notifee.displayNotification({
+      title: 'Incoming Call',
+      body: `${callerName} is calling you!`,
+      android: {
+        channelId: INCOMING_CALL_CHANNEL,
+        asForegroundService: true,
+        pressAction: { id: 'default' },
+        fullScreenIntent: true,
+      },
+      data: { callId, channelName, callerName },
+    });
+  }
+  
+  // Handle call cancellation - dismiss notification
+  if (type === 'MESSAGE' && detail?.message?.data?.type === 'call_cancelled') {
+    const { callId } = detail.message.data;
+    await notifee.cancelNotification(callId);
+    try {
+      await AsyncStorage.removeItem('pendingCallData');
+    } catch (e) {
+      console.error('Failed to remove pending call data:', e);
+    }
+  }
+  
+  if (type === EventType.PRESS) {
+    const { callId, channelName, callerName } = detail.notification?.data || {};
+    if (callId) {
+      try {
+        await AsyncStorage.setItem('pendingCallData', JSON.stringify({ callId, channelName, callerName }));
+      } catch (e) {
+        console.error('Failed to store pending call data:', e);
+      }
+    }
+  }
+});
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -183,6 +230,8 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 }
 
 function AuthenticatedTabs() {
+  const { role } = useAuth();
+  
   return (
     <Tab.Navigator
       id="authenticated-tabs"
@@ -195,59 +244,140 @@ function AuthenticatedTabs() {
     >
       <Tab.Screen
         name="Home"
-        component={StudentHomePage}
+        component={role === "mentor" ? MentorHomePage : StudentHomePage}
       />
-      <Tab.Screen
-        name="Chat"
-        component={StudentChatPage}
-      />
-      <Tab.Screen
-        name="Ask"
-        component={StudentAskPage}
-      />
+      {role === "student" && (
+        <>
+          <Tab.Screen
+            name="Chat"
+            component={StudentChatPage}
+          />
+          <Tab.Screen
+            name="Ask"
+            component={StudentAskPage}
+          />
+        </>
+      )}
+      {role === "mentor" && (
+        <Tab.Screen
+          name="Ask"
+          component={MentorAskPage}
+        />
+      )}
     </Tab.Navigator>
   );
 }
 
 export default function RootNavigator() {
-  const { isSignedIn, setIsSignedIn } = useAuth();
+  const { isSignedIn, setIsSignedIn, setRole } = useAuth();
   const [profileData, setProfileData] = useState<ProfileInfoParams>({full_name: '',email: '',role: '',phone: '', state: ''});
   const [initialScreen, setInitialScreen] = useState<string | null>(null);
   const [alertData, setAlertData] = useState({ title: "", message: "" });
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
   
   
-  useEffect (() => {
-    // Handle foreground and initial notifications
-    const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
+  useEffect(() => {
+    if (!isSignedIn) return;
+
+    // 1. Create notifee channels
+    const createChannels = async () => {
+      await notifee.createChannel({
+        id: INCOMING_CALL_CHANNEL,
+        name: 'Incoming Calls',
+        importance: AndroidImportance.HIGH,
+        vibration: true,
+        vibrationPattern: [300, 100, 300, 100, 300],
+        sound: 'default',
+        fullScreenIntent: true,
+      });
+
+      await notifee.createChannel({
+        id: ONGOING_CALL_CHANNEL,
+        name: 'Ongoing Calls',
+        importance: AndroidImportance.LOW,
+        vibration: false,
+        sound: null,
+        ongoing: true,
+        onlyAlertOnce: true,
+      });
+    };
+    createChannels();
+
+    // 2. Foreground notification press
+    const unsubscribeForeground = notifee.onForegroundEvent(({ type, detail }) => {
       if (type === EventType.PRESS) {
-        const { callId, channelName, callerName } = detail.notification?.data || {};
-        if (callId) {
-          navigate('IncomingCall', { callId, channelName, callerName });
-        }
+        const data = detail.notification?.data || detail.data || {};
+        const { callId, channelName, callerName, callerPhoto } = data;
+        if (callId) navigate('IncomingCall', { callId, channelName, callerName, callerPhoto });
       }
     });
 
+    // 3. Cold start - app opened from killed state
     const checkInitialNotification = async () => {
       const initialNotification = await notifee.getInitialNotification();
-      if (initialNotification?.notification?.data?.callId) {
-        const { callId, channelName, callerName } = initialNotification.notification.data;
-        navigate('IncomingCall', { callId, channelName, callerName });
-      }
+      const data = initialNotification?.notification?.data || initialNotification?.data || {};
+      const { callId, channelName, callerName, callerPhoto } = data;
+      if (callId) navigate('IncomingCall', { callId, channelName, callerName, callerPhoto });
 
-      // Check for accepted call from background
-      const pendingCallId = await AsyncStorage.getItem('pendingCallId');
-      if (pendingCallId) {
-        await AsyncStorage.removeItem('pendingCallId');
-        // This was an "Accept" action, ideally we should have stored more data
-        // but for now we'll fetch what's needed in InCallScreen
-        navigate('InCall', { callId: pendingCallId, role: 'callee' });
+      // Also check pending call from background press
+      const pendingCallData = await AsyncStorage.getItem('pendingCallData');
+      if (pendingCallData) {
+        await AsyncStorage.removeItem('pendingCallData');
+        const { callId: pCallId, channelName: pChannelName, callerName: pCallerName, callerPhoto: pCallerPhoto } = JSON.parse(pendingCallData);
+        navigate('InCall', { callId: pCallId, channelName: pChannelName, callerName: pCallerName, role: 'callee', mentorPhoto: pCallerPhoto });
       }
     };
-
     checkInitialNotification();
 
-    return () => unsubscribe();
+    // 4. Socket handler - wait for connection
+    const setupSocketHandler = async () => {
+      const waitForSocket = () => new Promise<void>(resolve => {
+        if (socketManager.isConnected()) return resolve();
+        let attempts = 0;
+        const check = setInterval(() => {
+          attempts++;
+          if (socketManager.isConnected() || attempts > 25) {
+            clearInterval(check);
+            resolve();
+          }
+        }, 200);
+      });
+
+      await waitForSocket();
+
+      const socketHandler = (data: any) => {
+        if (AppState.currentState === 'active') {
+          const { callId, channelName, callerName, callerPhoto } = data;
+          console.log('[Socket] Incoming call received in foreground:', callId);
+          navigate('IncomingCall', { callId, channelName, callerName, callerPhoto });
+        } else {
+          console.log('[Socket] App background - FCM will handle');
+        }
+      };
+
+      // Global handler to cancel notification when call ends (for foreground app with notification in shade)
+      const globalStatusHandler = (data: any) => {
+        if (data.status === 'completed' || data.status === 'rejected' || data.status === 'missed') {
+          console.log('[Socket] Global: Call ended, cancelling notification:', data.callId);
+          notifee.cancelNotification(data.callId).catch(err => console.error('Failed to cancel notification:', err));
+        }
+      };
+
+      socketManager.on('incoming_call', socketHandler);
+      socketManager.on('call_status_changed', globalStatusHandler);
+      return () => {
+        socketManager.off('incoming_call', socketHandler);
+        socketManager.off('call_status_changed', globalStatusHandler);
+      };
+    };
+
+    let socketCleanup: (() => void) | undefined;
+    setupSocketHandler().then(cleanup => { socketCleanup = cleanup; });
+
+    return () => {
+      unsubscribeForeground();
+      if (socketCleanup) socketCleanup();
+    };
   }, [isSignedIn]);
 
   useEffect (() => {
@@ -264,9 +394,22 @@ export default function RootNavigator() {
         if (response.status === 200) {
           if (response.data?.user?.isEmailVerified === true) {
             await AsyncStorage.setItem('verifiedEmail', 'true');
+            const user = response.data?.user;
+            console.log("user information ", user);
+            
+            // Prefetch stats if role is mentor
+            if (user.role === "mentor") {
+              try {
+                const statsRes = await api.get(MentorEndpoints.getMeStats);
+                if (statsRes.status === 200) {
+                  await AsyncStorage.setItem('stats', JSON.stringify(statsRes.data));
+                }
+              } catch (statsErr) {
+                console.error("Failed to prefetch mentor stats:", statsErr);
+              }
+            }
+
             if (response.data?.user?.profile_completed === false) {
-              const user = response.data?.user;
-              console.log("user information ", user);
               setProfileData({full_name: user.name,email: user.email,role: user.role,phone: user.phone, state: 'loaded'});
               if (user.role === "mentor") {
                 const iit = await api.post(LoginEndpoints.getIIT, { email: user.email });
@@ -280,6 +423,8 @@ export default function RootNavigator() {
               setInitialScreen("CompleteProfile");
               return;
             } else {
+              await AsyncStorage.setItem('role', user.role);
+              setRole(user.role);
               setIsSignedIn(true);
               setInitialScreen('');
               // setInitialScreen("Landing"); // Profile already completed, TabNavigator will take over if isSignedIn is true
@@ -324,10 +469,13 @@ export default function RootNavigator() {
           <AuthStack.Screen name="Main" component={AuthenticatedTabs} />
           <AuthStack.Screen name="YourSession" component={YourSession} />
           <AuthStack.Screen name="MentorProfile" component={MentorProfile} />
+          <AuthStack.Screen name="MentorProfilePage" component={MentorProfilePage} />
           <AuthStack.Screen name="ScheduleCall" component={ScheduleCall} />
           <AuthStack.Screen name="Payment" component={PaymentPage} />
           <AuthStack.Screen name="IncomingCall" component={IncomingCallScreen} />
           <AuthStack.Screen name="InCall" component={InCallScreen} />
+          <AuthStack.Screen name="RatingScreen" component={RatingScreen} />
+          <AuthStack.Screen name="MentorSessionsPage" component={MentorSessionsPage} />
         </AuthStack.Navigator>
       ) : (
         <Stack.Navigator

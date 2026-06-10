@@ -1,5 +1,5 @@
 import pkg from 'agora-token';
-import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 const { RtcTokenBuilder, RtcRole } = pkg;
 
 const APP_ID = process.env.AGORA_APP_ID || '';
@@ -12,7 +12,7 @@ export function generateChannelName(studentId: string, mentorId: string): string
     return null;
   }
   // Standardized channel name generation as defined in agoraTokenGenerator.ts
-  return jwt.sign({ student_id: studentId, mentor_id: mentorId }, AGORA_SECRET_TOKEN_GENERATOR);
+  return crypto.createHash('sha256').update(`${studentId}:${mentorId}`).digest('hex');
 }
 
 export function generateToken(channelName: string, uid: number | string, expirationSeconds: number = 3600): string {

@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import { createServer } from 'http';
 import { rateLimit } from 'express-rate-limit';
 import authrouter from './routes/auth.ts';
 import coachingRouter from './routes/coaching.ts';
@@ -9,11 +10,17 @@ import mentorRouter from './routes/mentors.ts';
 import callsRouter from './routes/calls.ts';
 import walletRouter from './routes/wallet.ts';
 import agoraRouter from './routes/agora.ts'
+import profilePictureRouter from './routes/profilePicture.ts'
 import webhookRouter from './routes/webhooks.ts';
 import prisma from './config/db.ts';
 import { startJobs } from './jobs/index.ts';
+import { initSocket } from './config/socket.ts';
 
 const app = express();
+const httpServer = createServer(app);
+
+// Initialize Socket.io
+initSocket(httpServer);
 
 app.use(cookieParser());
 
@@ -56,7 +63,7 @@ app.use(express.json());
 app.set('trust proxy', 1);
 
 // Rate Limiting
-const globalLimiter = rateLimit({
+const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per window
   message: { error: 'Too many requests from this IP, please try again after 15 minutes' },
@@ -64,8 +71,8 @@ const globalLimiter = rateLimit({
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
-// Apply rate limiter to all API routes
-app.use('/api', globalLimiter);
+// Apply rate limiter to authentication routes only
+app.use('/api/auth', authLimiter);
 
 function getClientIp(req: express.Request): string {
   const forwarded = req.headers['x-forwarded-for'];
@@ -122,6 +129,7 @@ app.use('/api/coaching', coachingRouter);
 app.use('/api/mentors', mentorRouter);
 app.use('/api/calls', callsRouter);
 app.use('/api/wallet', walletRouter);
+app.use('/api/profile-picture',profilePictureRouter);
 
 //Handle agora token generation
 app.use('/api/agora/token', agoraRouter);
@@ -133,7 +141,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, async () => {
+httpServer.listen(PORT, async () => {
   console.log(`Mentivo API running on port ${PORT}`);
   try {
     await startJobs();

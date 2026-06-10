@@ -1,85 +1,63 @@
 import type { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
 import prisma from "../config/db.ts";
 
-
-export const addFcmToken = async (req: Request, res: Response): Promise<any> => {
+export const syncFcmToken = async (req: Request, res: Response): Promise<any> => {
   try {
     const { token } = req.body;
     const userId = req.user?.id;
 
-    if (!token) {
-      return res.status(400).json({ error: "FCM token is required" });
-    }
+    if (!token) return res.status(400).json({ error: "FCM token is required" });
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-    if (!userId) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    await prisma.$transaction(async (tx) => {
+      // Step 1: Detach this token from any other user (device switched accounts)
+      await tx.fCMToken.deleteMany({
+        where: { token, userId: { not: userId } },
+      });
 
-    // Upsert the token to handle potential duplicates or re-assignments
-    const fcmToken = await prisma.fCMToken.upsert({
-      where: { token },
-      update: { userId, updatedAt: new Date() },
-      create: { token, userId },
+      // Step 2: Upsert — update if this user already has this token, else create
+      await tx.fCMToken.upsert({
+        where: { token },
+        update: { updatedAt: new Date() },
+        create: { token, userId },
+      });
+
+      // Step 3: Enforce one token per user — delete all older tokens for this user
+      const allUserTokens = await tx.fCMToken.findMany({
+        where: { userId },
+        orderBy: { updatedAt: "desc" },
+      });
+
+      if (allUserTokens.length > 1) {
+        const oldTokenIds = allUserTokens.slice(1).map((t) => t.id);
+        await tx.fCMToken.deleteMany({
+          where: { id: { in: oldTokenIds } },
+        });
+      }
     });
 
-    return res.status(200).json({ message: "FCM token added successfully", fcmToken });
+    return res.status(200).json({ message: "FCM token synced" });
   } catch (error) {
-    console.error("Error adding FCM token:", error);
+    console.error("Error syncing FCM token:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
 
-export const updateFcmToken = async (req: Request, res: Response): Promise<any> => {
+// Call this on logout
+export const removeFcmToken = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { oldToken, newToken } = req.body;
+    const { token } = req.body;
     const userId = req.user?.id;
 
-    if (!oldToken || !newToken) {
-      return res.status(400).json({ error: "oldToken and newToken are required" });
-    }
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-    if (!userId) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    // Try to update the token
-    const existingToken = await prisma.fCMToken.findUnique({
-      where: { token: oldToken }
+    await prisma.fCMToken.deleteMany({
+      where: { token, userId },
     });
 
-    if (existingToken) {
-      if (existingToken.userId !== userId) {
-        // If the token belongs to someone else, we just delete it and create a new one for this user
-        await prisma.fCMToken.delete({ where: { token: oldToken } });
-        await prisma.fCMToken.upsert({
-          where: { token: newToken },
-          update: { userId, updatedAt: new Date() },
-          create: { token: newToken, userId }
-        });
-      } else {
-        // Token belongs to user, update it
-        // However, Prisma doesn't let us update the primary unique key easily if the new key already exists.
-        // It's safer to upsert the new token and delete the old one.
-        await prisma.fCMToken.delete({ where: { token: oldToken } });
-        await prisma.fCMToken.upsert({
-          where: { token: newToken },
-          update: { userId, updatedAt: new Date() },
-          create: { token: newToken, userId }
-        });
-      }
-    } else {
-      // Old token not found, just add the new one
-      await prisma.fCMToken.upsert({
-        where: { token: newToken },
-        update: { userId, updatedAt: new Date() },
-        create: { token: newToken, userId }
-      });
-    }
-
-    return res.status(200).json({ message: "FCM token updated successfully" });
+    return res.status(200).json({ message: "FCM token removed" });
   } catch (error) {
-    console.error("Error updating FCM token:", error);
+    console.error("Error removing FCM token:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };

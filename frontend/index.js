@@ -2,36 +2,10 @@ import { registerRootComponent } from 'expo';
 import { getMessaging, setBackgroundMessageHandler } from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import CallKeep from 'react-native-callkeep';
 import { PermissionsAndroid, Platform } from 'react-native';
 import api from './services/api';
 
 import App from './App';
-
-// Setup CallKeep
-const setupCallKeep = async () => {
-  try {
-    await CallKeep.setup({
-      ios: {
-        appName: 'Mentivo',
-        supportsVideo: false,
-      },
-      android: {
-        alertTitle: 'Phone account permissions',
-        alertDescription: 'Allow Mentivo to manage calls',
-        cancelButton: 'Cancel',
-        okButton: 'Allow',
-        additionalPermissions: [PermissionsAndroid.PERMISSIONS.RECORD_AUDIO],
-        selfManaged: false,
-      },
-    });
-    console.log('CallKeep setup successfully');
-  } catch (err) {
-    console.error('CallKeep setup error:', err);
-  }
-};
-
-setupCallKeep();
 
 // Create Notifee channel for calls
 async function setupNotifee() {
@@ -61,16 +35,26 @@ setBackgroundMessageHandler(messaging, async (remoteMessage) => {
     const { callId, channelName, callerName } = remoteMessage.data;
 
     await notifee.displayNotification({
+      id: callId, // Use callId as notification ID to allow easy cancellation
       title: `Incoming call from ${callerName}`,
       body: 'Tap to answer',
       data: { callId, channelName, callerName },
       android: {
         channelId: 'calls',
         importance: AndroidImportance.HIGH,
+        priority: 'high',
+        category: 'call',
+        ongoing: true,
+        autoCancel: false,
+        loopSound: true,
+        sound: 'default', 
+        showWhenLocked: true,
+        turnScreenOn: true,
         fullScreenAction: {
           id: 'default',
           launchActivity: 'default',
         },
+        asForegroundService: true,
         actions: [
           {
             title: 'Accept',
@@ -98,7 +82,8 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
   if (type === EventType.ACTION_PRESS) {
     if (pressAction.id === 'accept') {
       console.log('User accepted call from background');
-      await AsyncStorage.setItem('pendingCallId', notification.data.callId);
+      const { callId, channelName, callerName } = notification.data;
+      await AsyncStorage.setItem('pendingCallData', JSON.stringify({ callId, channelName, callerName }));
       // App will be launched by launchActivity: 'default'
     } else if (pressAction.id === 'reject') {
       console.log('User rejected call from background');

@@ -1,4 +1,4 @@
-import type { Request, Response } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken } from '../utils/jwt.ts';
 
 export interface AuthRequest extends Request {

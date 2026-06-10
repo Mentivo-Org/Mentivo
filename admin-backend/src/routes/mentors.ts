@@ -39,8 +39,50 @@ router.get('/unverified', async (req, res) => {
     include: { user: true },
   });
 
-  // No longer generating signed URLs here to prevent exposing them in the JSON response
   res.json(unverifiedMentors);
+});
+
+// Get all promotion conditions
+router.get('/promotion-conditions', async (req, res) => {
+  const conditions = await prisma.mentorPromotionCondition.findMany({
+    orderBy: { level: 'asc' },
+  });
+  res.json(conditions);
+});
+
+// Update or create promotion condition
+router.put('/promotion-conditions', async (req, res) => {
+  const { level, minCalls, minRating } = req.body;
+
+  const condition = await prisma.mentorPromotionCondition.upsert({
+    where: { level },
+    update: { minCalls, minRating },
+    create: { level, minCalls, minRating },
+  });
+
+  res.json(condition);
+});
+
+// List mentors eligible for Fellow level
+router.get('/eligible-fellows', async (req, res) => {
+  const fellowCondition = await prisma.mentorPromotionCondition.findUnique({
+    where: { level: 'Fellow' },
+  });
+
+  if (!fellowCondition) {
+    return res.status(404).json({ error: 'Fellow promotion condition not set' });
+  }
+
+  const eligibleMentors = await prisma.mentorProfile.findMany({
+    where: {
+      mentorlevel: { not: 'Fellow' },
+      total_calls: { gte: fellowCondition.minCalls },
+      avg_rating: { gte: fellowCondition.minRating },
+    },
+    include: { user: true },
+  });
+
+  res.json(eligibleMentors);
 });
 
 // Get mentor document (proxied/streamed via backend)
@@ -96,12 +138,23 @@ router.post('/:id/verify', async (req: AuthRequest, res) => {
   res.json(updatedMentor);
 });
 
+// Manually promote mentor to Fellow
+router.post('/:id/promote-fellow', async (req, res) => {
+  const { id } = req.params;
+
+  const updatedMentor = await prisma.mentorProfile.update({
+    where: { mentorId: id },
+    data: { mentorlevel: 'Fellow' },
+  });
+
+  res.json(updatedMentor);
+});
+
 // General update for mentor (strips 'verified' fields)
 router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const { iit_name, branch, year, bio, expertise, rate_per_min } = req.body;
     
-    // Explicitly exclude verification fields
     const updatedMentor = await prisma.mentorProfile.update({
         where: { mentorId: id },
         data: { iit_name, branch, year, bio, expertise, rate_per_min }

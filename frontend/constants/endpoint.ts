@@ -31,7 +31,10 @@ export const MentorEndpoints = {
     getFavoriteMentors: `${baseUrl}/mentors/favorites`,
     toggleFavoriteMentor: `${baseUrl}/mentors/`, // append :id/favorite
     getMentorById: `${baseUrl}/mentors/`, // append id
-    heartbeat: `${baseUrl}/mentors/me/heartbeat`
+    setStatus: `${baseUrl}/mentors/me/status`,
+    getMeStats: `${baseUrl}/mentors/me/stats`,
+    getPromotionConditions: `${baseUrl}/mentors/promotion-conditions`,
+    updateProfile: `${baseUrl}/mentors/me/profile`,
 }
 
 export const WalletEndpoints = {
@@ -44,18 +47,24 @@ export const CallEndpoints = {
     initiate: `${baseUrl}/calls/initiate`,
     schedule: `${baseUrl}/calls/schedule`,
     getMentorSchedule: (id: string) => `${baseUrl}/calls/mentor/${id}/schedule`,
+    getMentorSessions: `${baseUrl}/calls/mentor/sessions`,
     getStudentSchedule: `${baseUrl}/calls/student/schedule`,
     getStudentSessions: `${baseUrl}/calls/student/sessions`,
     getUpcoming: `${baseUrl}/calls/student/upcoming`,
     token: (id: string) => `${baseUrl}/calls/${id}/token`,
     start: (id: string) => `${baseUrl}/calls/${id}/start`,
+    ringing: (id: string) => `${baseUrl}/calls/${id}/ringing`,
     heartbeat: (id: string) => `${baseUrl}/calls/${id}/heartbeat`,
     end: (id: string) => `${baseUrl}/calls/${id}/end`,
     reject: (id: string) => `${baseUrl}/calls/${id}/reject`,
     rate: (id: string) => `${baseUrl}/calls/${id}/rate`,
+    status: (id: string) => `${baseUrl}/calls/${id}/status`,
 }
 
 export const NotificationEndpoints = {
-    addFcmToken: `${baseUrl}/auth/fcm-token`,    // POST
-    updateFcmToken: `${baseUrl}/auth/fcm-token`  // PUT
+    syncFcmToken: `${baseUrl}/auth/fcm-token`
+}
+
+export const ProfilePictureEndpoints = {
+    uploadProfilePicture: `${baseUrl}/profile-picture`
 }

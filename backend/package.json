@@ -1,16 +1,33 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Backend server for Mentivo user facing applications.",
+  "keywords": [
+    "backend",
+    "admin",
+    "mentivo",
+    "Ayan-Bain",
+    "nodejs",
+    "expressjs"
+  ],
+  "homepage": "https://github.com/Ayan-Bain/Mentivo#readme",
+  "bugs": {
+    "url": "https://github.com/Ayan-Bain/Mentivo/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ayan-Bain/Mentivo.git"
+  },
+  "license": "UNLICENSED",
+  "author": "Ayan Bain",
+  "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "run": "nodemon src/app.ts"
+    "start": "node dist/app.js",
+    "dev": "nodemon src/app.ts",
+    "build": "tsc",
+    "prisma:generate": "prisma generate"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
@@ -31,6 +48,7 @@
     "node-cron": "^4.2.1",
     "razorpay": "^2.9.6",
     "redis": "^5.12.1",
+    "socket.io": "^4.8.3",
     "validator": "^13.15.35"
   },
   "devDependencies": {

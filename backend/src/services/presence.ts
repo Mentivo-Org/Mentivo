@@ -1,14 +1,12 @@
 import redis from '../config/redis.ts';
 import prisma from '../config/db.ts';
 
-const ONLINE_TTL = 60; // 60 seconds
-
 export async function setAvailable(mentorId: string, fcmToken?: string) {
-  // Update Redis with a TTL
+  // Update Redis persistently (no TTL)
   const payload = { state: 'available', fcmToken, updatedAt: new Date().toISOString() };
-  await redis.setex(`presence:${mentorId}`, ONLINE_TTL, JSON.stringify(payload));
+  await redis.set(`presence:${mentorId}`, JSON.stringify(payload));
   
-  // Optionally sync with DB for persistence (if needed for querying)
+  // Sync with DB for persistence
   await prisma.mentorProfile.update({
     where: { mentorId },
     data: { isOnline: true, lastOnlineAt: new Date() }
@@ -17,7 +15,7 @@ export async function setAvailable(mentorId: string, fcmToken?: string) {
 
 export async function lockToBusy(mentorId: string) {
   const payload = { state: 'busy', updatedAt: new Date().toISOString() };
-  await redis.setex(`presence:${mentorId}`, ONLINE_TTL, JSON.stringify(payload));
+  await redis.set(`presence:${mentorId}`, JSON.stringify(payload));
 }
 
 export async function setOffline(mentorId: string) {
@@ -30,7 +28,18 @@ export async function setOffline(mentorId: string) {
 
 export async function getPresenceState(mentorId: string): Promise<'available' | 'busy' | 'offline'> {
   const data = await redis.get(`presence:${mentorId}`);
-  if (!data) return 'offline';
+  if (!data) {
+    // Fallback to DB
+    const profile = await prisma.mentorProfile.findUnique({
+      where: { mentorId },
+      select: { isOnline: true }
+    });
+    if (profile?.isOnline) {
+      await setAvailable(mentorId);
+      return 'available';
+    }
+    return 'offline';
+  }
   try {
     const parsed = JSON.parse(data);
     return parsed.state as 'available' | 'busy';
@@ -40,8 +49,23 @@ export async function getPresenceState(mentorId: string): Promise<'available' | 
 }
 
 export async function getAvailableMentors(): Promise<string[]> {
-  const keys = await redis.keys('presence:*');
-  if (keys.length === 0) return [];
+  let keys = await redis.keys('presence:*');
+  
+  if (keys.length === 0) {
+    // Fallback: Fetch all online mentors from DB and hydrate Redis
+    const onlineMentors = await prisma.mentorProfile.findMany({
+      where: { isOnline: true },
+      select: { mentorId: true }
+    });
+
+    if (onlineMentors.length > 0) {
+      for (const mentor of onlineMentors) {
+        await setAvailable(mentor.mentorId);
+      }
+      return onlineMentors.map(m => m.mentorId);
+    }
+    return [];
+  }
 
   const values = await redis.mget(...keys);
   const availableMentors: string[] = [];

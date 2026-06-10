@@ -9,7 +9,10 @@ export async function settleBilling(sessionId: string, durationSecs: number, rec
     // 1. ATOMIC LOCK: Attempt to update the status to a temporary state 'settling'
     // This prevents race conditions where two processes read 'active' at the same time.
     const lock = await tx.callSession.updateMany({
-      where: { id: sessionId, status: 'active' },
+      where: { 
+        id: sessionId, 
+        status: { in: ['active', 'completed', 'ringing', 'calling'] } 
+      },
       data: { status: 'settling' }
     });
 
@@ -74,6 +77,12 @@ export async function settleBilling(sessionId: string, durationSecs: number, rec
           pendingPayout: { increment: actualMentorEarning },
           totalEarned: { increment: actualMentorEarning }
         }
+      });
+
+      // Update mentor profile stats
+      await tx.mentorProfile.update({
+        where: { mentorId: session.mentor_id },
+        data: { total_calls: { increment: 1 } }
       });
 
       // 4. Handle 5% revenue share for CoachingCenterBalance if applicable

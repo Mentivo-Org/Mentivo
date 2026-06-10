@@ -58,6 +58,20 @@ export async function sendIncomingCallAlert(fcmToken: string, studentName: strin
   } catch(e) {}
 }
 
+export async function sendMentorPromotionAlert(fcmToken: string, level: string) {
+  if (!admin.apps.length || !fcmToken) return;
+  try {
+    await admin.messaging().send({
+      token: fcmToken,
+      notification: {
+        title: 'Level Up! 🚀',
+        body: `Congratulations! You have been promoted to ${level} Mentor.`,
+      },
+      data: { type: 'promotion', level },
+    });
+  } catch (e) {}
+}
+
 export async function sendCallSignalingMessage(fcmToken: string, data: { callId: string, channelName: string, callerName: string }) {
   if (!admin.apps.length || !fcmToken) return;
   try {
@@ -65,13 +79,49 @@ export async function sendCallSignalingMessage(fcmToken: string, data: { callId:
       token: fcmToken,
       data: { 
         type: 'incoming_call',
-        ...data
+        callId: data.callId,
+        channelName: data.channelName,
+        callerName: data.callerName,
       },
       android: {
         priority: 'high',
+        ttl: 60 * 1000,
+      },
+      apns: {
+        payload: {
+          aps: {
+            'content-available': 1,
+            priority: 10,
+          },
+        },
       },
     });
   } catch (error) {
     console.error('Failed to send call signaling message:', error);
+  }
+}
+
+export async function sendCallCancelledMessage(fcmToken: string, callId: string) {
+  if (!admin.apps.length || !fcmToken) return;
+  try {
+    await admin.messaging().send({
+      token: fcmToken,
+      data: { 
+        type: 'call_cancelled',
+        callId,
+      },
+      android: {
+        priority: 'high',
+      },
+      apns: {
+        payload: {
+          aps: {
+            'content-available': 1,
+          },
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Failed to send call cancelled message:', error);
   }
 }
