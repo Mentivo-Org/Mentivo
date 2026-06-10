@@ -11,6 +11,16 @@ export default function MaintenancePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#f8f9ff] selection:bg-[#00288e]/10 selection:text-[#00288e]">
+      {/* Top Header */}
+      <header className="absolute top-0 left-0 right-0 z-50 flex justify-end p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+        <Link 
+          href="https://mentivo.in/privacy" 
+          className="text-sm font-semibold text-[#00288e] hover:text-[#0b1c30] transition-colors duration-200"
+        >
+          Privacy Policy
+        </Link>
+      </header>
+
       {/* Main Content (Originally Hero) */}
       <div className="flex-grow flex items-center justify-center relative overflow-hidden px-4 py-20 lg:min-h-screen">
         {/* Background Blurs */}
