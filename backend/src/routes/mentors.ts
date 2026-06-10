@@ -16,7 +16,7 @@ router.get('/', authenticateUser, async (req:Request, res:Response) => {
 
     const mentors = await prisma.mentorProfile.findMany({
       where: { mentorId: { in: availableIds } },
-      include: { user: { select: { name: true, email: true } } }
+      include: { user: { select: { name: true, email: true, photo_url: true } } }
     });
     
     res.json(mentors);
@@ -52,7 +52,7 @@ router.get('/paginated', authenticateUser, async (req: Request, res: Response) =
     const mentors = await prisma.mentorProfile.findMany({
       where: whereClause,
       include: { 
-        user: { select: { name: true, email: true } } 
+        user: { select: { name: true, email: true, photo_url: true } } 
       },
       orderBy: {
         avg_rating: 'desc'
@@ -81,7 +81,7 @@ router.get('/online/paginated', authenticateUser, async (req: Request, res: Resp
         mentorId: { in: availableIds },
       },
       include: { 
-        user: { select: { name: true, email: true } } 
+        user: { select: { name: true, email: true, photo_url: true } } 
       },
       orderBy: {
         avg_rating: 'desc'
@@ -127,7 +127,7 @@ router.get('/search', authenticateUser, async (req: Request, res: Response) => {
         }
       },
       include: { 
-        user: { select: { name: true, email: true } } 
+        user: { select: { name: true, email: true, photo_url: true } } 
       },
       orderBy: {
         avg_rating: 'desc'
@@ -156,7 +156,7 @@ router.get('/favorites', authenticateUser, async (req: Request, res: Response) =
 
     const mentors = await prisma.mentorProfile.findMany({
       where: { mentorId: { in: user.favouriteMentors } },
-      include: { user: { select: { name: true, email: true } } }
+      include: { user: { select: { name: true, email: true, photo_url: true } } }
     });
 
     res.json(mentors);
@@ -209,7 +209,7 @@ router.get('/:id', authenticateUser, async (req:Request, res:Response) => {
   try {
     const mentor = await prisma.mentorProfile.findUnique({
       where: { mentorId: req.params.id as string },
-      include: { user: { select: { name: true, email: true } } }
+      include: { user: { select: { name: true, email: true, photo_url: true } } }
     });
     
     if (!mentor) {
