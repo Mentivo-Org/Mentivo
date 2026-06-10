@@ -59,6 +59,7 @@ router.post('/initiate', authenticateUser, async (req, res) => {
   try {
     // 1. Check Mentor Availability
     const mentorState = await getPresenceState(mentorId);
+    console.log(mentorState);
     if (mentorState !== 'available') {
       return res.status(400).json({ error: 'Mentor is currently offline or busy' });
     }
@@ -104,7 +105,7 @@ router.post('/initiate', authenticateUser, async (req, res) => {
     // 8. Trigger Signaling (Socket.io + FCM)
     const [student, mentor] = await Promise.all([
       prisma.user.findUnique({ where: { id: studentId }, select: { name: true, photo_url: true } }),
-      prisma.mentorProfile.findUnique({ where: { mentorId }, select: { photo_url: true } })
+      prisma.user.findUnique({ where: { id: mentorId }, select: { photo_url: true } })
     ]);
     
     // 8a. Socket emission for instant ringing
