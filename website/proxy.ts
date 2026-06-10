@@ -18,8 +18,9 @@ export function proxy(request: NextRequest) {
 
     const isMaintenancePage = pathname.startsWith('/maintenance');
     const isPrivacyPage = pathname.startsWith('/privacy');
+    const isAboutPage = pathname.startsWith('/about');
 
-    if (!isStaticAsset && !isMaintenancePage && !isPrivacyPage) {
+    if (!isStaticAsset && !isMaintenancePage && !isPrivacyPage && !isAboutPage) {
       // Rewrite the request to the maintenance page
       // This keeps the URL in the browser address bar but serves the maintenance content
       return NextResponse.rewrite(new URL('/maintenance', request.url));

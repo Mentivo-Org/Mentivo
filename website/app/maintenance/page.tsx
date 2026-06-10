@@ -3,6 +3,7 @@
 import React from 'react';
 import { Sparkles, Users, Layers, Zap } from 'lucide-react';
 import Link from 'next/link';
+import AboutSection from '../components/AboutSection';
 
 export default function MaintenancePage() {
   const percentage = process.env.PERCENTAGE_COMPLETED || "0";
@@ -10,8 +11,8 @@ export default function MaintenancePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#f8f9ff] selection:bg-[#00288e]/10 selection:text-[#00288e]">
-      {/* Main Content */}
-      <div className="flex-grow flex items-center justify-center relative overflow-hidden px-4 py-20 lg:py-0">
+      {/* Main Content (Originally Hero) */}
+      <div className="flex-grow flex items-center justify-center relative overflow-hidden px-4 py-20 lg:min-h-screen">
         {/* Background Blurs */}
         <div className="absolute top-0 right-0 w-[60%] h-[50%] bg-[#e5eeff] blur-[120px] opacity-50 rounded-full -translate-y-1/2 translate-x-1/4" />
         <div className="absolute bottom-0 left-0 w-[40%] h-[40%] bg-[#c9e6ff] blur-[120px] opacity-30 -translate-x-1/4 translate-y-1/4" />
@@ -84,6 +85,9 @@ export default function MaintenancePage() {
           </div>
         </div>
       </div>
+
+      {/* About Section at the bottom */}
+      <AboutSection />
 
       {/* Footer Section */}
       <footer className="border-t border-[#c4c5d5] bg-[#f8f9ff] py-10 relative z-10">
