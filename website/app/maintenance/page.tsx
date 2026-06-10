@@ -100,7 +100,7 @@ export default function MaintenancePage() {
           </div>
           <nav className="flex items-center space-x-8 text-[#444653] text-sm font-semibold opacity-80">
             <Link href="/" className="hover:text-[#00288e] transition-colors duration-200">Home</Link>
-            <Link href="/privacy" className="hover:text-[#00288e] transition-colors duration-200">Privacy Policy</Link>
+            <Link href="/privacy-policy" className="hover:text-[#00288e] transition-colors duration-200">Privacy Policy</Link>
             <a href="mailto:support@mentivo.in" className="hover:text-[#00288e] transition-colors duration-200">Contact</a>
           </nav>
         </div>

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, Share2, User, CheckCircle2, Home } from 'lucide-react';
+import { ArrowRight, Share2, User } from 'lucide-react';
 
 export default function LandingPage() {
   return (

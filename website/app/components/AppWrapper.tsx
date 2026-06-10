@@ -18,7 +18,7 @@ export default function AppWrapper({
 
   // If we're on the privacy or about page, we don't treat it as maintenance mode
   // so that Navbar and Footer are visible.
-  const isPrivacyPage = pathname === "/privacy";
+  const isPrivacyPage = pathname === "/privacy-policy";
   const isAboutPage = pathname === "/about";
   const isMaintenanceMode = initialMaintenanceMode && !isPrivacyPage && !isAboutPage;
 
