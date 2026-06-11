@@ -38,7 +38,7 @@ export const initSocket = (httpServer: HttpServer) => {
     // Allow time for the initial handshake over a slow mobile connection.
     connectTimeout: 10000,
     // Allow both transports so mobile clients can start with polling and upgrade.
-    transports: ['websocket', 'polling'],
+    transports: [ 'polling', 'websocket'],
   });
 
   const tag = '[Socket.io]';
