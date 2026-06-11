@@ -7,9 +7,32 @@ let io: Server;
 export const initSocket = (httpServer: HttpServer) => {
   io = new Server(httpServer, {
     cors: {
-      origin: '*', // Tighten this in production based on app.ts origins
+      // Mirror the same origins allowed in app.ts
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true); // mobile apps have no origin
+        const allowed = [
+          'https://mentivo.in',
+          'https://www.mentivo.in',
+          'http://localhost:3000',
+          'http://localhost:3001',
+        ];
+        if (allowed.includes(origin) || origin.endsWith('.mentivo.in') || process.env.NODE_ENV !== 'production') {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
       methods: ['GET', 'POST'],
+      credentials: true,
     },
+    // Render closes idle connections after ~55s.
+    // pingInterval (25s) + pingTimeout (20s) = 45s total — safely within that window.
+    pingInterval: 25000,
+    pingTimeout: 20000,
+    // Allow time for the initial handshake over a slow mobile connection.
+    connectTimeout: 10000,
+    // Allow both transports so mobile clients behind proxies can fall back to polling.
+    transports: ['websocket', 'polling'],
   });
 
   // Authentication Middleware
