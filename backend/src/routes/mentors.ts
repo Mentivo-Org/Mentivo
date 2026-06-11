@@ -161,23 +161,43 @@ router.get('/search', authenticateUser, async (req: Request, res: Response) => {
 router.get('/favorites', authenticateUser, async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id as string;
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { favouriteMentors: true }
-    });
+    const role = req.user?.role;
 
-    if (!user || !user.favouriteMentors || user.favouriteMentors.length === 0) {
-      return res.json([]);
+    if (role === 'mentor') {
+      const students = await prisma.user.findMany({
+        where: {
+          role: 'student',
+          favouriteMentors: {
+            has: userId
+          }
+        },
+        select: {
+          id: true,
+          name: true,
+          photo_url: true,
+          grade: true
+        }
+      });
+      return res.json(students);
+    } else {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { favouriteMentors: true }
+      });
+
+      if (!user || !user.favouriteMentors || user.favouriteMentors.length === 0) {
+        return res.json([]);
+      }
+
+      const mentors = await prisma.mentorProfile.findMany({
+        where: { mentorId: { in: user.favouriteMentors } },
+        include: mentorInclude
+      });
+
+      return res.json(mentors.map(formatMentor));
     }
-
-    const mentors = await prisma.mentorProfile.findMany({
-      where: { mentorId: { in: user.favouriteMentors } },
-      include: mentorInclude
-    });
-
-    res.json(mentors.map(formatMentor));
   } catch (err) {
-    console.error('Error fetching favorite mentors:', err);
+    console.error('Error fetching favorite mentors/students:', err);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });

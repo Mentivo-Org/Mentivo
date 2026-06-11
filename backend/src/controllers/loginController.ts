@@ -2,9 +2,8 @@ import type { Request, Response, NextFunction } from "express";
 import { supabaseAdmin, supabaseAnon } from "../lib/supabaseAdmin.ts";
 import prisma from "../config/db.ts";
 import {
-  generateAccessToken,
-  generateRefreshToken,
   verifyRefreshToken,
+  generateAuthTokens,
 } from "../utils/jwt.ts";
 import { emailValidator } from "../utils/mailIdLoader.ts";
 
@@ -51,107 +50,55 @@ export const whoAmI = async (req:Request, res: Response) => {
   })
 }
 
-export const signUpWithEmail = async (req: Request, res: Response) => {
-  const { email, password, name, role, phone } = req.body;
-
-  if (!email || !password)
-    return res.status(400).json({ error: "Email and password are required" });
-  if (!name) return res.status(400).json({ error: "Please enter your name" });
-
-  // Check if user already exists in your DB
-  let user = await prisma.user.findUnique({ where: { email } });
-
-  // Already verified → block
-  if (user && user.isEmailVerified) {
-    return res
-      .status(400)
-      .json({ error: "Account already exists. Please log in." });
+const checkEmailAndPhoneConflict = async (email: string, phone?: string) => {
+  const userByEmail = await prisma.user.findUnique({ where: { email } });
+  if (userByEmail) {
+    return { conflict: "email", user: userByEmail };
   }
-
-  // Exists in DB but unverified → just resend OTP, skip Supabase createUser
-  if (user && !user.isEmailVerified) {
-    const { error: otpError } = await supabaseAdmin.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: false },
-    });
-    if (otpError)
-      return res.status(500).json({ error: "Failed to resend OTP" });
-    return sendAuthResponse(res, req, 202, {
-      message: "Account pending verification. OTP resent to your email.",
-      email,
-      requiresVerification: true,
-    });
-  }
-
-  // --- New user flow ---
-  const { data: sbData, error: sbError } =
-    await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: false,
-    });
-
-  // Race condition: Supabase already has this user (e.g. DB write failed on a prior attempt)
-  if (sbError) {
-    if (sbError.message.toLowerCase().includes("already been registered")) {
-      var temp;
-      temp = await prisma.user.findUnique({
-        where: { email },
-      });
-      if (!temp) {
-        console.log("User not found for same email ID");
-        temp = await prisma.user.findUnique({
-          where: { phone },
-        });
-        if (temp) {
-          return res.status(400).json({
-            error: "User already exists with same phone number",
-          });
-        }
-      } else {
-        console.log(temp);
-        return res.status(400).json({
-          error: "User already exists with same email ID",
-        });
-      }
-      const { error: otpError } = await supabaseAdmin.auth.signInWithOtp({
-        email,
-        options: { shouldCreateUser: false },
-      });
-      if (otpError)
-        return res.status(500).json({ error: "Failed to resend OTP" });
-      return sendAuthResponse(res, req, 202, {
-        message: "Account pending verification. OTP resent to your email.",
-        email,
-        requiresVerification: true,
-      });
+  if (phone) {
+    const userByPhone = await prisma.user.findUnique({ where: { phone } });
+    if (userByPhone) {
+      return { conflict: "phone", user: userByPhone };
     }
-    return res.status(400).json({ error: sbError.message });
   }
+  return { conflict: null, user: null };
+};
 
-  // Race condition: Supabase succeeded but Prisma fails → rollback Supabase user
+const resendVerificationOtp = async (res: Response, req: Request, email: string) => {
+  const { error: otpError } = await supabaseAdmin.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: false },
+  });
+  if (otpError) {
+    return res.status(500).json({ error: "Failed to resend OTP" });
+  }
+  return sendAuthResponse(res, req, 202, {
+    message: "Account pending verification. OTP resent to your email.",
+    email,
+    requiresVerification: true,
+  });
+};
+
+const handleSignUpConflict = async (res: Response, email: string, phone?: string) => {
+  const { conflict } = await checkEmailAndPhoneConflict(email, phone);
+  if (conflict === "phone") {
+    return res.status(400).json({ error: "User already exists with same phone number" });
+  }
+  if (conflict === "email") {
+    return res.status(400).json({ error: "User already exists with same email ID" });
+  }
+  return null;
+};
+
+const upsertPrismaUser = async (
+  email: string,
+  name: string,
+  phone: string | undefined,
+  role: string | undefined,
+  sbUserId: string
+) => {
   try {
-    var temp;
-    temp = await prisma.user.findUnique({
-      where: { email },
-    });
-    if (!temp) {
-      console.log("User not found for same email ID");
-      temp = await prisma.user.findUnique({
-        where: { phone },
-      });
-      if (temp) {
-        return res.status(400).json({
-          error: "User already exists with same phone number",
-        });
-      }
-    } else {
-      console.log(temp);
-      return res.status(400).json({
-        error: "User already exists with same email ID",
-      });
-    }
-    user = await prisma.user.upsert({
+    return await prisma.user.upsert({
       where: { email },
       update: {}, // Don't overwrite if somehow already exists
       create: {
@@ -168,7 +115,62 @@ export const signUpWithEmail = async (req: Request, res: Response) => {
       "Prisma user create failed, rolling back Supabase user:",
       dbError,
     );
+    await supabaseAdmin.auth.admin.deleteUser(sbUserId);
+    throw dbError;
+  }
+};
+
+export const signUpWithEmail = async (req: Request, res: Response) => {
+  const { email, password, name, role, phone } = req.body;
+
+  if (!email || !password)
+    return res.status(400).json({ error: "Email and password are required" });
+  if (!name) return res.status(400).json({ error: "Please enter your name" });
+
+  // Check if user already exists in DB
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  // Already verified → block
+  if (user && user.isEmailVerified) {
+    return res
+      .status(400)
+      .json({ error: "Account already exists. Please log in." });
+  }
+
+  // Exists in DB but unverified → just resend OTP, skip Supabase createUser
+  if (user && !user.isEmailVerified) {
+    return resendVerificationOtp(res, req, email);
+  }
+
+  // --- New user flow ---
+  const { data: sbData, error: sbError } =
+    await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: false,
+    });
+
+  // Race condition: Supabase already has this user
+  if (sbError) {
+    if (sbError.message.toLowerCase().includes("already been registered")) {
+      const conflictRes = await handleSignUpConflict(res, email, phone);
+      if (conflictRes) return conflictRes;
+
+      return resendVerificationOtp(res, req, email);
+    }
+    return res.status(400).json({ error: sbError.message });
+  }
+
+  // Race condition check before Prisma creation
+  const conflictRes = await handleSignUpConflict(res, email, phone);
+  if (conflictRes) {
     await supabaseAdmin.auth.admin.deleteUser(sbData.user.id);
+    return conflictRes;
+  }
+
+  try {
+    await upsertPrismaUser(email, name, phone, role, sbData.user.id);
+  } catch (dbError) {
     return res.status(500).json({ error: "Signup failed. Please try again." });
   }
 
@@ -233,14 +235,7 @@ export const loginWithEmail = async (req: Request, res: Response) => {
     });
   }
 
-  const payload = {
-    userId: user.id,
-    email: user.email,
-    phone: user.phone,
-    role: user.role,
-  };
-  const accessToken = generateAccessToken(payload);
-  const refreshToken = await generateRefreshToken(payload);
+  const { accessToken, refreshToken } = await generateAuthTokens(user);
 
   return sendAuthResponse(res, req, 200, { accessToken, refreshToken, user });
 };
@@ -285,14 +280,7 @@ export const handleNativeGoogle = async (req: Request, res: Response) => {
           .json({ error: "Account creation failed. Please try again." });
       }
 
-      const payload = {
-        userId: user.id,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-      };
-      const accessToken = generateAccessToken(payload);
-      const refreshToken = await generateRefreshToken(payload);
+      const { accessToken, refreshToken } = await generateAuthTokens(user);
 
       return sendAuthResponse(res, req, 202, { accessToken, refreshToken, user });
     }
@@ -308,14 +296,7 @@ export const handleNativeGoogle = async (req: Request, res: Response) => {
       });
     }
 
-    const payload = {
-      userId: user.id,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-    };
-    const accessToken = generateAccessToken(payload);
-    const refreshToken = await generateRefreshToken(payload);
+    const { accessToken, refreshToken } = await generateAuthTokens(user);
 
     return sendAuthResponse(res, req, 200, { accessToken, refreshToken, user });
   }
@@ -369,14 +350,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
       });
     }
 
-    const payload = {
-      userId: user.id,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-    };
-    const accessToken = generateAccessToken(payload);
-    const refreshToken = await generateRefreshToken(payload);
+    const { accessToken, refreshToken } = await generateAuthTokens(user);
 
     return sendAuthResponse(res, req, 200, {
       message: "Successfully verified",
@@ -437,14 +411,12 @@ export const refreshUserToken = async (req: Request, res: Response) => {
 
     await prisma.refreshToken.delete({ where: { id: tokenInDb.id } });
 
-    const newPayload = {
-      userId: payload.userId,
+    const { accessToken, refreshToken } = await generateAuthTokens({
+      id: payload.userId,
       email: payload.email,
       phone: payload.phone,
       role: payload.role,
-    };
-    const accessToken = generateAccessToken(newPayload);
-    const refreshToken = await generateRefreshToken(newPayload);
+    });
 
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
@@ -466,5 +438,26 @@ export const refreshUserToken = async (req: Request, res: Response) => {
     });
   } catch (error) {
     return res.status(401).json({ error: "Invalid refresh token" });
+  }
+};
+
+export const updateUserProfile = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id as string;
+    const { name, phone, grade } = req.body;
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        name: name !== undefined ? name : undefined,
+        phone: phone !== undefined ? phone : undefined,
+        grade: grade !== undefined ? grade : undefined,
+      },
+    });
+
+    return res.status(200).json({ success: true, user: updatedUser });
+  } catch (err) {
+    console.error("Error updating user profile:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };

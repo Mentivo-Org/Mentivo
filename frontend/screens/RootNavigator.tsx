@@ -21,14 +21,19 @@ import InCallScreen from "./InCallScreen";
 import RatingScreen from "./student/RatingScreen";
 
 import StudentHomePage from "./student/StudentHomePage";
+import StudentProfilePage from "./student/StudentProfilePage";
 import YourSession from "./student/YourSession";
 import MentorProfile from "./student/MentorProfile";
 import MentorProfilePage from "./mentor/MentorProfilePage";
 import MentorAskPage from "./mentor/MentorAskPage";
 import ScheduleCall from "./student/ScheduleCall";
 import PaymentPage from "./student/PaymentPage";
-import StudentChatPage from "./student/StudentChatPage";
+import StudentCallsPage from "./student/StudentCallsPage";
 import StudentAskPage from "./student/StudentAskPage";
+import ChatListPage from "./chat/ChatListPage";
+import ChatPage from "./chat/ChatPage";
+import MentorChatListPage from "./mentor/MentorChatListPage";
+import MentorChatPage from "./mentor/MentorChatPage";
 import MentorHomePage from "./mentor/MentorHomePage";
 import MentorSessionsPage from "./mentor/MentorSessionsPage";
 import SplashScreen from "./SplashScreen";
@@ -44,47 +49,12 @@ import { navigationRef, navigate } from "../services/navigation";
 import linking from "../linking";
 import { socketManager } from "../services/socketManager";
 
+import { agoraChatService } from "../services/chat/agoraChatClient";
+import { chatSessionManager } from "../services/chat/chatSessionManager";
+
 const INCOMING_CALL_CHANNEL = 'incoming_calls';
 const ONGOING_CALL_CHANNEL = 'ongoing_calls';
 
-notifee.onBackgroundEvent(async ({ type, detail }) => {
-  if (type === 'MESSAGE' && detail?.message?.data?.type === 'incoming_call') {
-    const { callId, channelName, callerName } = detail.message.data;
-    await notifee.displayNotification({
-      title: 'Incoming Call',
-      body: `${callerName} is calling you!`,
-      android: {
-        channelId: INCOMING_CALL_CHANNEL,
-        asForegroundService: true,
-        pressAction: { id: 'default' },
-        fullScreenIntent: true,
-      },
-      data: { callId, channelName, callerName },
-    });
-  }
-  
-  // Handle call cancellation - dismiss notification
-  if (type === 'MESSAGE' && detail?.message?.data?.type === 'call_cancelled') {
-    const { callId } = detail.message.data;
-    await notifee.cancelNotification(callId);
-    try {
-      await AsyncStorage.removeItem('pendingCallData');
-    } catch (e) {
-      console.error('Failed to remove pending call data:', e);
-    }
-  }
-  
-  if (type === EventType.PRESS) {
-    const { callId, channelName, callerName } = detail.notification?.data || {};
-    if (callId) {
-      try {
-        await AsyncStorage.setItem('pendingCallData', JSON.stringify({ callId, channelName, callerName }));
-      } catch (e) {
-        console.error('Failed to store pending call data:', e);
-      }
-    }
-  }
-});
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -246,17 +216,15 @@ function AuthenticatedTabs() {
         name="Home"
         component={role === "mentor" ? MentorHomePage : StudentHomePage}
       />
+      <Tab.Screen
+        name="Chat"
+        component={ChatListPage}
+      />
       {role === "student" && (
-        <>
-          <Tab.Screen
-            name="Chat"
-            component={StudentChatPage}
-          />
-          <Tab.Screen
-            name="Ask"
-            component={StudentAskPage}
-          />
-        </>
+        <Tab.Screen
+          name="Ask"
+          component={StudentAskPage}
+        />
       )}
       {role === "mentor" && (
         <Tab.Screen
@@ -269,12 +237,60 @@ function AuthenticatedTabs() {
 }
 
 export default function RootNavigator() {
-  const { isSignedIn, setIsSignedIn, setRole } = useAuth();
+  const { isSignedIn, setIsSignedIn, setRole, role } = useAuth();
   const [profileData, setProfileData] = useState<ProfileInfoParams>({full_name: '',email: '',role: '',phone: '', state: ''});
   const [initialScreen, setInitialScreen] = useState<string | null>(null);
   const [alertData, setAlertData] = useState({ title: "", message: "" });
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
-  
+
+  const prefetchMentorStats = async () => {
+    try {
+      const statsRes = await api.get(MentorEndpoints.getMeStats);
+      if (statsRes.status === 200) {
+        await AsyncStorage.setItem('stats', JSON.stringify(statsRes.data));
+      }
+    } catch (statsErr) {
+      console.error("Failed to prefetch mentor stats:", statsErr);
+    }
+  };
+
+  const setupUncompletedProfile = async (user: any) => {
+    setProfileData({
+      full_name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+      state: 'loaded'
+    });
+    if (user.role === "mentor") {
+      try {
+        const iit = await api.post(LoginEndpoints.getIIT, { email: user.email });
+        if (iit.status === 200) {
+          setProfileData((prev) => ({...prev, iit: iit.data?.name_of_iit}));
+        } else {
+          setAlertData({
+            title: "Could not fetch IIT name",
+            message: iit.data?.error || "Unknown error",
+          });
+          setAlertVisible(true);
+        }
+      } catch (err: any) {
+        setAlertData({
+          title: "Could not fetch IIT name",
+          message: err.message || "Network error",
+        });
+        setAlertVisible(true);
+      }
+    }
+    setInitialScreen("CompleteProfile");
+  };
+
+  const setupCompletedProfile = async (user: any) => {
+    await AsyncStorage.setItem('role', user.role);
+    setRole(user.role);
+    setIsSignedIn(true);
+    setInitialScreen('');
+  };
   
   useEffect(() => {
     if (!isSignedIn) return;
@@ -303,12 +319,48 @@ export default function RootNavigator() {
     };
     createChannels();
 
+    // Initialize Agora Chat
+    const initAgoraChat = async () => {
+      try {
+        console.log('[Agora Chat] Starting initialization...');
+        const userJson = await AsyncStorage.getItem('user');
+        if (userJson) {
+          const user = JSON.parse(userJson);
+          console.log('[Agora Chat] Fetching token for user:', user.id);
+          const data = await chatSessionManager.getChatToken();
+          
+          if (!data || !data.token || !data.userId) {
+            console.error('[Agora Chat] Invalid token response:', data);
+            return;
+          }
+
+          const { token, userId: agoraUserId } = data;
+          console.log('[Agora Chat] Logging in with Agora ID:', agoraUserId);
+          await agoraChatService.login(agoraUserId, token);
+          console.log('[Agora Chat] Logged in successfully');
+        } else {
+          console.warn('[Agora Chat] No user data found in storage');
+        }
+      } catch (e) {
+        console.error('[Agora Chat] Initialization/Login failed:', e);
+      }
+    };
+    initAgoraChat();
+
     // 2. Foreground notification press
     const unsubscribeForeground = notifee.onForegroundEvent(({ type, detail }) => {
       if (type === EventType.PRESS) {
         const data = detail.notification?.data || detail.data || {};
-        const { callId, channelName, callerName, callerPhoto } = data;
-        if (callId) navigate('IncomingCall', { callId, channelName, callerName, callerPhoto });
+        const { callId, channelName, callerName, callerPhoto, type: notificationType, sessionId, senderId, senderName } = data;
+        if (callId) {
+          navigate('IncomingCall', { callId, channelName, callerName, callerPhoto });
+        } else if (notificationType === 'chat' || sessionId) {
+          navigate('ChatPage', {
+            partnerId: senderId,
+            partnerName: senderName,
+            sessionId: sessionId,
+          });
+        }
       }
     });
 
@@ -316,8 +368,16 @@ export default function RootNavigator() {
     const checkInitialNotification = async () => {
       const initialNotification = await notifee.getInitialNotification();
       const data = initialNotification?.notification?.data || initialNotification?.data || {};
-      const { callId, channelName, callerName, callerPhoto } = data;
-      if (callId) navigate('IncomingCall', { callId, channelName, callerName, callerPhoto });
+      const { callId, channelName, callerName, callerPhoto, type: notificationType, sessionId, senderId, senderName } = data;
+      if (callId) {
+        navigate('IncomingCall', { callId, channelName, callerName, callerPhoto });
+      } else if (notificationType === 'chat' || sessionId) {
+        navigate('ChatPage', {
+          partnerId: senderId,
+          partnerName: senderName,
+          sessionId: sessionId,
+        });
+      }
 
       // Also check pending call from background press
       const pendingCallData = await AsyncStorage.getItem('pendingCallData');
@@ -328,6 +388,20 @@ export default function RootNavigator() {
       }
     };
     checkInitialNotification();
+
+    // 3.5 AppState change handler for warm start calls
+    const handleAppStateChange = async (nextAppState: string) => {
+      if (nextAppState === 'active') {
+        const pendingCallData = await AsyncStorage.getItem('pendingCallData');
+        if (pendingCallData) {
+          await AsyncStorage.removeItem('pendingCallData');
+          const { callId, channelName, callerName, callerPhoto } = JSON.parse(pendingCallData);
+          console.log('[AppState] Resuming with pending call:', callId);
+          navigate('InCall', { callId, channelName, callerName, role: 'callee', mentorPhoto: callerPhoto });
+        }
+      }
+    };
+    const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
 
     // 4. Socket handler - wait for connection
     const setupSocketHandler = async () => {
@@ -376,6 +450,7 @@ export default function RootNavigator() {
 
     return () => {
       unsubscribeForeground();
+      appStateSubscription.remove();
       if (socketCleanup) socketCleanup();
     };
   }, [isSignedIn]);
@@ -388,53 +463,24 @@ export default function RootNavigator() {
         setInitialScreen("Landing");
         return;
       }
-      // showLoading("Fetching profile information for server...");
       try {
         const response = await api.get(LoginEndpoints.whoAmI, {});
-        if (response.status === 200) {
-          if (response.data?.user?.isEmailVerified === true) {
-            await AsyncStorage.setItem('verifiedEmail', 'true');
-            const user = response.data?.user;
-            console.log("user information ", user);
-            
-            // Prefetch stats if role is mentor
-            if (user.role === "mentor") {
-              try {
-                const statsRes = await api.get(MentorEndpoints.getMeStats);
-                if (statsRes.status === 200) {
-                  await AsyncStorage.setItem('stats', JSON.stringify(statsRes.data));
-                }
-              } catch (statsErr) {
-                console.error("Failed to prefetch mentor stats:", statsErr);
-              }
-            }
-
-            if (response.data?.user?.profile_completed === false) {
-              setProfileData({full_name: user.name,email: user.email,role: user.role,phone: user.phone, state: 'loaded'});
-              if (user.role === "mentor") {
-                const iit = await api.post(LoginEndpoints.getIIT, { email: user.email });
-                if (iit.status === 200) {
-                  setProfileData((prev) => ({...prev, iit: iit.data?.name_of_iit}));
-                } else {
-                  setAlertData({title: "Could not fetch IIT name",message: iit.data?.error,});
-                  setAlertVisible(true);
-                }
-              }
-              setInitialScreen("CompleteProfile");
-              return;
-            } else {
-              await AsyncStorage.setItem('role', user.role);
-              setRole(user.role);
-              setIsSignedIn(true);
-              setInitialScreen('');
-              // setInitialScreen("Landing"); // Profile already completed, TabNavigator will take over if isSignedIn is true
-            }
-          } else {
-            await AsyncStorage.multiRemove(["accessToken","refreshToken","user","verifiedEmail"]);
-            setInitialScreen("Landing");
+        if (response.status === 200 && response.data?.user?.isEmailVerified === true) {
+          await AsyncStorage.setItem('verifiedEmail', 'true');
+          const user = response.data?.user;
+          console.log("user information ", user);
+          
+          if (user.role === "mentor") {
+            await prefetchMentorStats();
           }
-        }
-        else {
+
+          if (user.profile_completed === false) {
+            await setupUncompletedProfile(user);
+          } else {
+            await setupCompletedProfile(user);
+          }
+        } else {
+          await AsyncStorage.multiRemove(["accessToken","refreshToken","user","verifiedEmail"]);
           setInitialScreen("Landing");
         }
       } catch (err) {
@@ -467,6 +513,7 @@ export default function RootNavigator() {
           }}
         >
           <AuthStack.Screen name="Main" component={AuthenticatedTabs} />
+          <AuthStack.Screen name="StudentProfilePage" component={StudentProfilePage} />
           <AuthStack.Screen name="YourSession" component={YourSession} />
           <AuthStack.Screen name="MentorProfile" component={MentorProfile} />
           <AuthStack.Screen name="MentorProfilePage" component={MentorProfilePage} />
@@ -476,6 +523,10 @@ export default function RootNavigator() {
           <AuthStack.Screen name="InCall" component={InCallScreen} />
           <AuthStack.Screen name="RatingScreen" component={RatingScreen} />
           <AuthStack.Screen name="MentorSessionsPage" component={MentorSessionsPage} />
+          <AuthStack.Screen name="ChatPage" component={ChatPage} />
+          <AuthStack.Screen name="MentorChatListPage" component={MentorChatListPage} />
+          <AuthStack.Screen name="MentorChatPage" component={MentorChatPage} />
+          <AuthStack.Screen name="StudentCallsPage" component={StudentCallsPage} />
         </AuthStack.Navigator>
       ) : (
         <Stack.Navigator

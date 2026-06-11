@@ -28,6 +28,11 @@ Mentivo is a per-minute voice mentorship marketplace connecting JEE aspirants wi
   - Mentor presence is managed via Redis heartbeats (TTL: 60s).
   - Initial chat feature handled via **Agora Chat**.
 
+- **Website & Routing**:
+  - **Proxy**: Use `website/proxy.ts` for request interception and routing. **Do NOT rename `proxy.ts` to `middleware.ts`** as it is considered deprecated in this project.
+  - **Maintenance Mode**: Controlled via `PRODUCTION_MODE=true` environment variable. When active, requests are rewritten to `/maintenance` to keep the URL in the address bar.
+  - **SEO**: The maintenance page must be visible to crawlers to ensure search engines can index the "Coming Soon" or "Under Maintenance" state.
+
 - **Admin Dashboard**:
   - Purpose: Internal management for platform admins (@mentivo.in).
   - Features: Student/Mentor CRUD, Mentor Verification (ID review), and Bulk Emailing.

@@ -5,13 +5,11 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { authStyles } from '../styles/authStyles';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Image } from 'expo-image';
+import { AuthLayout } from '../components/AuthLayout';
 import api from '../services/api';
 import { ForgotPassEndpoints } from '../constants/endpoint';
 import { useLoading } from '../context/LoadingContext';
@@ -65,114 +63,54 @@ const ForgotPassword = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === 'android' ? 70 : 0}
-      >
-        <ScrollView 
-          contentContainerStyle={styles.container} 
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+    <AuthLayout>
+      <View style={authStyles.card}>
+        <Text style={authStyles.title}>Forgot Password</Text>
+        <Text style={authStyles.subtitle}>Enter your email to receive a password reset code</Text>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Email Address</Text>
+          <TextInput 
+            style={styles.input} 
+            placeholder="name@domain.com" 
+            placeholderTextColor="#757684"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </View>
+
+        <TouchableOpacity 
+          style={styles.sendButton}
+          onPress={handleSendOtp}
         >
-          <View style={styles.header}>
-             <Image source={require('../app-assets/logo.svg')} style={styles.logo} />
-          </View>
+          <Text style={styles.sendButtonText}>Send OTP</Text>
+          <Image 
+            source={require('../app-assets/arrow-right-white.svg')} 
+            style={styles.arrowIcon} 
+            tintColor="white"
+          />
+        </TouchableOpacity>
 
-          <View style={styles.card}>
-            <Text style={styles.title}>Forgot Password</Text>
-            <Text style={styles.subtitle}>Enter your email to receive a password reset code</Text>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email Address</Text>
-              <TextInput 
-                style={styles.input} 
-                placeholder="name@domain.com" 
-                placeholderTextColor="#757684"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
-
-            <TouchableOpacity 
-              style={styles.sendButton}
-              onPress={handleSendOtp}
-            >
-              <Text style={styles.sendButtonText}>Send OTP</Text>
-              <Image 
-                source={require('../app-assets/arrow-right-white.svg')} 
-                style={styles.arrowIcon} 
-                tintColor="white"
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Text style={styles.backButtonText}>Back to Login</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.backButtonText}>Back to Login</Text>
+        </TouchableOpacity>
+      </View>
       <DialogBox 
         visible={alertVisible} 
         onClose={() => setAlertVisible(false)} 
         title={alertData.title} 
         message={alertData.message}
       />
-    </SafeAreaView>
+    </AuthLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  container: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-  },
-  header: {
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  logo: {
-    width: 36,
-    height: 38,
-  },
-  card: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: '#c4c5d5',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 1,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#0b1c30',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#444653',
-    textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 22,
-  },
   inputGroup: {
     marginBottom: 24,
   },

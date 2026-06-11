@@ -17,9 +17,11 @@ import { useNavigation, useScrollToTop } from "@react-navigation/native";
 import api from "../../services/api";
 import { MentorEndpoints } from "../../constants/endpoint";
 
+import { useTabPressRefresh } from "../../hooks/useTabPressRefresh";
+
 const { width } = Dimensions.get("window");
 
-export default function StudentChatPage() {
+export default function StudentCallsPage() {
   const navigation = useNavigation<any>();
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -58,15 +60,7 @@ export default function StudentChatPage() {
     fetchFavorites();
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('tabPress', (e: any) => {
-      if (navigation.isFocused()) {
-        handleRefresh();
-      }
-    });
-
-    return unsubscribe;
-  }, [navigation]);
+  useTabPressRefresh(navigation, handleRefresh);
 
   const recentCalls = [
     { id: "4", name: "Suraj Jain", iit: "IIT Guwahati", day: "Friday", unread: 1 },

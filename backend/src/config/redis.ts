@@ -23,6 +23,21 @@ if (process.env.REDIS_URL) {
     },
     mget: async (...keys: string[]) => {
       return keys.map(k => mockCache.get(k) || null);
+    },
+    incr: async (key: string) => {
+      const current = mockCache.get(key);
+      const next = current ? parseInt(current, 10) + 1 : 1;
+      mockCache.set(key, next.toString());
+      return next;
+    },
+    expire: async (key: string, seconds: number) => {
+      if (!mockCache.has(key)) return 0;
+      setTimeout(() => mockCache.delete(key), seconds * 1000);
+      return 1;
+    },
+    ttl: async (key: string) => {
+      if (!mockCache.has(key)) return -2;
+      return 60; // Mock ttl, just return a positive number
     }
   };
 }

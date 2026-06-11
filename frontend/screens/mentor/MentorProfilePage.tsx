@@ -208,32 +208,12 @@ export default function MentorProfilePage() {
           </View>
         </View>
 
-        {/* Avatar Section */}
-        <View style={styles.avatarSection}>
-          <View style={styles.avatarWrapper}>
-            <TouchableOpacity 
-              activeOpacity={0.8}
-              onPress={() => setIsViewerVisible(true)}
-            >
-              <Image 
-                source={profilePic} 
-                style={styles.avatar} 
-              />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.editBadge} 
-              onPress={handlePickImage}
-              disabled={uploading}
-            >
-              {uploading ? (
-                <ActivityIndicator color="white" size="small" />
-              ) : (
-                <Image source={require("../../app-assets/edit-icon.svg")} style={styles.editBadgeIcon} tintColor="white" />
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
+        <AvatarSection
+          profilePic={profilePic}
+          uploading={uploading}
+          onPressAvatar={() => setIsViewerVisible(true)}
+          onPressEdit={handlePickImage}
+        />
 
         {/* Name & Title */}
         <View style={styles.nameSection}>
@@ -246,49 +226,16 @@ export default function MentorProfilePage() {
           </View>
         </View>
 
-        {/* Details Section */}
-        <View style={styles.detailsContainer}>
-          <DetailRow label="Phone" value={mentorData.user?.phone || "Not provided"} />
-          <DetailRow label="E-mail" value={mentorData.user?.email || "Not provided"} />
-          <DetailRow label="University Name" value={mentorData.iit_name || "Not provided"} />
-          <DetailRow label="Current Year" value={mentorData.year ? mentorData.year.toString() : "Not provided"} />
-          <DetailRow label="Branch" value={mentorData.branch || "Not provided"} />
-          <DetailRow label="Expertise" value={mentorData.expertise || "Not provided"} />
-          
-          {/* UPI ID Row with Edit capability */}
-          <View style={styles.detailRow}>
-            <View style={styles.detailLabelRow}>
-              <Text style={styles.detailLabel}>UPI ID</Text>
-              {!isEditingUpi && (
-                <TouchableOpacity onPress={() => setIsEditingUpi(true)}>
-                  <Text style={styles.editLink}>Edit</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            
-            {isEditingUpi ? (
-              <View style={styles.editInputContainer}>
-                <TextInput
-                  style={styles.upiInput}
-                  value={tempUpi}
-                  onChangeText={setTempUpi}
-                  placeholder="Enter UPI ID"
-                  autoCapitalize="none"
-                />
-                <View style={styles.editActions}>
-                  <TouchableOpacity onPress={() => { setIsEditingUpi(false); setTempUpi(mentorData.upiId || ""); }} style={styles.cancelBtn}>
-                    <Text style={styles.cancelText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={handleUpdateUpi} disabled={savingUpi} style={styles.saveBtn}>
-                    {savingUpi ? <ActivityIndicator size="small" color="#2563eb" /> : <Text style={styles.saveText}>Save</Text>}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              <Text style={styles.detailValue}>{mentorData.upiId || "Not provided"}</Text>
-            )}
-          </View>
-        </View>
+        <DetailsSection
+          mentorData={mentorData}
+          isEditingUpi={isEditingUpi}
+          tempUpi={tempUpi}
+          savingUpi={savingUpi}
+          onChangeUpi={setTempUpi}
+          onStartEditUpi={() => setIsEditingUpi(true)}
+          onCancelEditUpi={() => { setIsEditingUpi(false); setTempUpi(mentorData.upiId || ""); }}
+          onSaveUpi={handleUpdateUpi}
+        />
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Text style={styles.logoutText}>Log out</Text>
@@ -296,34 +243,11 @@ export default function MentorProfilePage() {
 
       </ScrollView>
 
-      {/* Profile Picture Viewer Modal */}
-      <Modal
+      <ImageViewerModal
         visible={isViewerVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setIsViewerVisible(false)}
-      >
-        <View style={styles.viewerContainer}>
-          <TouchableOpacity 
-            style={styles.viewerOverlay} 
-            activeOpacity={1} 
-            onPress={() => setIsViewerVisible(false)} 
-          />
-          <View style={styles.viewerContent}>
-            <Image 
-              source={profilePic} 
-              style={styles.fullImage} 
-              contentFit="contain"
-            />
-            <TouchableOpacity 
-              style={styles.closeViewerBtn} 
-              onPress={() => setIsViewerVisible(false)}
-            >
-              <Image source={require("../../app-assets/x-icon.svg")} style={styles.closeIcon} tintColor="white" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        profilePic={profilePic}
+        onClose={() => setIsViewerVisible(false)}
+      />
 
       {/* Availability Toggle matching Node 408:9 */}
       <TouchableOpacity 
@@ -349,6 +273,141 @@ function DetailRow({ label, value }: { label: string, value: string }) {
       <Text style={styles.detailLabel}>{label}</Text>
       <Text style={styles.detailValue} numberOfLines={2}>{value}</Text>
     </View>
+  );
+}
+
+interface AvatarSectionProps {
+  profilePic: any;
+  uploading: boolean;
+  onPressAvatar: () => void;
+  onPressEdit: () => void;
+}
+
+function AvatarSection({ profilePic, uploading, onPressAvatar, onPressEdit }: AvatarSectionProps) {
+  return (
+    <View style={styles.avatarSection}>
+      <View style={styles.avatarWrapper}>
+        <TouchableOpacity activeOpacity={0.8} onPress={onPressAvatar}>
+          <Image source={profilePic} style={styles.avatar} />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.editBadge} 
+          onPress={onPressEdit}
+          disabled={uploading}
+        >
+          {uploading ? (
+            <ActivityIndicator color="white" size="small" />
+          ) : (
+            <Image source={require("../../app-assets/edit-icon.svg")} style={styles.editBadgeIcon} tintColor="white" />
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+interface DetailsSectionProps {
+  mentorData: any;
+  isEditingUpi: boolean;
+  tempUpi: string;
+  savingUpi: boolean;
+  onChangeUpi: (val: string) => void;
+  onStartEditUpi: () => void;
+  onCancelEditUpi: () => void;
+  onSaveUpi: () => void;
+}
+
+function DetailsSection({
+  mentorData,
+  isEditingUpi,
+  tempUpi,
+  savingUpi,
+  onChangeUpi,
+  onStartEditUpi,
+  onCancelEditUpi,
+  onSaveUpi,
+}: DetailsSectionProps) {
+  return (
+    <View style={styles.detailsContainer}>
+      <DetailRow label="Phone" value={mentorData.user?.phone || "Not provided"} />
+      <DetailRow label="E-mail" value={mentorData.user?.email || "Not provided"} />
+      <DetailRow label="University Name" value={mentorData.iit_name || "Not provided"} />
+      <DetailRow label="Current Year" value={mentorData.year ? mentorData.year.toString() : "Not provided"} />
+      <DetailRow label="Branch" value={mentorData.branch || "Not provided"} />
+      <DetailRow label="Expertise" value={mentorData.expertise || "Not provided"} />
+      
+      <View style={styles.detailRow}>
+        <View style={styles.detailLabelRow}>
+          <Text style={styles.detailLabel}>UPI ID</Text>
+          {!isEditingUpi && (
+            <TouchableOpacity onPress={onStartEditUpi}>
+              <Text style={styles.editLink}>Edit</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        
+        {isEditingUpi ? (
+          <View style={styles.editInputContainer}>
+            <TextInput
+              style={styles.upiInput}
+              value={tempUpi}
+              onChangeText={onChangeUpi}
+              placeholder="Enter UPI ID"
+              autoCapitalize="none"
+            />
+            <View style={styles.editActions}>
+              <TouchableOpacity onPress={onCancelEditUpi} style={styles.cancelBtn}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onSaveUpi} disabled={savingUpi} style={styles.saveBtn}>
+                {savingUpi ? <ActivityIndicator size="small" color="#2563eb" /> : <Text style={styles.saveText}>Save</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <Text style={styles.detailValue}>{mentorData.upiId || "Not provided"}</Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
+interface ImageViewerModalProps {
+  visible: boolean;
+  profilePic: any;
+  onClose: () => void;
+}
+
+function ImageViewerModal({ visible, profilePic, onClose }: ImageViewerModalProps) {
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.viewerContainer}>
+        <TouchableOpacity 
+          style={styles.viewerOverlay} 
+          activeOpacity={1} 
+          onPress={onClose} 
+        />
+        <View style={styles.viewerContent}>
+          <Image 
+            source={profilePic} 
+            style={styles.fullImage} 
+            contentFit="contain"
+          />
+          <TouchableOpacity 
+            style={styles.closeViewerBtn} 
+            onPress={onClose}
+          >
+            <Image source={require("../../app-assets/x-icon.svg")} style={styles.closeIcon} tintColor="white" />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
   );
 }
 

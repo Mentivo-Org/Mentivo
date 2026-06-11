@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import { useTabPressRefresh } from "../../hooks/useTabPressRefresh";
 import {
   Text,
   View,
@@ -280,16 +281,7 @@ export default function StudentHomePage() {
     fetchMentors(true);
   };
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('tabPress', (e: any) => {
-      // If the screen is focused and tab is pressed again, refresh
-      if (navigation.isFocused()) {
-        handleRefresh();
-      }
-    });
-
-    return unsubscribe;
-  }, [navigation]);
+  useTabPressRefresh(navigation, handleRefresh);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -299,12 +291,23 @@ export default function StudentHomePage() {
       }
     };
     loadUser();
+
+    const unsubscribeFocus = navigation.addListener('focus', () => {
+      loadUser();
+      fetchWalletBalance();
+      fetchUpcomingCall();
+    });
+
     syncFavorites();
     fetchWalletBalance();
     fetchOnlineCount();
     fetchUpcomingCall();
     fetchMentors(true); // Initial fetch
-  }, []);
+
+    return () => {
+      unsubscribeFocus();
+    };
+  }, [navigation]);
 
   useEffect(() => {
     fetchMentors(true);
@@ -485,11 +488,20 @@ export default function StudentHomePage() {
             </View>
 
             <View style={styles.sidebarUserCard}>
-              <Image source={require("../../app-assets/profile-circle.svg")} style={styles.userAvatar} />
+              <Image 
+                source={user?.photo_url ? { uri: user.photo_url } : require("../../app-assets/profile-circle.svg")} 
+                style={styles.userAvatar} 
+              />
               <View style={styles.userInfo}>
                 <Text style={styles.sidebarUserName}>{user?.name || "Raju Rastogi"}</Text>
                 <Text style={styles.sidebarUserRole}>JEE 2027 Aspirant</Text>
-                <TouchableOpacity style={styles.editButton}>
+                <TouchableOpacity 
+                  style={styles.editButton}
+                  onPress={() => {
+                    toggleSidebar();
+                    navigation.navigate("StudentProfilePage");
+                  }}
+                >
                   <Image source={require("../../app-assets/edit-icon.svg")} style={styles.editIcon} />
                   <Text style={styles.editText}>Edit</Text>
                 </TouchableOpacity>

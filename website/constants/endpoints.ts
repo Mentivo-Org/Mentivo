@@ -1,6 +1,6 @@
 // website/constants/endpoints.ts
 
-export const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 export const AuthEndpoints = {
     signup: `${baseUrl}/auth/signup`,
@@ -11,6 +11,6 @@ export const AuthEndpoints = {
     whoAmI: `${baseUrl}/auth/whoami`,
 };
 
-export const HealthEndpoints = {
+const HealthEndpoints = {
     health: `${baseUrl}/health`,
 };

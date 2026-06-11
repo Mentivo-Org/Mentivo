@@ -136,7 +136,17 @@ model AdminPayoutRequest {
 - **Manual Payout Mode:** Added `ENABLE_RAZORPAY_X` toggle to support manual UPI payouts via console logging for initial phases.
 
 ### Infrastructure & Background Jobs
-- **Redis (Upstash):** Optimized `ioredis` configuration with `family: 0` for reliable TLS routing.
 - **BullMQ Workers:** Initialized queues for `AbandonedCallSweeper` and `WeeklyPayouts`.
 - **Graceful Shutdown:** Configured `SIGTERM` listeners to ensure workers finish tasks before process exit.
+
+### 13. Student Profile Integration (June 2026)
+
+#### Backend Updates
+- **PATCH /api/auth/profile:** Introduced user profile editing capability. Authenticated students can edit fields: `name`, `phone`, and `grade`.
+- **POST /api/profile-picture:** Reused the unified profile picture upload endpoint, supporting both student and mentor profile image changes.
+
+#### Frontend Updates
+- **StudentProfilePage** (`frontend/screens/student/StudentProfilePage.tsx`): Built profile edit view matching Figma design `node-id=365-183`. Includes customizable background wave shape, edit mode toggles for name, phone, and grade, and viewer modal.
+- **Image Upload:** Integrated `expo-image-picker` to select profile pictures from local library, performing uploads via FormData to `ProfilePictureEndpoints.uploadProfilePicture`.
+- **Navigation Integration:** Registered the screen in `RootNavigator.tsx` and hooked up the `Edit` button on the `StudentHomePage` sidebar to navigate to the new page. Implemented focus-based user reload on the home page to update details upon profile save.
 

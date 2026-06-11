@@ -9,7 +9,7 @@ import { AGORA_APP_ID } from '../constants/endpoint';
 
 let engine: IRtcEngine | null = null;
 
-export const initAgoraEngine = () => {
+const initAgoraEngine = () => {
   if (engine) return engine;
 
   engine = createAgoraRtcEngine();
@@ -53,7 +53,7 @@ export const leaveChannel = () => {
   }
 };
 
-export const releaseAgoraEngine = () => {
+const releaseAgoraEngine = () => {
   if (engine) {
     engine.release();
     engine = null;

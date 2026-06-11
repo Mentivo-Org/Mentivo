@@ -1,8 +1,9 @@
-// export const baseUrl = 'http://10.150.63.231:3000/api';
-// export const baseUrl = 'http://192.168.29.18:3000/api';
-export const baseUrl = 'https://api.mentivo.in/api';
+export const baseUrl = 'http://192.168.29.18:3000/api';
+// export const baseUrl = 'https://dev.mentivo.in/api';
+// export const baseUrl = 'https://api.mentivo.in/api';
 
 export const AGORA_APP_ID = '1f1c2710de9a48bd88bc0470aa0204fc';
+export const AGORA_CHAT_APP_KEY = '61200019669#200025201'
 
 export const LoginEndpoints = {
     whoAmI: `${baseUrl}/auth/whoami`,
@@ -14,7 +15,8 @@ export const LoginEndpoints = {
     verifyOtp: `${baseUrl}/auth/otp/verify`,
     getIIT: `${baseUrl}/auth/get-iit`,
     completeProfileStudent: `${baseUrl}/auth/complete-profile/student`,
-    completeProfileMentor: `${baseUrl}/auth/complete-profile/mentor`
+    completeProfileMentor: `${baseUrl}/auth/complete-profile/mentor`,
+    updateProfile: `${baseUrl}/auth/profile`
 }
 
 export const ForgotPassEndpoints = {
@@ -67,4 +69,13 @@ export const NotificationEndpoints = {
 
 export const ProfilePictureEndpoints = {
     uploadProfilePicture: `${baseUrl}/profile-picture`
+}
+
+export const ChatEndpoints = {
+    getSessions: `${baseUrl}/chat/sessions`,
+    createSession: `${baseUrl}/chat/sessions`,
+    getMessages: (sessionId: string) => `${baseUrl}/chat/sessions/${sessionId}/messages`,
+    getToken: `${baseUrl}/chat/token`,
+    markRead: (sessionId: string) => `${baseUrl}/chat/sessions/${sessionId}/read`,
+    linkCall: (sessionId: string) => `${baseUrl}/chat/sessions/${sessionId}/link-call`,
 }

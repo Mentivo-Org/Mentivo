@@ -8,6 +8,7 @@ import {
   verifyOtp,
   whoAmI,
   logout,
+  updateUserProfile,
 } from "../controllers/loginController.ts";
 import { authenticateUser } from "../auth/authenticateUser.ts";
 import { iitNameExporter } from "../controllers/iitNameController.ts";
@@ -44,6 +45,9 @@ app.post("/get-iit", iitNameExporter);
 //Complete-profile
 app.post("/complete-profile/mentor", authenticateUser, uploadFile, CompleteProfileMentor);
 app.post("/complete-profile/student", authenticateUser, CompleteProfileStudent);
+
+//Profile Update
+app.patch("/profile", authenticateUser, updateUserProfile);
 
 //Forgot Password
 app.post('/forgot-password', forgotPassword);

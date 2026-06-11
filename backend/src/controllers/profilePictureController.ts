@@ -27,7 +27,14 @@ export const uploadProfilePicture = async (req: Request, res: Response) => {
     try {
         const fileExtension = mime.extension(file.mimetype) || 'jpg';
         const fileName = `${user?.id}-${Date.now()}.${fileExtension}`;
-        const destinationPath = `mentors/${fileName}`;
+        var destinationPath;
+        if(user?.role==='mentor') {
+            destinationPath = `mentors/${fileName}`;
+        }
+        else {
+            destinationPath = `students/${fileName}`;
+
+        }
 
         const { data, error: uploadError } = await supabaseAdmin.storage
             .from(bucketName)

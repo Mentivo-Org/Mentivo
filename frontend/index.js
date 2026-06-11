@@ -7,11 +7,25 @@ import api from './services/api';
 
 import App from './App';
 
-// Create Notifee channel for calls
+// Create Notifee channels
 async function setupNotifee() {
   await notifee.createChannel({
-    id: 'calls',
+    id: 'incoming_calls',
     name: 'Incoming Calls',
+    importance: AndroidImportance.HIGH,
+    vibration: true,
+    sound: 'default',
+  });
+  await notifee.createChannel({
+    id: 'ongoing_calls',
+    name: 'Ongoing Calls',
+    importance: AndroidImportance.LOW,
+    vibration: false,
+    sound: null,
+  });
+  await notifee.createChannel({
+    id: 'messages',
+    name: 'Chat Messages',
     importance: AndroidImportance.HIGH,
     vibration: true,
     sound: 'default',
@@ -30,7 +44,27 @@ setBackgroundMessageHandler(messaging, async (remoteMessage) => {
   if (remoteMessage.data?.source === 'admin-dashboard') {
     console.log('>>> DETECTED: Push notification from Admin Dashboard');
   }
-  
+
+  if (remoteMessage.data?.type === 'chat') {
+    const { sessionId, senderId, senderName, title, body } = remoteMessage.data;
+
+    await notifee.displayNotification({
+      id: sessionId,
+      title: title || senderName || 'New Message',
+      body: body || 'You have a new message',
+      data: { type: 'chat', sessionId, senderId, senderName },
+      android: {
+        channelId: 'messages',
+        importance: AndroidImportance.HIGH,
+        priority: 'high',
+        pressAction: {
+          id: 'default',
+          launchActivity: 'default',
+        },
+      },
+    });
+  }
+
   if (remoteMessage.data?.type === 'incoming_call') {
     const { callId, channelName, callerName } = remoteMessage.data;
 
@@ -40,7 +74,7 @@ setBackgroundMessageHandler(messaging, async (remoteMessage) => {
       body: 'Tap to answer',
       data: { callId, channelName, callerName },
       android: {
-        channelId: 'calls',
+        channelId: 'incoming_calls',
         importance: AndroidImportance.HIGH,
         priority: 'high',
         category: 'call',
@@ -72,6 +106,16 @@ setBackgroundMessageHandler(messaging, async (remoteMessage) => {
         ],
       },
     });
+  }
+
+  if (remoteMessage.data?.type === 'call_cancelled') {
+    const { callId } = remoteMessage.data;
+    await notifee.cancelNotification(callId);
+    try {
+      await AsyncStorage.removeItem('pendingCallData');
+    } catch (e) {
+      console.error('Failed to remove pending call data:', e);
+    }
   }
 });
 

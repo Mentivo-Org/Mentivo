@@ -5,11 +5,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
@@ -17,15 +13,16 @@ import api from '../../services/api';
 import { LoginEndpoints } from '../../constants/endpoint';
 import { useAuth } from '../../services/retrieveKeys';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLoading } from '../../context/LoadingContext';
+import { authStyles } from '../../styles/authStyles';
+import { PasswordInput } from '../../components/PasswordInput';
+import { AuthLayout } from '../../components/AuthLayout';
 import DialogBox from '../../components/DialogBox';
 
 const StudentLoginPage = () => {
   const navigation = useNavigation<any>();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const { setIsSignedIn, setRole, requestNotificationPermissions } = useAuth();
   const {showLoading, hideLoading}  = useLoading();
 
@@ -154,150 +151,71 @@ const StudentLoginPage = () => {
   },[])
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === 'android' ? 70 : 0}
-      >
-        <ScrollView 
-          contentContainerStyle={styles.container} 
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+    <AuthLayout>
+      <View style={authStyles.card}>
+        <Text style={authStyles.title}>Welcome Back</Text>
+        <Text style={authStyles.subtitle}>Access expert guidance from the IIT community</Text>
+
+        <TouchableOpacity 
+          style={styles.socialButton}
+          onPress={handleGoogleSignIn}
         >
-          <View style={styles.header}>
-             <Image source={require('../../app-assets/logo.svg')} style={styles.logo} />
-          </View>
+          <Image source={require('../../app-assets/google-icon.svg')} style={styles.socialIcon} />
+          <Text style={styles.socialButtonText}>Sign in with Google</Text>
+        </TouchableOpacity>
 
-          <View style={styles.card}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Access expert guidance from the IIT community</Text>
+        <View style={styles.dividerContainer}>
+          <View style={styles.divider} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.divider} />
+        </View>
 
-            <TouchableOpacity 
-              style={styles.socialButton}
-              onPress={handleGoogleSignIn}
-            >
-              <Image source={require('../../app-assets/google-icon.svg')} style={styles.socialIcon} />
-              <Text style={styles.socialButtonText}>Sign in with Google</Text>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Email</Text>
+          <TextInput 
+            style={styles.input} 
+            placeholder="name@domain.com" 
+            placeholderTextColor="#757684"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <View style={styles.labelRow}>
+            <Text style={styles.label}>Password</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword', {role: "student"})}>
+              <Text style={styles.forgotPassword}>Forgot Password?</Text>
             </TouchableOpacity>
-
-            <View style={styles.dividerContainer}>
-              <View style={styles.divider} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.divider} />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput 
-                style={styles.input} 
-                placeholder="name@domain.com" 
-                placeholderTextColor="#757684"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>Password</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword', {role: "student"})}>
-                  <Text style={styles.forgotPassword}>Forgot Password?</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.passwordContainer}>
-                <TextInput 
-                  style={styles.passwordInput} 
-                  placeholder="••••••••" 
-                  secureTextEntry={!showPassword}
-                  placeholderTextColor="rgba(68,70,83,0.5)"
-                  // value={password}
-                  onChangeText={(text)=>setPassword(text)}
-                  autoCapitalize="none"
-                  // selection={!showPassword ? { start: passwordDisplay.length, end: passwordDisplay.length } : undefined}
-                  autoCorrect={false}
-                  spellCheck={false}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeButton}
-                >
-                  <Ionicons
-                    name={showPassword ? "eye" : "eye-off"}
-                    size={20}
-                    color="#2563eb"
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <TouchableOpacity 
-              style={styles.signInButton}
-              onPress={handleLogin}
-            >
-              <Text style={styles.signInText}>Sign In</Text>
-            </TouchableOpacity>
-
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>Don't have an account? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('StudentSignUp')}>
-                <Text style={styles.signUpText}>Sign Up</Text>
-              </TouchableOpacity>
-            </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          <PasswordInput 
+            value={password}
+            onChangeText={setPassword}
+          />
+        </View>
+
+        <TouchableOpacity 
+          style={styles.signInButton}
+          onPress={handleLogin}
+        >
+          <Text style={styles.signInText}>Sign In</Text>
+        </TouchableOpacity>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Don't have an account? </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('StudentSignUp')}>
+            <Text style={styles.signUpText}>Sign Up</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
       <DialogBox visible={alertVisible} onClose={()=>setAlertVisible(false)} title={alertData.title} message={alertData.message}/>
-    </SafeAreaView>
+    </AuthLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  container: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-  },
-  header: {
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  logo: {
-    width: 36,
-    height: 38,
-  },
-  card: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: '#c4c5d5',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 1,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#0b1c30',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#444653',
-    textAlign: 'center',
-    marginBottom: 32,
-  },
   socialButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -354,23 +272,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     color: '#0b1c30',
-  },
-  passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#c4c5d5',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  passwordInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#0b1c30',
-  },
-  eyeButton: {
-    marginLeft: 10,
   },
   forgotPassword: {
     color: '#006591',

@@ -17,8 +17,8 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import api from '../../services/api';
 import { LoginEndpoints } from '../../constants/endpoint';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLoading } from '../../context/LoadingContext';
+import { PasswordInput } from '../../components/PasswordInput';
 import DialogBox from '../../components/DialogBox';
 
 const StudentSignupPage = () => {
@@ -27,7 +27,6 @@ const StudentSignupPage = () => {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [alertData, setAlertData] = useState({title:'', message: ''})
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
   const {showLoading, hideLoading} = useLoading();
@@ -190,30 +189,12 @@ const StudentSignupPage = () => {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Password</Text>
-              <View style={styles.passwordContainer}>
-                <TextInput 
-                  style={styles.passwordInput} 
-                  placeholder="••••••••" 
-                  secureTextEntry={!showPassword}
-                  placeholderTextColor="rgba(68,70,83,0.5)"
-                  // value={password}
-                  onChangeText={(text)=>setPassword(text)}
-                  autoCapitalize="none"
-                  // selection={!showPassword ? { start: passwordDisplay.length, end: passwordDisplay.length } : undefined}
-                  autoCorrect={false}
-                  spellCheck={false}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeButton}
-                >
-                  <Ionicons
-                    name={showPassword ? "eye" : "eye-off"}
-                    size={20}
-                    color="#2563eb"
-                  />
-                </TouchableOpacity>
-              </View>
+              <PasswordInput 
+                value={password}
+                onChangeText={setPassword}
+                style={styles.passwordContainer}
+                inputStyle={styles.passwordInput}
+              />
               <View style={styles.hintContainer}>
                 <Image source={require('../../app-assets/info-dot.svg')} style={styles.hintIcon} />
                 <Text style={styles.hintText}>At least 8 characters</Text>
@@ -362,14 +343,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 18,
     paddingVertical: 16,
+    borderWidth: 0,
   },
   passwordInput: {
     flex: 1,
     fontSize: 17,
     color: '#0b1c30',
-  },
-  eyeButton: {
-    marginLeft: 10,
   },
   hintContainer: {
     flexDirection: 'row',

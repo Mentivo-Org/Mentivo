@@ -45,7 +45,7 @@ export function verifyWebhookSignature(body: string, signature: string) {
 }
 
 // Payout to mentor bank account via Razorpay X
-export async function payoutToMentor(mentorId: string, amountRupees: number, bankAccountId: string) {
+async function payoutToMentor(mentorId: string, amountRupees: number, bankAccountId: string) {
   // In v2 of razorpay-node, payouts are somewhat separate or you can just make manual REST calls
   // Depending on razorpay-node typings, we might need a workaround if .payouts doesn't exist.
   // Assuming it's part of the extended API or we cast:

@@ -1,6 +1,6 @@
 import admin from '../config/firebase.ts';
 
-export async function sendMentorOnlineAlert(studentFcmTokens: string[], mentorName: string) {
+async function sendMentorOnlineAlert(studentFcmTokens: string[], mentorName: string) {
   if (!admin.apps.length || studentFcmTokens.length === 0) return;
   try {
     await admin.messaging().sendEachForMulticast({
@@ -16,7 +16,7 @@ export async function sendMentorOnlineAlert(studentFcmTokens: string[], mentorNa
   }
 }
 
-export async function sendLowBalanceAlert(fcmToken: string, balance: number) {
+async function sendLowBalanceAlert(fcmToken: string, balance: number) {
   if (!admin.apps.length || !fcmToken) return;
   try {
     await admin.messaging().send({
@@ -30,7 +30,7 @@ export async function sendLowBalanceAlert(fcmToken: string, balance: number) {
   } catch(e) {}
 }
 
-export async function sendPostCallRatingPrompt(fcmToken: string, sessionId: string, mentorName: string) {
+async function sendPostCallRatingPrompt(fcmToken: string, sessionId: string, mentorName: string) {
   if (!admin.apps.length || !fcmToken) return;
   try {
     await admin.messaging().send({
@@ -44,7 +44,7 @@ export async function sendPostCallRatingPrompt(fcmToken: string, sessionId: stri
   } catch(e) {}
 }
 
-export async function sendIncomingCallAlert(fcmToken: string, studentName: string, channelName: string) {
+async function sendIncomingCallAlert(fcmToken: string, studentName: string, channelName: string) {
   if (!admin.apps.length || !fcmToken) return;
   try {
     await admin.messaging().send({
@@ -125,3 +125,25 @@ export async function sendCallCancelledMessage(fcmToken: string, callId: string)
     console.error('Failed to send call cancelled message:', error);
   }
 }
+
+export async function sendChatPushNotification(fcmTokens: string[], data: { sessionId: string, senderId: string, senderName: string, message: string }) {
+  if (!admin.apps.length || fcmTokens.length === 0) return;
+  try {
+    await admin.messaging().sendEachForMulticast({
+      tokens: fcmTokens,
+      notification: {
+        title: data.senderName,
+        body: data.message,
+      },
+      data: {
+        type: 'chat',
+        sessionId: data.sessionId,
+        senderId: data.senderId,
+        senderName: data.senderName,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to send multicast chat push notification:', error);
+  }
+}
+

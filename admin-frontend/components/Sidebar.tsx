@@ -19,6 +19,7 @@ const navItems = [
   { name: "Mentor Levels", href: "/dashboard/mentor-levels", icon: TrendingUp },
   { name: "Email Center", href: "/dashboard/email", icon: Mail },
   { name: "Notification Center", href: "/dashboard/notifications", icon: Bell },
+  { name: "Chat Moderation", href: "/dashboard/moderation", icon: ShieldCheck },
 ];
 
 export default function Sidebar() {

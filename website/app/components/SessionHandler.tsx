@@ -47,7 +47,4 @@ export function useSession() {
   return { isReady, isSignedIn, user };
 }
 
-export default function SessionHandler() {
-  useSession();
-  return null;
-}
+

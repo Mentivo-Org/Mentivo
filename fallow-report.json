@@ -1,0 +1,688 @@
+{
+  "mentivo-admin-backend": {
+    "kind": "dead-code",
+    "schema_version": 7,
+    "version": "2.92.1",
+    "elapsed_ms": 243,
+    "total_issues": 0,
+    "entry_points": {
+      "total": 34,
+      "sources": {
+        "package.json": 3,
+        "plugin": 31
+      }
+    },
+    "summary": {
+      "total_issues": 0,
+      "unused_files": 0,
+      "unused_exports": 0,
+      "unused_types": 0,
+      "private_type_leaks": 0,
+      "unused_dependencies": 0,
+      "unused_enum_members": 0,
+      "unused_class_members": 0,
+      "unresolved_imports": 0,
+      "unlisted_dependencies": 0,
+      "duplicate_exports": 0,
+      "type_only_dependencies": 0,
+      "test_only_dependencies": 0,
+      "circular_dependencies": 0,
+      "re_export_cycles": 0,
+      "boundary_violations": 0,
+      "boundary_coverage_violations": 0,
+      "boundary_call_violations": 0,
+      "policy_violations": 0,
+      "stale_suppressions": 0,
+      "unused_catalog_entries": 0,
+      "empty_catalog_groups": 0,
+      "unresolved_catalog_references": 0,
+      "unused_dependency_overrides": 0,
+      "misconfigured_dependency_overrides": 0
+    },
+    "unused_files": [],
+    "unused_exports": [],
+    "unused_types": [],
+    "private_type_leaks": [],
+    "unused_dependencies": [],
+    "unused_dev_dependencies": [],
+    "unused_optional_dependencies": [],
+    "unused_enum_members": [],
+    "unused_class_members": [],
+    "unresolved_imports": [],
+    "unlisted_dependencies": [],
+    "duplicate_exports": [],
+    "type_only_dependencies": [],
+    "test_only_dependencies": [],
+    "circular_dependencies": [],
+    "re_export_cycles": [],
+    "boundary_violations": [],
+    "boundary_coverage_violations": [],
+    "boundary_call_violations": [],
+    "policy_violations": [],
+    "stale_suppressions": [],
+    "unused_catalog_entries": [],
+    "empty_catalog_groups": [],
+    "unresolved_catalog_references": [],
+    "unused_dependency_overrides": [],
+    "misconfigured_dependency_overrides": [],
+    "_meta": {
+      "telemetry": {
+        "analysis_run_id": "run_966631e41b07a182"
+      }
+    }
+  },
+  "mentivo-admin-frontend": {
+    "kind": "dead-code",
+    "schema_version": 7,
+    "version": "2.92.1",
+    "elapsed_ms": 232,
+    "total_issues": 2,
+    "entry_points": {
+      "total": 34,
+      "sources": {
+        "package.json": 3,
+        "plugin": 31
+      }
+    },
+    "summary": {
+      "total_issues": 2,
+      "unused_files": 0,
+      "unused_exports": 0,
+      "unused_types": 0,
+      "private_type_leaks": 0,
+      "unused_dependencies": 1,
+      "unused_enum_members": 0,
+      "unused_class_members": 0,
+      "unresolved_imports": 0,
+      "unlisted_dependencies": 1,
+      "duplicate_exports": 0,
+      "type_only_dependencies": 0,
+      "test_only_dependencies": 0,
+      "circular_dependencies": 0,
+      "re_export_cycles": 0,
+      "boundary_violations": 0,
+      "boundary_coverage_violations": 0,
+      "boundary_call_violations": 0,
+      "policy_violations": 0,
+      "stale_suppressions": 0,
+      "unused_catalog_entries": 0,
+      "empty_catalog_groups": 0,
+      "unresolved_catalog_references": 0,
+      "unused_dependency_overrides": 0,
+      "misconfigured_dependency_overrides": 0
+    },
+    "unused_files": [],
+    "unused_exports": [],
+    "unused_types": [],
+    "private_type_leaks": [],
+    "unused_dependencies": [],
+    "unused_dev_dependencies": [
+      {
+        "package_name": "autoprefixer",
+        "location": "devDependencies",
+        "path": "admin-frontend/package.json",
+        "line": 26,
+        "actions": [
+          {
+            "type": "remove-dependency",
+            "auto_fixable": true,
+            "description": "Remove from devDependencies in package.json"
+          },
+          {
+            "type": "add-to-config",
+            "auto_fixable": false,
+            "description": "Add \"autoprefixer\" to ignoreDependencies in fallow config",
+            "config_key": "ignoreDependencies",
+            "value": "autoprefixer",
+            "value_schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json#/properties/ignoreDependencies/items"
+          }
+        ]
+      }
+    ],
+    "unused_optional_dependencies": [],
+    "unused_enum_members": [],
+    "unused_class_members": [],
+    "unresolved_imports": [],
+    "unlisted_dependencies": [
+      {
+        "package_name": "postcss-load-config",
+        "imported_from": [
+          {
+            "path": "admin-frontend/postcss.config.mjs",
+            "line": 1,
+            "col": 0
+          }
+        ],
+        "actions": [
+          {
+            "type": "install-dependency",
+            "auto_fixable": false,
+            "description": "Add this package to dependencies in package.json",
+            "note": "Verify this package should be a direct dependency before adding"
+          },
+          {
+            "type": "add-to-config",
+            "auto_fixable": false,
+            "description": "Add \"postcss-load-config\" to ignoreDependencies in fallow config",
+            "config_key": "ignoreDependencies",
+            "value": "postcss-load-config",
+            "value_schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json#/properties/ignoreDependencies/items"
+          }
+        ]
+      }
+    ],
+    "duplicate_exports": [],
+    "type_only_dependencies": [],
+    "test_only_dependencies": [],
+    "circular_dependencies": [],
+    "re_export_cycles": [],
+    "boundary_violations": [],
+    "boundary_coverage_violations": [],
+    "boundary_call_violations": [],
+    "policy_violations": [],
+    "stale_suppressions": [],
+    "unused_catalog_entries": [],
+    "empty_catalog_groups": [],
+    "unresolved_catalog_references": [],
+    "unused_dependency_overrides": [],
+    "misconfigured_dependency_overrides": [],
+    "_meta": {
+      "telemetry": {
+        "analysis_run_id": "run_6fd0d20f115d60cd"
+      }
+    }
+  },
+  "backend": {
+    "kind": "dead-code",
+    "schema_version": 7,
+    "version": "2.92.1",
+    "elapsed_ms": 248,
+    "total_issues": 3,
+    "entry_points": {
+      "total": 34,
+      "sources": {
+        "package.json": 3,
+        "plugin": 31
+      }
+    },
+    "summary": {
+      "total_issues": 3,
+      "unused_files": 1,
+      "unused_exports": 0,
+      "unused_types": 0,
+      "private_type_leaks": 0,
+      "unused_dependencies": 2,
+      "unused_enum_members": 0,
+      "unused_class_members": 0,
+      "unresolved_imports": 0,
+      "unlisted_dependencies": 0,
+      "duplicate_exports": 0,
+      "type_only_dependencies": 0,
+      "test_only_dependencies": 0,
+      "circular_dependencies": 0,
+      "re_export_cycles": 0,
+      "boundary_violations": 0,
+      "boundary_coverage_violations": 0,
+      "boundary_call_violations": 0,
+      "policy_violations": 0,
+      "stale_suppressions": 0,
+      "unused_catalog_entries": 0,
+      "empty_catalog_groups": 0,
+      "unresolved_catalog_references": 0,
+      "unused_dependency_overrides": 0,
+      "misconfigured_dependency_overrides": 0
+    },
+    "unused_files": [
+      {
+        "path": "backend/src/services/chat/agoraChatWebhook.ts",
+        "actions": [
+          {
+            "type": "delete-file",
+            "auto_fixable": false,
+            "description": "Delete this file",
+            "note": "File deletion may remove runtime functionality not visible to static analysis"
+          },
+          {
+            "type": "suppress-file",
+            "auto_fixable": false,
+            "description": "Suppress with a file-level comment at the top of the file",
+            "comment": "// fallow-ignore-file unused-file"
+          }
+        ]
+      }
+    ],
+    "unused_exports": [],
+    "unused_types": [],
+    "private_type_leaks": [],
+    "unused_dependencies": [
+      {
+        "package_name": "redis",
+        "location": "dependencies",
+        "path": "backend/package.json",
+        "line": 50,
+        "actions": [
+          {
+            "type": "remove-dependency",
+            "auto_fixable": true,
+            "description": "Remove from dependencies in package.json"
+          },
+          {
+            "type": "add-to-config",
+            "auto_fixable": false,
+            "description": "Add \"redis\" to ignoreDependencies in fallow config",
+            "config_key": "ignoreDependencies",
+            "value": "redis",
+            "value_schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json#/properties/ignoreDependencies/items"
+          }
+        ]
+      },
+      {
+        "package_name": "zod",
+        "location": "dependencies",
+        "path": "backend/package.json",
+        "line": 53,
+        "actions": [
+          {
+            "type": "remove-dependency",
+            "auto_fixable": true,
+            "description": "Remove from dependencies in package.json"
+          },
+          {
+            "type": "add-to-config",
+            "auto_fixable": false,
+            "description": "Add \"zod\" to ignoreDependencies in fallow config",
+            "config_key": "ignoreDependencies",
+            "value": "zod",
+            "value_schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json#/properties/ignoreDependencies/items"
+          }
+        ]
+      }
+    ],
+    "unused_dev_dependencies": [],
+    "unused_optional_dependencies": [],
+    "unused_enum_members": [],
+    "unused_class_members": [],
+    "unresolved_imports": [],
+    "unlisted_dependencies": [],
+    "duplicate_exports": [],
+    "type_only_dependencies": [],
+    "test_only_dependencies": [],
+    "circular_dependencies": [],
+    "re_export_cycles": [],
+    "boundary_violations": [],
+    "boundary_coverage_violations": [],
+    "boundary_call_violations": [],
+    "policy_violations": [],
+    "stale_suppressions": [],
+    "unused_catalog_entries": [],
+    "empty_catalog_groups": [],
+    "unresolved_catalog_references": [],
+    "unused_dependency_overrides": [],
+    "misconfigured_dependency_overrides": [],
+    "_meta": {
+      "telemetry": {
+        "analysis_run_id": "run_10d47509bb9afae0"
+      }
+    }
+  },
+  "com.mentivo.in": {
+    "kind": "dead-code",
+    "schema_version": 7,
+    "version": "2.92.1",
+    "elapsed_ms": 278,
+    "total_issues": 9,
+    "entry_points": {
+      "total": 34,
+      "sources": {
+        "package.json": 3,
+        "plugin": 31
+      }
+    },
+    "summary": {
+      "total_issues": 9,
+      "unused_files": 0,
+      "unused_exports": 0,
+      "unused_types": 0,
+      "private_type_leaks": 0,
+      "unused_dependencies": 8,
+      "unused_enum_members": 0,
+      "unused_class_members": 0,
+      "unresolved_imports": 0,
+      "unlisted_dependencies": 1,
+      "duplicate_exports": 0,
+      "type_only_dependencies": 0,
+      "test_only_dependencies": 0,
+      "circular_dependencies": 0,
+      "re_export_cycles": 0,
+      "boundary_violations": 0,
+      "boundary_coverage_violations": 0,
+      "boundary_call_violations": 0,
+      "policy_violations": 0,
+      "stale_suppressions": 0,
+      "unused_catalog_entries": 0,
+      "empty_catalog_groups": 0,
+      "unresolved_catalog_references": 0,
+      "unused_dependency_overrides": 0,
+      "misconfigured_dependency_overrides": 0
+    },
+    "unused_files": [],
+    "unused_exports": [],
+    "unused_types": [],
+    "private_type_leaks": [],
+    "unused_dependencies": [
+      {
+        "package_name": "@expo/config-plugins",
+        "location": "dependencies",
+        "path": "frontend/package.json",
+        "line": 13,
+        "actions": [
+          {
+            "type": "remove-dependency",
+            "auto_fixable": true,
+            "description": "Remove from dependencies in package.json"
+          },
+          {
+            "type": "add-to-config",
+            "auto_fixable": false,
+            "description": "Add \"@expo/config-plugins\" to ignoreDependencies in fallow config",
+            "config_key": "ignoreDependencies",
+            "value": "@expo/config-plugins",
+            "value_schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json#/properties/ignoreDependencies/items"
+          }
+        ]
+      },
+      {
+        "package_name": "@react-native-firebase/auth",
+        "location": "dependencies",
+        "path": "frontend/package.json",
+        "line": 17,
+        "actions": [
+          {
+            "type": "remove-dependency",
+            "auto_fixable": true,
+            "description": "Remove from dependencies in package.json"
+          },
+          {
+            "type": "add-to-config",
+            "auto_fixable": false,
+            "description": "Add \"@react-native-firebase/auth\" to ignoreDependencies in fallow config",
+            "config_key": "ignoreDependencies",
+            "value": "@react-native-firebase/auth",
+            "value_schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json#/properties/ignoreDependencies/items"
+          }
+        ]
+      },
+      {
+        "package_name": "@react-navigation/native-stack",
+        "location": "dependencies",
+        "path": "frontend/package.json",
+        "line": 23,
+        "actions": [
+          {
+            "type": "remove-dependency",
+            "auto_fixable": true,
+            "description": "Remove from dependencies in package.json"
+          },
+          {
+            "type": "add-to-config",
+            "auto_fixable": false,
+            "description": "Add \"@react-navigation/native-stack\" to ignoreDependencies in fallow config",
+            "config_key": "ignoreDependencies",
+            "value": "@react-navigation/native-stack",
+            "value_schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json#/properties/ignoreDependencies/items"
+          }
+        ]
+      },
+      {
+        "package_name": "agora-rtc-sdk-ng",
+        "location": "dependencies",
+        "path": "frontend/package.json",
+        "line": 25,
+        "actions": [
+          {
+            "type": "remove-dependency",
+            "auto_fixable": true,
+            "description": "Remove from dependencies in package.json"
+          },
+          {
+            "type": "add-to-config",
+            "auto_fixable": false,
+            "description": "Add \"agora-rtc-sdk-ng\" to ignoreDependencies in fallow config",
+            "config_key": "ignoreDependencies",
+            "value": "agora-rtc-sdk-ng",
+            "value_schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json#/properties/ignoreDependencies/items"
+          }
+        ]
+      },
+      {
+        "package_name": "expo-build-properties",
+        "location": "dependencies",
+        "path": "frontend/package.json",
+        "line": 28,
+        "actions": [
+          {
+            "type": "remove-dependency",
+            "auto_fixable": true,
+            "description": "Remove from dependencies in package.json"
+          },
+          {
+            "type": "add-to-config",
+            "auto_fixable": false,
+            "description": "Add \"expo-build-properties\" to ignoreDependencies in fallow config",
+            "config_key": "ignoreDependencies",
+            "value": "expo-build-properties",
+            "value_schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json#/properties/ignoreDependencies/items"
+          }
+        ]
+      },
+      {
+        "package_name": "expo-splash-screen",
+        "location": "dependencies",
+        "path": "frontend/package.json",
+        "line": 32,
+        "actions": [
+          {
+            "type": "remove-dependency",
+            "auto_fixable": true,
+            "description": "Remove from dependencies in package.json"
+          },
+          {
+            "type": "add-to-config",
+            "auto_fixable": false,
+            "description": "Add \"expo-splash-screen\" to ignoreDependencies in fallow config",
+            "config_key": "ignoreDependencies",
+            "value": "expo-splash-screen",
+            "value_schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json#/properties/ignoreDependencies/items"
+          }
+        ]
+      },
+      {
+        "package_name": "expo-system-ui",
+        "location": "dependencies",
+        "path": "frontend/package.json",
+        "line": 34,
+        "actions": [
+          {
+            "type": "remove-dependency",
+            "auto_fixable": true,
+            "description": "Remove from dependencies in package.json"
+          },
+          {
+            "type": "add-to-config",
+            "auto_fixable": false,
+            "description": "Add \"expo-system-ui\" to ignoreDependencies in fallow config",
+            "config_key": "ignoreDependencies",
+            "value": "expo-system-ui",
+            "value_schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json#/properties/ignoreDependencies/items"
+          }
+        ]
+      },
+      {
+        "package_name": "patch-package",
+        "location": "dependencies",
+        "path": "frontend/package.json",
+        "line": 35,
+        "actions": [
+          {
+            "type": "remove-dependency",
+            "auto_fixable": true,
+            "description": "Remove from dependencies in package.json"
+          },
+          {
+            "type": "add-to-config",
+            "auto_fixable": false,
+            "description": "Add \"patch-package\" to ignoreDependencies in fallow config",
+            "config_key": "ignoreDependencies",
+            "value": "patch-package",
+            "value_schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json#/properties/ignoreDependencies/items"
+          }
+        ]
+      }
+    ],
+    "unused_dev_dependencies": [],
+    "unused_optional_dependencies": [],
+    "unused_enum_members": [],
+    "unused_class_members": [],
+    "unresolved_imports": [],
+    "unlisted_dependencies": [
+      {
+        "package_name": "@expo/vector-icons",
+        "imported_from": [
+          {
+            "path": "frontend/screens/ResetPassword.tsx",
+            "line": 15,
+            "col": 7
+          },
+          {
+            "path": "frontend/screens/mentor/MentorLoginPage.tsx",
+            "line": 19,
+            "col": 7
+          },
+          {
+            "path": "frontend/screens/mentor/MentorSignupPage.tsx",
+            "line": 16,
+            "col": 7
+          },
+          {
+            "path": "frontend/screens/student/StudentLoginPage.tsx",
+            "line": 20,
+            "col": 7
+          },
+          {
+            "path": "frontend/screens/student/StudentSignupPage.tsx",
+            "line": 20,
+            "col": 7
+          }
+        ],
+        "actions": [
+          {
+            "type": "install-dependency",
+            "auto_fixable": false,
+            "description": "Add this package to dependencies in package.json",
+            "note": "Verify this package should be a direct dependency before adding"
+          },
+          {
+            "type": "add-to-config",
+            "auto_fixable": false,
+            "description": "Add \"@expo/vector-icons\" to ignoreDependencies in fallow config",
+            "config_key": "ignoreDependencies",
+            "value": "@expo/vector-icons",
+            "value_schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json#/properties/ignoreDependencies/items"
+          }
+        ]
+      }
+    ],
+    "duplicate_exports": [],
+    "type_only_dependencies": [],
+    "test_only_dependencies": [],
+    "circular_dependencies": [],
+    "re_export_cycles": [],
+    "boundary_violations": [],
+    "boundary_coverage_violations": [],
+    "boundary_call_violations": [],
+    "policy_violations": [],
+    "stale_suppressions": [],
+    "unused_catalog_entries": [],
+    "empty_catalog_groups": [],
+    "unresolved_catalog_references": [],
+    "unused_dependency_overrides": [],
+    "misconfigured_dependency_overrides": [],
+    "_meta": {
+      "telemetry": {
+        "analysis_run_id": "run_781318a5357f18c4"
+      }
+    }
+  },
+  "website": {
+    "kind": "dead-code",
+    "schema_version": 7,
+    "version": "2.92.1",
+    "elapsed_ms": 236,
+    "total_issues": 0,
+    "entry_points": {
+      "total": 34,
+      "sources": {
+        "package.json": 3,
+        "plugin": 31
+      }
+    },
+    "summary": {
+      "total_issues": 0,
+      "unused_files": 0,
+      "unused_exports": 0,
+      "unused_types": 0,
+      "private_type_leaks": 0,
+      "unused_dependencies": 0,
+      "unused_enum_members": 0,
+      "unused_class_members": 0,
+      "unresolved_imports": 0,
+      "unlisted_dependencies": 0,
+      "duplicate_exports": 0,
+      "type_only_dependencies": 0,
+      "test_only_dependencies": 0,
+      "circular_dependencies": 0,
+      "re_export_cycles": 0,
+      "boundary_violations": 0,
+      "boundary_coverage_violations": 0,
+      "boundary_call_violations": 0,
+      "policy_violations": 0,
+      "stale_suppressions": 0,
+      "unused_catalog_entries": 0,
+      "empty_catalog_groups": 0,
+      "unresolved_catalog_references": 0,
+      "unused_dependency_overrides": 0,
+      "misconfigured_dependency_overrides": 0
+    },
+    "unused_files": [],
+    "unused_exports": [],
+    "unused_types": [],
+    "private_type_leaks": [],
+    "unused_dependencies": [],
+    "unused_dev_dependencies": [],
+    "unused_optional_dependencies": [],
+    "unused_enum_members": [],
+    "unused_class_members": [],
+    "unresolved_imports": [],
+    "unlisted_dependencies": [],
+    "duplicate_exports": [],
+    "type_only_dependencies": [],
+    "test_only_dependencies": [],
+    "circular_dependencies": [],
+    "re_export_cycles": [],
+    "boundary_violations": [],
+    "boundary_coverage_violations": [],
+    "boundary_call_violations": [],
+    "policy_violations": [],
+    "stale_suppressions": [],
+    "unused_catalog_entries": [],
+    "empty_catalog_groups": [],
+    "unresolved_catalog_references": [],
+    "unused_dependency_overrides": [],
+    "misconfigured_dependency_overrides": [],
+    "_meta": {
+      "telemetry": {
+        "analysis_run_id": "run_9ab778dfa42d5de3"
+      }
+    }
+  }
+}

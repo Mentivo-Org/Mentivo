@@ -7,6 +7,7 @@ import api from '../../services/api';
 import { MentorEndpoints, CallEndpoints } from '../../constants/endpoint';
 import { useLoading } from '../../context/LoadingContext';
 import { requestMicrophonePermission } from '../../services/permissions';
+import { chatSessionManager } from '../../services/chat/chatSessionManager';
 
 const { width, height } = Dimensions.get("window");
 
@@ -66,7 +67,7 @@ export default function MentorProfile() {
       const response = await api.post(CallEndpoints.initiate, { mentorId: mentor.id });
       
       if (response.status === 200) {
-        const { sessionId, channelName, studentToken, maxDurationSeconds, mentorPhoto } = response.data;
+        const { sessionId, channelName, studentToken, maxDurationSeconds, mentorPhoto, chatSessionId } = response.data;
         
         navigation.navigate('InCall', {
           callId: sessionId,
@@ -75,7 +76,8 @@ export default function MentorProfile() {
           role: 'caller',
           initialToken: studentToken,
           maxDuration: maxDurationSeconds,
-          mentorPhoto: mentorPhoto || mentor.photoUrl
+          mentorPhoto: mentorPhoto || mentor.photoUrl,
+          chatSessionId
         });
       }
     } catch (error: any) {
@@ -84,6 +86,24 @@ export default function MentorProfile() {
       Alert.alert('Call Error', errorMsg);
     } finally {
       setIsInitiating(false);
+      hideLoading();
+    }
+  };
+
+  const handleChat = async () => {
+    showLoading('Starting chat...');
+    try {
+      const session = await chatSessionManager.createSession(mentor.id);
+      navigation.navigate('ChatPage', {
+        partnerId: mentor.id,
+        partnerName: mentor.name,
+        sessionId: session.id
+      });
+    } catch (error: any) {
+      console.error('Failed to start chat:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to start chat. Please try again.';
+      Alert.alert('Chat Error', errorMsg);
+    } finally {
       hideLoading();
     }
   };
@@ -98,14 +118,10 @@ export default function MentorProfile() {
 
       <View style={styles.profileCard}>
         <View style={styles.topInfo}>
-          <View style={styles.avatarContainer}>
-            <Image 
-              source={mentor.photoUrl ? { uri: mentor.photoUrl } : require('../../app-assets/avatar-placeholder.svg')} 
-              style={styles.avatar} 
-            />
-            <Image source={require('../../app-assets/verified-check.svg')} style={styles.verifiedIcon} />
-            {mentor.isOnline && <View style={styles.onlineDot} />}
-          </View>
+          <AvatarContainer
+            photoUrl={mentor.photoUrl}
+            isOnline={mentor.isOnline}
+          />
           
           <View style={styles.nameSection}>
             <Text style={styles.name}>{mentor.name}</Text>
@@ -119,67 +135,122 @@ export default function MentorProfile() {
           </View>
         </View>
 
-        <View style={styles.statsRow}>
-          <TouchableOpacity style={styles.statItem} onPress={toggleFavorite}>
-            <Image 
-              source={require('../../app-assets/heart-icon.svg')} 
-              style={styles.statIcon} 
-              tintColor={isFavorite ? "#2563eb" : "#444653"}
-            />
-            <Text style={styles.statLabel}>MY FAVOURITE</Text>
-          </TouchableOpacity>
-          
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{mentor.sessions}</Text>
-            <Text style={styles.statLabel}>SESSIONS</Text>
-          </View>
-
-          <View style={styles.statItem}>
-            <View style={styles.ratingRow}>
-              <Text style={styles.statValue}>{mentor.rating}</Text>
-              <Image 
-                source={require('../../app-assets/star-icon.svg')} 
-                style={styles.starIconSmall} 
-                tintColor="#f59e0b"
-              />
-            </View>
-            <Text style={styles.statLabel}>{mentor.reviews} REVIEW</Text>
-          </View>
-        </View>
+        <StatsRow
+          isFavorite={isFavorite}
+          toggleFavorite={toggleFavorite}
+          sessions={mentor.sessions}
+          rating={mentor.rating}
+          reviews={mentor.reviews}
+        />
 
         <View style={styles.bioContainer}>
           <Text style={styles.bioText}>{mentor.bio}</Text>
         </View>
 
-        <View style={styles.actionButtons}>
-          <TouchableOpacity 
-            style={[styles.callButton, (!mentor.isOnline || isInitiating) && styles.disabledButton]} 
-            onPress={handleCallNow}
-            disabled={isInitiating}
-          >
-            {isInitiating ? (
-              <ActivityIndicator color="white" size="small" />
-            ) : (
-              <Text style={styles.callButtonText}>Call Now</Text>
-            )}
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.chatButton}>
-            <Text style={styles.chatButtonText}>Chat</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.scheduleButton}
-            onPress={() => navigation.navigate('ScheduleCall', { 
-              mentorName: mentor.name,
-              mentorId: mentor.id 
-            })}
-          >
-            <Text style={styles.scheduleButtonText}>Schedule Call</Text>
-          </TouchableOpacity>
-        </View>
+        <ActionButtons
+          isOnline={mentor.isOnline}
+          isInitiating={isInitiating}
+          onCall={handleCallNow}
+          onChat={handleChat}
+          onSchedule={() => navigation.navigate('ScheduleCall', { 
+            mentorName: mentor.name,
+            mentorId: mentor.id 
+          })}
+        />
       </View>
     </SafeAreaView>
+  );
+}
+
+interface AvatarContainerProps {
+  photoUrl: string;
+  isOnline: boolean;
+}
+
+function AvatarContainer({ photoUrl, isOnline }: AvatarContainerProps) {
+  return (
+    <View style={styles.avatarContainer}>
+      <Image 
+        source={photoUrl ? { uri: photoUrl } : require('../../app-assets/avatar-placeholder.svg')} 
+        style={styles.avatar} 
+      />
+      <Image source={require('../../app-assets/verified-check.svg')} style={styles.verifiedIcon} />
+      {isOnline && <View style={styles.onlineDot} />}
+    </View>
+  );
+}
+
+interface StatsRowProps {
+  isFavorite: boolean;
+  toggleFavorite: () => void;
+  sessions: number;
+  rating: number;
+  reviews: number;
+}
+
+function StatsRow({ isFavorite, toggleFavorite, sessions, rating, reviews }: StatsRowProps) {
+  return (
+    <View style={styles.statsRow}>
+      <TouchableOpacity style={styles.statItem} onPress={toggleFavorite}>
+        <Image 
+          source={require('../../app-assets/heart-icon.svg')} 
+          style={styles.statIcon} 
+          tintColor={isFavorite ? "#2563eb" : "#444653"}
+        />
+        <Text style={styles.statLabel}>MY FAVOURITE</Text>
+      </TouchableOpacity>
+      
+      <View style={styles.statItem}>
+        <Text style={styles.statValue}>{sessions}</Text>
+        <Text style={styles.statLabel}>SESSIONS</Text>
+      </View>
+
+      <View style={styles.statItem}>
+        <View style={styles.ratingRow}>
+          <Text style={styles.statValue}>{rating}</Text>
+          <Image 
+            source={require('../../app-assets/star-icon.svg')} 
+            style={styles.starIconSmall} 
+            tintColor="#f59e0b"
+          />
+        </View>
+        <Text style={styles.statLabel}>{reviews} REVIEW</Text>
+      </View>
+    </View>
+  );
+}
+
+interface ActionButtonsProps {
+  isOnline: boolean;
+  isInitiating: boolean;
+  onCall: () => void;
+  onChat: () => void;
+  onSchedule: () => void;
+}
+
+function ActionButtons({ isOnline, isInitiating, onCall, onChat, onSchedule }: ActionButtonsProps) {
+  return (
+    <View style={styles.actionButtons}>
+      <TouchableOpacity 
+        style={[styles.callButton, (!isOnline || isInitiating) && styles.disabledButton]} 
+        onPress={onCall}
+        disabled={isInitiating}
+      >
+        {isInitiating ? (
+          <ActivityIndicator color="white" size="small" />
+        ) : (
+          <Text style={styles.callButtonText}>Call Now</Text>
+        )}
+      </TouchableOpacity>
+      
+      <TouchableOpacity style={styles.chatButton} onPress={onChat}>
+        <Text style={styles.chatButtonText}>Chat</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.scheduleButton} onPress={onSchedule}>
+        <Text style={styles.scheduleButtonText}>Schedule Call</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 

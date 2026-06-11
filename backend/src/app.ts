@@ -9,9 +9,11 @@ import coachingRouter from './routes/coaching.ts';
 import mentorRouter from './routes/mentors.ts';
 import callsRouter from './routes/calls.ts';
 import walletRouter from './routes/wallet.ts';
+import chatRouter from './routes/chat.ts';
 import agoraRouter from './routes/agora.ts'
 import profilePictureRouter from './routes/profilePicture.ts'
 import webhookRouter from './routes/webhooks.ts';
+import chatModerationRouter from './routes/chatModeration.ts';
 import prisma from './config/db.ts';
 import { startJobs } from './jobs/index.ts';
 import { initSocket } from './config/socket.ts';
@@ -129,6 +131,8 @@ app.use('/api/coaching', coachingRouter);
 app.use('/api/mentors', mentorRouter);
 app.use('/api/calls', callsRouter);
 app.use('/api/wallet', walletRouter);
+app.use('/api/chat', chatRouter);
+app.use('/api/chat-moderation', chatModerationRouter);
 app.use('/api/profile-picture',profilePictureRouter);
 
 //Handle agora token generation

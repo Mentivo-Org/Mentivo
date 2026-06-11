@@ -37,3 +37,15 @@ export const verifyAccessToken = (token: string): TokenPayload => {
 export const verifyRefreshToken = (token: string): TokenPayload => {
   return jwt.verify(token, JWT_REFRESH_SECRET) as TokenPayload;
 };
+
+export const generateAuthTokens = async (user: { id: string; email?: string | null; phone?: string | null; role: string }) => {
+  const payload: TokenPayload = {
+    userId: user.id,
+    email: user.email || null,
+    phone: user.phone || null,
+    role: user.role,
+  };
+  const accessToken = generateAccessToken(payload);
+  const refreshToken = await generateRefreshToken(payload);
+  return { accessToken, refreshToken };
+};

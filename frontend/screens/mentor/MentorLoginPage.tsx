@@ -16,15 +16,14 @@ import api from '../../services/api';
 import { LoginEndpoints } from '../../constants/endpoint';
 import { useAuth } from '../../services/retrieveKeys';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLoading } from '../../context/LoadingContext';
+import { PasswordInput } from '../../components/PasswordInput';
 import DialogBox from '../../components/DialogBox';
 
 const MentorLoginPage = () => {
   const navigation = useNavigation<any>();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const { setIsSignedIn, setRole, requestNotificationPermissions } = useAuth();
   const {showLoading, hideLoading}  = useLoading();
 
@@ -136,28 +135,10 @@ const MentorLoginPage = () => {
                   <Text style={styles.forgotPassword}>Forgot Password?</Text>
                 </TouchableOpacity>
               </View>
-              <View style={styles.passwordContainer}>
-                <TextInput 
-                  style={styles.passwordInput} 
-                  placeholder="••••••••" 
-                  secureTextEntry={!showPassword}
-                  placeholderTextColor="rgba(68,70,83,0.5)"
-                  onChangeText={(text)=>setPassword(text)}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  spellCheck={false}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeButton}
-                >
-                  <Ionicons
-                    name={showPassword ? "eye" : "eye-off"}
-                    size={20}
-                    color="#2563eb"
-                  />
-                </TouchableOpacity>
-              </View>
+              <PasswordInput 
+                value={password}
+                onChangeText={setPassword}
+              />
             </View>
 
             <TouchableOpacity 
@@ -281,23 +262,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     color: '#0b1c30',
-  },
-  passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#c4c5d5',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  passwordInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#0b1c30',
-  },
-  eyeButton: {
-    marginLeft: 10,
   },
   forgotPassword: {
     color: '#006591',

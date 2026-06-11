@@ -10,7 +10,7 @@ export const startPromotionJob = () => {
   });
 };
 
-export const checkAndPromoteMentors = async () => {
+const checkAndPromoteMentors = async () => {
   try {
     const conditions = await prisma.mentorPromotionCondition.findMany();
     const standardCond = conditions.find(c => c.level === 'Standard');

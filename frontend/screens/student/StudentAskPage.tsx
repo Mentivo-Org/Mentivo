@@ -13,6 +13,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { useNavigation, useScrollToTop } from "@react-navigation/native";
 
+import { useTabPressRefresh } from "../../hooks/useTabPressRefresh";
+
 const { width } = Dimensions.get("window");
 
 export default function StudentAskPage() {
@@ -31,15 +33,7 @@ export default function StudentAskPage() {
     }, 1000);
   };
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('tabPress', (e: any) => {
-      if (navigation.isFocused()) {
-        handleRefresh();
-      }
-    });
-
-    return unsubscribe;
-  }, [navigation]);
+  useTabPressRefresh(navigation, handleRefresh);
 
   const questions = [
     {
