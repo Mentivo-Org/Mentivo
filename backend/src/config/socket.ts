@@ -7,7 +7,8 @@ let io: Server;
 export const initSocket = (httpServer: HttpServer) => {
   io = new Server(httpServer, {
     cors: {
-      // Mirror the same origins allowed in app.ts
+      // Mirror the same origins allowed in app.ts.
+      // React Native sends no Origin header, so !origin must be allowed.
       origin: (origin, callback) => {
         if (!origin) return callback(null, true); // mobile apps have no origin
         const allowed = [
@@ -16,9 +17,14 @@ export const initSocket = (httpServer: HttpServer) => {
           'http://localhost:3000',
           'http://localhost:3001',
         ];
-        if (allowed.includes(origin) || origin.endsWith('.mentivo.in') || process.env.NODE_ENV !== 'production') {
+        if (
+          allowed.includes(origin) ||
+          origin.endsWith('.mentivo.in') ||
+          process.env.NODE_ENV !== 'production'
+        ) {
           callback(null, true);
         } else {
+          console.warn(`[Socket] CORS rejected origin: "${origin}"`);
           callback(new Error('Not allowed by CORS'));
         }
       },
@@ -31,40 +37,97 @@ export const initSocket = (httpServer: HttpServer) => {
     pingTimeout: 20000,
     // Allow time for the initial handshake over a slow mobile connection.
     connectTimeout: 10000,
-    // Allow both transports so mobile clients behind proxies can fall back to polling.
+    // Allow both transports so mobile clients can start with polling and upgrade.
     transports: ['websocket', 'polling'],
   });
 
-  // Authentication Middleware
+  const tag = '[Socket.io]';
+
+  // ── Engine-level diagnostics (fires before auth, for every transport attempt) ──
+  io.engine.on('connection', (rawSocket: any) => {
+    console.log(
+      `${tag} New engine connection | transport: ${rawSocket.transport.name} | remoteAddress: ${rawSocket.remoteAddress}`
+    );
+
+    rawSocket.on('upgrade', () => {
+      console.log(`${tag} Transport upgraded to: ${rawSocket.transport.name}`);
+    });
+
+    rawSocket.on('close', (reason: string) => {
+      console.log(`${tag} Engine socket closed | reason: ${reason}`);
+    });
+  });
+
+  // ── Engine-level errors (CORS failures, handshake errors show here) ──
+  io.engine.on('connection_error', (err: any) => {
+    console.error(
+      `${tag} Engine connection_error | code: ${err.code} | message: ${err.message} | context: ${JSON.stringify(err.context ?? {})}`
+    );
+  });
+
+  // ── Authentication Middleware ──
   io.use((socket, next) => {
-    const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
+    const { address, headers, auth } = socket.handshake;
+    const transport = socket.conn.transport.name;
+    const origin = headers.origin ?? '(no origin — mobile client)';
+
+    console.log(
+      `${tag} Handshake received | transport: ${transport} | origin: "${origin}" | remoteAddress: ${address}`
+    );
+
+    const token =
+      auth.token || headers.authorization?.split(' ')[1];
 
     if (!token) {
+      console.error(`${tag} Auth failed — no token provided | origin: "${origin}"`);
       return next(new Error('Authentication error: No token provided'));
     }
 
     try {
-      const decoded = verifyAccessToken(token);
+      const decoded = verifyAccessToken(token as string);
       socket.data.userId = decoded.userId;
       socket.data.role = decoded.role;
+      console.log(
+        `${tag} Auth passed | userId: ${decoded.userId} | role: ${decoded.role} | transport: ${transport}`
+      );
       next();
-    } catch (err) {
+    } catch (err: any) {
+      console.error(
+        `${tag} Auth failed — invalid/expired token | reason: ${err.message} | origin: "${origin}"`
+      );
       return next(new Error('Authentication error: Invalid token'));
     }
   });
 
+  // ── Successful socket connections ──
   io.on('connection', (socket) => {
-    const userId = socket.data.userId;
-    console.log(`[Socket] User connected: ${userId} | Socket ID: ${socket.id}`);
+    const { userId, role } = socket.data;
+    const transport = socket.conn.transport.name;
+    console.log(
+      `${tag} Connected | userId: ${userId} | role: ${role} | transport: ${transport} | socketId: ${socket.id}`
+    );
 
-    // Join a private room for this user
     socket.join(userId);
 
+    socket.conn.on('upgrade', () => {
+      console.log(
+        `${tag} Upgraded | userId: ${userId} | transport: ${socket.conn.transport.name}`
+      );
+    });
+
     socket.on('disconnect', (reason) => {
-      console.log(`[Socket] User disconnected: ${userId} | Reason: ${reason}`);
+      console.log(
+        `${tag} Disconnected | userId: ${userId} | socketId: ${socket.id} | reason: ${reason}`
+      );
       socket.leave(userId);
     });
+
+    socket.on('error', (err) => {
+      console.error(`${tag} Socket error | userId: ${userId} | error: ${err.message}`);
+    });
   });
+
+  console.log(`${tag} Initialized | pingInterval: 25s | pingTimeout: 20s | transports: [websocket, polling]`);
 
   return io;
 };

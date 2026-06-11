@@ -123,6 +123,19 @@ app.get('/api/health', async (req, res) => {
     res.status(500).send('System Status: Paused');
   }
 });
+
+// Socket.io connectivity probe — call this from browser/curl to confirm
+// socket.io HTTP polling is reachable before diagnosing WS upgrade issues.
+// e.g. curl https://api.mentivo.in/api/socket-health
+app.get('/api/socket-health', (req, res) => {
+  res.json({
+    status: 'ok',
+    socketIoPath: '/socket.io/',
+    transports: ['websocket', 'polling'],
+    testUrl: `${req.protocol}://${req.get('host')}/socket.io/?EIO=4&transport=polling`,
+    message: 'If this endpoint returns 200, HTTP is reachable. To test socket.io directly, open testUrl in your browser — you should see a socket.io handshake response, NOT a 404 or connection error.',
+  });
+});
 //Handle authentication
 app.use('/api/auth', authrouter);
 //Handle coaching
