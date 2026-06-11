@@ -1,8 +1,8 @@
 import { io, Socket } from 'socket.io-client';
 import { baseUrl } from '../constants/endpoint';
 
-// Derive socket URL from baseUrl (e.g., http://ip:3000/api -> http://ip:3000)
-const socketUrl = baseUrl.replace('/api', '');
+// Explicit socket URL — avoids fragile string manipulation on the REST base URL
+const SOCKET_URL = baseUrl.replace('/api', '');
 
 class SocketManager {
   private socket: Socket | null = null;
@@ -25,11 +25,14 @@ class SocketManager {
     }
 
     this.userId = userId;
-    this.socket = io(socketUrl, {
+    this.socket = io(SOCKET_URL, {
       auth: { token },
-      transports: ['websocket'], // Force websocket for reliability in RN
+      // Allow polling as a fallback — Render's proxy handles both.
+      // socket.io will upgrade to websocket automatically once connected.
+      transports: ['polling', 'websocket'],
       reconnection: true,
-      reconnectionDelay: 1000,
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 10000,
       reconnectionAttempts: Infinity,
     });
 
@@ -80,6 +83,18 @@ class SocketManager {
    */
   emit(event: string, data: any) {
     this.socket?.emit(event, data);
+  }
+
+  /**
+   * Re-authenticate the socket with a fresh token.
+   * Call this whenever the access token is silently refreshed.
+   */
+  reconnectWithNewToken(token: string) {
+    if (this.socket) {
+      console.log('[Socket] Re-authenticating with new token');
+      this.socket.auth = { token };
+      this.socket.disconnect().connect();
+    }
   }
 
   /**

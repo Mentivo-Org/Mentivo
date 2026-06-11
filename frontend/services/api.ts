@@ -1,6 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { baseUrl, LoginEndpoints } from '../constants/endpoint';
+import { socketManager } from './socketManager';
 
 const api = axios.create({
   baseURL: baseUrl,
@@ -75,6 +76,9 @@ api.interceptors.response.use(
         // Store new tokens
         await AsyncStorage.setItem('accessToken', data.accessToken);
         await AsyncStorage.setItem('refreshToken', data.refreshToken);
+
+        // Re-authenticate the WebSocket connection with the new token
+        socketManager.reconnectWithNewToken(data.accessToken);
 
         // Update the header and retry the original request
         originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
