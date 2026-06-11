@@ -16,4 +16,29 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   }
 });
 
-export const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey)
+export const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey);
+
+/**
+ * Ensures required Supabase Storage buckets exist.
+ * Supabase returns a misleading "row-level security" error when uploading
+ * to a non-existent bucket. Call this once at server startup.
+ */
+export async function ensureStorageBuckets(): Promise<void> {
+  const buckets = [
+    { name: process.env.SUPABASE_ID_CARD_BUCKET_NAME || 'Mentivo ID-Card', isPublic: false },
+    { name: process.env.SUPABASE_PROFILE_PICTURE_BUCKET_NAME || 'Mentivo Profile-Picture', isPublic: true },
+  ];
+
+  for (const bucket of buckets) {
+    const { error } = await supabaseAdmin.storage.createBucket(bucket.name, {
+      public: bucket.isPublic,
+    });
+    if (error && !error.message.includes('already exists')) {
+      console.error(`[Storage] Failed to create bucket "${bucket.name}":`, error.message);
+    } else if (!error) {
+      console.log(`[Storage] Created bucket "${bucket.name}"`);
+    } else {
+      console.log(`[Storage] Bucket "${bucket.name}" already exists — OK`);
+    }
+  }
+}

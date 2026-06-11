@@ -17,6 +17,7 @@ import chatModerationRouter from './routes/chatModeration.ts';
 import prisma from './config/db.ts';
 import { startJobs } from './jobs/index.ts';
 import { initSocket } from './config/socket.ts';
+import { ensureStorageBuckets } from './lib/supabaseAdmin.ts';
 
 const app = express();
 const httpServer = createServer(app);
@@ -160,6 +161,11 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, async () => {
   console.log(`Mentivo API running on port ${PORT}`);
+  try {
+    await ensureStorageBuckets();
+  } catch (err) {
+    console.error('Failed to ensure storage buckets:', err);
+  }
   try {
     await startJobs();
     console.log('Background jobs started successfully');
