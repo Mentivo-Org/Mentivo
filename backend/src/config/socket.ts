@@ -58,6 +58,11 @@ export const initSocket = (httpServer: HttpServer) => {
     });
   });
 
+  io.engine.on('connect_error', (err: any) => {
+    console.error(
+      `${tag} Engine connection_error | code: ${err.code} | message: ${err.message} | context: ${JSON.stringify(err.context ?? {})}`
+    );
+  });
   // ── Engine-level errors (CORS failures, handshake errors show here) ──
   io.engine.on('connection_error', (err: any) => {
     console.error(
