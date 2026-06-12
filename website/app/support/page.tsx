@@ -32,7 +32,7 @@ Regards,
 
   return (
     <div className="min-h-screen bg-slate-50 py-16 px-6">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="bg-white rounded-[40px] border border-slate-200 shadow-xl shadow-blue-500/5 overflow-hidden">
           {/* Header */}
           <div className="bg-[#00288e] p-8 sm:p-12 text-white relative overflow-hidden">
@@ -45,7 +45,7 @@ Regards,
                 <h1 className="text-3xl sm:text-4xl font-black tracking-tight uppercase">Support & Account</h1>
               </div>
               <p className="text-blue-100 max-w-xl text-lg font-medium leading-relaxed">
-                Need to delete your Mentivo account? Follow the clear instructions below to submit your request safely and securely.
+                Need to delete your Mentivo account? Follow the instructions below to submit your request safely and securely.
               </p>
             </div>
           </div>
