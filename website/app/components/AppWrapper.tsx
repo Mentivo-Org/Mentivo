@@ -17,17 +17,18 @@ export default function AppWrapper({
   const { isReady } = useSession();
   const pathname = usePathname();
 
-  // If we're on the privacy or about page, we don't treat it as maintenance mode
+  // If we're on the privacy, about, or support page, we don't treat it as maintenance mode
   // so that Navbar and Footer are visible.
   const isPrivacyPage = pathname === "/privacy";
   const isAboutPage = pathname === "/about";
-  const isMaintenanceMode = initialMaintenanceMode && !isPrivacyPage && !isAboutPage;
+  const isSupportPage = pathname === "/support";
+  const isMaintenanceMode = initialMaintenanceMode && !isPrivacyPage && !isAboutPage && !isSupportPage;
 
   // If we're not ready (still hydrating or validating session), render nothing.
   // This prevents the "white flash" by not rendering the initial layout 
   // until we know exactly what should be on the screen.
-  // In Maintenance Mode, or on static pages like Privacy/About, we show the page immediately.
-  if (!isReady && !isMaintenanceMode && !isPrivacyPage && !isAboutPage) {
+  // In Maintenance Mode, or on static pages like Privacy/About/Support, we show the page immediately.
+  if (!isReady && !isMaintenanceMode && !isPrivacyPage && !isAboutPage && !isSupportPage) {
     return null;
   }
 

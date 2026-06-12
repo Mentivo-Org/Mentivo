@@ -8,7 +8,7 @@ const Footer = () => {
         <h2 className="text-xl font-extrabold text-[#1e3a8a] uppercase tracking-tighter mb-4">
           MENTIVO
         </h2>
-        <div className="flex justify-center gap-8 mb-6">
+        <div className="flex justify-center flex-wrap gap-x-8 gap-y-2 mb-6">
           <Link href="/" className="text-slate-500 hover:text-[#00288e] text-sm font-semibold transition-colors">
             Home
           </Link>
@@ -17,6 +17,9 @@ const Footer = () => {
           </Link>
           <Link href="https://mentivo.in/privacy" className="text-slate-500 hover:text-[#00288e] text-sm font-semibold transition-colors">
             Privacy Policy
+          </Link>
+          <Link href="/support" className="text-slate-500 hover:text-[#00288e] text-sm font-semibold transition-colors">
+            Account Deletion
           </Link>
           <a href="mailto:support@mentivo.in" className="text-slate-500 hover:text-[#00288e] text-sm font-semibold transition-colors">
             Contact
