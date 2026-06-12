@@ -32,7 +32,7 @@ export const CompleteProfileMentor = async (req: Request, res: Response) => {
       const destinationPath = `uploads/${fileName}`;
 
       const { data, error: uploadError } = await supabaseAdmin.storage
-        .from(supabaseBucketName || 'Mentivo ID-Card')
+        .from(supabaseBucketName || 'mentor-docs')
         .upload(destinationPath, file.buffer, {
           contentType: file.mimetype, // Preserves proper file rendering types
           upsert: true,
@@ -48,7 +48,7 @@ export const CompleteProfileMentor = async (req: Request, res: Response) => {
 
       // 5. Construct the asset's Public URL
       const { data: urlData } = supabaseAdmin.storage
-        .from(supabaseBucketName || 'Mentivo ID-Card')
+        .from(supabaseBucketName || 'mentor-docs')
         .getPublicUrl(destinationPath);
 
       const updateUser = await prisma.user.update({

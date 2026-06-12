@@ -4,7 +4,7 @@ import multer from "multer";
 import type { Request, Response } from "express";
 import mime from 'mime-types';
 
-const bucketName = process.env.SUPABASE_PROFILE_PICTURE_BUCKET_NAME || 'profile-pictures';
+const bucketName = process.env.SUPABASE_PROFILE_PICTURE_BUCKET_NAME || 'mentivo-profile-pictures';
 
 const storage = multer.memoryStorage();
 const upload = multer({ 
