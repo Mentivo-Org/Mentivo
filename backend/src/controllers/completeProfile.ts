@@ -39,6 +39,7 @@ export const CompleteProfileMentor = async (req: Request, res: Response) => {
         });
 
       if (uploadError) {
+        console.error(uploadError);
         return res.status(500).json({
           error: 'Upload Error',
           message: uploadError.message,
