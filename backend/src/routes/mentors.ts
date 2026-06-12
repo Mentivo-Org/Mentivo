@@ -63,6 +63,8 @@ router.get('/paginated', authenticateUser, async (req: Request, res: Response) =
     const offset = parseInt(req.query.offset as string) || 0;
     const limit = parseInt(req.query.limit as string) || 10;
     const onlineOnly = req.query.onlineOnly === 'true';
+    const sortBy = (req.query.sortBy as string) || 'rating';
+    const level = req.query.level as string;
 
     let whereClause: any = {};
     
@@ -71,12 +73,19 @@ router.get('/paginated', authenticateUser, async (req: Request, res: Response) =
       whereClause.mentorId = { in: availableIds };
     }
 
+    if (level && level !== 'All' && level !== 'Online') {
+      whereClause.mentorlevel = level;
+    }
+
+    let orderBy: any = { avg_rating: 'desc' };
+    if (sortBy === 'calls') {
+      orderBy = { total_calls: 'desc' };
+    }
+
     const mentors = await prisma.mentorProfile.findMany({
       where: whereClause,
       include: mentorInclude,
-      orderBy: {
-        avg_rating: 'desc'
-      },
+      orderBy: orderBy,
       skip: offset,
       take: limit,
     });
@@ -93,17 +102,21 @@ router.get('/online/paginated', authenticateUser, async (req: Request, res: Resp
   try {
     const offset = parseInt(req.query.offset as string) || 0;
     const limit = parseInt(req.query.limit as string) || 10;
+    const sortBy = (req.query.sortBy as string) || 'rating';
 
     const availableIds = await getAvailableMentors();
+
+    let orderBy: any = { avg_rating: 'desc' };
+    if (sortBy === 'calls') {
+      orderBy = { total_calls: 'desc' };
+    }
 
     const mentors = await prisma.mentorProfile.findMany({
       where: { 
         mentorId: { in: availableIds },
       },
       include: mentorInclude,
-      orderBy: {
-        avg_rating: 'desc'
-      },
+      orderBy: orderBy,
       skip: offset,
       take: limit,
     });

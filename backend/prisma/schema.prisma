@@ -9,6 +9,9 @@ datasource db {
 enum UserRole {
   student
   mentor
+  coaching_partner
+  telegram_partner
+  other_partner
 }
 
 enum MentorLevel {
@@ -16,6 +19,12 @@ enum MentorLevel {
   Standard
   Signature
   Fellow
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
 }
 
 model User {
@@ -38,6 +47,17 @@ model User {
   wallet         Wallet?
   mentorBalance  MentorBalance?
   coachingCenter CoachingCenter? @relation(fields: [coachingCenterId], references: [id])
+  partnerBalance PartnerBalance?
+
+  // Partner / Referral system fields
+  referralCode           String?   @unique
+  referredByReferralCode String?
+  commissionMethod       String?   // 'per_signup' or 'percent_revenue'
+  commissionValue        Decimal?  @db.Decimal(10, 2)
+  createdBy              String?   // Email of admin who created it
+
+  referredBy             User?     @relation("UserReferrals", fields: [referredByReferralCode], references: [referralCode])
+  referredUsers          User[]    @relation("UserReferrals")
   
   callSessionsStudent CallSession[] @relation("StudentCalls")
   callSessionsMentor  CallSession[] @relation("MentorCalls")
@@ -52,6 +72,8 @@ model User {
   chatSessionsStudent ChatSession[] @relation("StudentChatSessions")
   chatSessionsMentor  ChatSession[] @relation("MentorChatSessions")
   chatMessages        ChatMessage[]
+  questions           Question[]
+  answers             Answer[]
 
   @@map("users")
 }
@@ -109,7 +131,7 @@ model MentorProfile {
   iit_name       String
   branch         String?
   year           Int?
-  verified       Boolean     @default(false)
+  verificationStatus VerificationStatus @default(PENDING)
   mentorlevel    MentorLevel @default(Verified)
   verified_by    String?
   verified_at    DateTime?
@@ -333,4 +355,71 @@ model EmailLog {
   sent_at        DateTime @default(now())
 
   @@map("email_logs")
+}
+
+model Question {
+  id               String   @id @default(uuid()) @db.Uuid
+  studentId        String   @db.Uuid
+  text             String   @db.Text
+  isDeleted        Boolean  @default(false) @map("is_deleted")
+  coachingCenterId String?  @db.Uuid @map("coaching_center_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  student          User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers          Answer[]
+
+  @@map("questions")
+}
+
+model Answer {
+  id         String   @id @default(uuid()) @db.Uuid
+  questionId String   @db.Uuid
+  mentorId   String   @db.Uuid
+  text       String   @db.Text
+  upvotes    Int      @default(0)
+  downvotes  Int      @default(0)
+  isDeleted  Boolean  @default(false) @map("is_deleted")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  mentor     User     @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  votes      AnswerVote[]
+
+  @@unique([questionId, mentorId])
+  @@map("answers")
+}
+
+model AnswerVote {
+  id        String   @id @default(uuid()) @db.Uuid
+  answerId  String   @db.Uuid
+  userId    String   @db.Uuid
+  voteType  String   
+  createdAt DateTime @default(now()) @map("created_at")
+
+  answer    Answer   @relation(fields: [answerId], references: [id], onDelete: Cascade)
+
+  @@unique([answerId, userId])
+  @@map("answer_votes")
+}
+
+model AskConfig {
+  id                     String   @id @default("default")
+  maxQuestionsPerPeriod  Int      @default(5)
+  periodHours            Int      @default(24)
+  maxQuestionWords       Int?     
+
+  @@map("ask_configs")
+}
+
+model PartnerBalance {
+  partnerId      String    @id @db.Uuid
+  pendingPayout  Decimal   @default(0) @db.Decimal(10, 2)
+  totalEarned    Decimal   @default(0) @db.Decimal(10, 2)
+  totalWithdrawn Decimal   @default(0) @db.Decimal(10, 2)
+
+  user           User      @relation(fields: [partnerId], references: [id])
+
+  @@map("partner_balances")
 }

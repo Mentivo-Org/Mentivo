@@ -67,25 +67,24 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     maxWidth: '80%',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
+    shadowOpacity: 0.25,
+    shadowRadius: 1.75,
     elevation: 2,
   },
   senderBubble: {
-    backgroundColor: '#2563eb',
-    borderTopRightRadius: 0,
+    backgroundColor: 'white',
+    shadowOffset: { width: 4, height: 4 },
   },
   receiverBubble: {
     backgroundColor: 'white',
-    borderTopLeftRadius: 0,
+    shadowOffset: { width: -4, height: 4 },
   },
   content: {
     fontSize: 16,
     lineHeight: 22,
   },
   senderText: {
-    color: 'white',
+    color: '#444653',
   },
   receiverText: {
     color: '#444653',

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -9,12 +9,63 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '../services/api';
+import { useLoading } from '../context/LoadingContext';
+import DialogBox from '../components/DialogBox';
 
 const { width } = Dimensions.get('window');
 
 const LandingPage = () => {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const { showLoading, hideLoading } = useLoading();
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertData, setAlertData] = useState({ title: '', message: '' });
+  const [onCloseCallback, setOnCloseCallback] = useState<(() => void) | null>(null);
+
+  useEffect(() => {
+    const validateReferral = async () => {
+      const { referral_id } = route.params ?? {};
+      if (referral_id) {
+        showLoading("Verifying referral code...");
+        try {
+          const response = await api.post('/partners/validate', { code: referral_id });
+          hideLoading();
+          if (response.data.valid) {
+            await AsyncStorage.setItem('referredByCode', referral_id);
+            setAlertData({
+              title: "Success",
+              message: "Referral code applied successfully, please login"
+            });
+            setOnCloseCallback(() => () => {
+              navigation.navigate("RoleSelection");
+            });
+            setAlertVisible(true);
+          } else {
+            setAlertData({
+              title: "Invalid Referral",
+              message: "The referral code is invalid."
+            });
+            setOnCloseCallback(null);
+            setAlertVisible(true);
+          }
+        } catch (err: any) {
+          hideLoading();
+          const errMsg = err.response?.data?.error || "The referral code is invalid.";
+          setAlertData({
+            title: "Invalid Referral",
+            message: errMsg
+          });
+          setOnCloseCallback(null);
+          setAlertVisible(true);
+        }
+      }
+    };
+
+    validateReferral();
+  }, [route.params]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -235,6 +286,15 @@ const LandingPage = () => {
         <View style={{ height: 40 }} />
 
       </ScrollView>
+      <DialogBox
+        visible={alertVisible}
+        title={alertData.title}
+        message={alertData.message}
+        onClose={() => {
+          setAlertVisible(false);
+          if (onCloseCallback) onCloseCallback();
+        }}
+      />
     </SafeAreaView>
   );
 };

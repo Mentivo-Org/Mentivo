@@ -1,4 +1,4 @@
-import { PermissionsAndroid, Platform, Alert } from 'react-native';
+import { PermissionsAndroid, Platform } from 'react-native';
 
 /**
  * Requests microphone permissions for Android and iOS contextually.
@@ -22,10 +22,6 @@ export const requestMicrophonePermission = async (): Promise<boolean> => {
         return true;
       } else {
         console.warn('Microphone permission denied');
-        Alert.alert(
-          'Permission Denied',
-          'Microphone access is required for voice calls. Please enable it in your device settings.'
-        );
         return false;
       }
     } catch (err) {

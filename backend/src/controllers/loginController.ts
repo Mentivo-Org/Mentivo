@@ -95,9 +95,30 @@ const upsertPrismaUser = async (
   name: string,
   phone: string | undefined,
   role: string | undefined,
-  sbUserId: string
+  sbUserId: string,
+  referredByReferralCode?: string
 ) => {
   try {
+    let coachingCenterId: string | null = null;
+    let validReferralCode: string | null = null;
+
+    if (referredByReferralCode) {
+      const partner = await prisma.user.findFirst({
+        where: {
+          referralCode: referredByReferralCode,
+          role: {
+            in: ["coaching_partner", "telegram_partner", "other_partner"]
+          }
+        }
+      });
+      if (partner) {
+        validReferralCode = partner.referralCode;
+        if (partner.role === "coaching_partner" && partner.coachingCenterId) {
+          coachingCenterId = partner.coachingCenterId;
+        }
+      }
+    }
+
     return await prisma.user.upsert({
       where: { email },
       update: {}, // Don't overwrite if somehow already exists
@@ -108,6 +129,8 @@ const upsertPrismaUser = async (
         role: role || "student",
         isEmailVerified: false,
         authProvider: "email",
+        referredByReferralCode: validReferralCode,
+        coachingCenterId: coachingCenterId,
       },
     });
   } catch (dbError) {
@@ -121,7 +144,7 @@ const upsertPrismaUser = async (
 };
 
 export const signUpWithEmail = async (req: Request, res: Response) => {
-  const { email, password, name, role, phone } = req.body;
+  const { email, password, name, role, phone, referredByReferralCode } = req.body;
 
   if (!email || !password)
     return res.status(400).json({ error: "Email and password are required" });
@@ -169,7 +192,7 @@ export const signUpWithEmail = async (req: Request, res: Response) => {
   }
 
   try {
-    await upsertPrismaUser(email, name, phone, role, sbData.user.id);
+    await upsertPrismaUser(email, name, phone, role, sbData.user.id, referredByReferralCode);
   } catch (dbError) {
     return res.status(500).json({ error: "Signup failed. Please try again." });
   }

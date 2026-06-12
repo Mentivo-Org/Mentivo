@@ -33,14 +33,9 @@ export default function StudentLoginPage() {
     setError('');
 
     try {
-      const { data } = await api.post(AuthEndpoints.login, { email, password });
+      const { data } = await api.post('/partners/login', { email, password });
       setAuth(data.user);
-      
-      if (data.user.role === 'mentor') {
-        router.push('/mentor/home');
-      } else {
-        router.push('/student/home');
-      }
+      router.push('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed. Please check your credentials.');
     } finally {

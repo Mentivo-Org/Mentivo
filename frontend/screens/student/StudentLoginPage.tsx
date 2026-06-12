@@ -5,12 +5,13 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import api from '../../services/api';
-import { LoginEndpoints } from '../../constants/endpoint';
+import { LoginEndpoints, PartnerEndpoints } from '../../constants/endpoint';
 import { useAuth } from '../../services/retrieveKeys';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLoading } from '../../context/LoadingContext';
@@ -213,7 +214,7 @@ const StudentLoginPage = () => {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('StudentSignUp')}>
+          <TouchableOpacity onPress={() => navigation.navigate('StudentSignUp', { referral_id })}>
             <Text style={styles.signUpText}>Sign Up</Text>
           </TouchableOpacity>
         </View>

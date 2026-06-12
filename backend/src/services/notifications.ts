@@ -155,3 +155,41 @@ export async function sendChatPushNotification(fcmTokens: string[], data: { sess
   }
 }
 
+export async function sendAnswerAlert(studentId: string, mentorName: string, questionId: string) {
+  // Create database notification first
+  try {
+    const prisma = (await import('../config/db.ts')).default;
+    await prisma.notification.create({
+      data: {
+        userId: studentId,
+        title: 'New Answer! 💡',
+        body: `${mentorName} answered your question. Tap to view.`,
+      },
+    });
+
+    const tokens = await prisma.fCMToken.findMany({
+      where: { userId: studentId },
+    });
+    const fcmTokens = tokens.map((t) => t.token);
+
+    if (admin.apps.length && fcmTokens.length > 0) {
+      await admin.messaging().sendEachForMulticast({
+        tokens: fcmTokens,
+        notification: {
+          title: 'New Answer! 💡',
+          body: `${mentorName} answered your question. Tap to view.`,
+        },
+        data: {
+          type: 'question_answered',
+          questionId,
+        },
+        android: {
+          priority: 'high',
+        },
+      });
+    }
+  } catch (error) {
+    console.error('Failed to send answer push notification:', error);
+  }
+}
+

@@ -127,7 +127,8 @@ const ChatListPage = () => {
         onPress={() => navigation.navigate('ChatPage', { 
           partnerId: partner.id, 
           partnerName: partner.name,
-          sessionId: session.id 
+          sessionId: session.id,
+          partnerPhotoUrl: partner.photo_url || null
         })}
         style={styles.recentItem}
         activeOpacity={0.7}

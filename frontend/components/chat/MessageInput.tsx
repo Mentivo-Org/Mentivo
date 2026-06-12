@@ -6,11 +6,24 @@ interface MessageInputProps {
   value: string;
   onChangeText: (text: string) => void;
   onSend: () => void;
+  isKeyboardVisible?: boolean;
+  bottomOffset?: number;
 }
 
-const MessageInput: React.FC<MessageInputProps> = ({ value, onChangeText, onSend }) => {
+const MessageInput: React.FC<MessageInputProps> = ({ 
+  value, 
+  onChangeText, 
+  onSend,
+  isKeyboardVisible,
+  bottomOffset = 0
+}) => {
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container,
+      {
+        paddingBottom: isKeyboardVisible ? 8 : (bottomOffset > 0 ? bottomOffset : 12)
+      }
+    ]}>
       <View style={styles.inputWrapper}>
         <TextInput
           placeholder="TAP A MESSAGE"
@@ -41,7 +54,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingBottom: 24,
     gap: 8,
   },
   inputWrapper: {

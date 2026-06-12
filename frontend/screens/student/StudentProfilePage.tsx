@@ -8,11 +8,11 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
-  Alert,
   Modal,
   TextInput
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import DialogBox from '../../components/DialogBox';
 import { Image } from 'expo-image';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import api from '../../services/api';
@@ -28,6 +28,9 @@ export default function StudentProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [userData, setUserData] = useState<any>(null);
+
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertData, setAlertData] = useState({ title: '', message: '' });
   
   // Image Viewer State
   const [isViewerVisible, setIsViewerVisible] = useState(false);
@@ -99,7 +102,8 @@ export default function StudentProfilePage() {
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'We need camera roll permissions to change your profile picture.');
+      setAlertData({ title: 'Permission Denied', message: 'We need camera roll permissions to change your profile picture.' });
+      setAlertVisible(true);
       return;
     }
 
@@ -136,12 +140,14 @@ export default function StudentProfilePage() {
         const updatedUser = { ...userData, photo_url: newPhotoUrl };
         setUserData(updatedUser);
         await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
-        Alert.alert('Success', 'Profile picture updated successfully');
+        setAlertData({ title: 'Success', message: 'Profile picture updated successfully' });
+        setAlertVisible(true);
         fetchData(true);
       }
     } catch (error) {
       console.error('Image upload failed:', error);
-      Alert.alert('Error', 'Failed to upload profile picture');
+      setAlertData({ title: 'Error', message: 'Failed to upload profile picture' });
+      setAlertVisible(true);
     } finally {
       setUploading(false);
     }
@@ -158,12 +164,14 @@ export default function StudentProfilePage() {
         const updatedUser = response.data.user;
         setUserData(updatedUser);
         await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
-        Alert.alert('Success', `${field.charAt(0).toUpperCase() + field.slice(1)} updated successfully`);
+        setAlertData({ title: 'Success', message: `${field.charAt(0).toUpperCase() + field.slice(1)} updated successfully` });
+        setAlertVisible(true);
         setIsEditing(false);
       }
     } catch (error) {
       console.error(`Failed to update ${field}:`, error);
-      Alert.alert('Error', `Failed to update ${field}`);
+      setAlertData({ title: 'Error', message: `Failed to update ${field}` });
+      setAlertVisible(true);
     } finally {
       setSaving(false);
     }
@@ -371,6 +379,12 @@ export default function StudentProfilePage() {
           </View>
         </View>
       </Modal>
+      <DialogBox
+        visible={alertVisible}
+        title={alertData.title}
+        message={alertData.message}
+        onClose={() => setAlertVisible(false)}
+      />
     </SafeAreaView>
   );
 }

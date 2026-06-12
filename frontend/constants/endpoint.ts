@@ -38,6 +38,7 @@ export const MentorEndpoints = {
     getMeStats: `${baseUrl}/mentors/me/stats`,
     getPromotionConditions: `${baseUrl}/mentors/promotion-conditions`,
     updateProfile: `${baseUrl}/mentors/me/profile`,
+    reapply: `${baseUrl}/mentors/me/reapply`,
 }
 
 export const WalletEndpoints = {
@@ -79,4 +80,16 @@ export const ChatEndpoints = {
     getToken: `${baseUrl}/chat/token`,
     markRead: (sessionId: string) => `${baseUrl}/chat/sessions/${sessionId}/read`,
     linkCall: (sessionId: string) => `${baseUrl}/chat/sessions/${sessionId}/link-call`,
+}
+
+export const AskEndpoints = {
+    config: `${baseUrl}/ask/config`,
+    questions: `${baseUrl}/ask/questions`,
+    questionById: (id: string) => `${baseUrl}/ask/questions/${id}`,
+    postAnswer: (questionId: string) => `${baseUrl}/ask/questions/${questionId}/answers`,
+    voteAnswer: (answerId: string) => `${baseUrl}/ask/answers/${answerId}/vote`,
+}
+
+export const PartnerEndpoints = {
+    validate: `${baseUrl}/partners/validate`
 }

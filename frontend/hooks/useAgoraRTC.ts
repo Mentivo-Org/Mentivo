@@ -1,6 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
 import { joinChannel, leaveChannel, getAgoraEngine, setSpeakerphoneOn } from '../services/agora';
 import api from '../services/api';
 import { socketManager } from '../services/socketManager';
@@ -23,6 +22,7 @@ interface UseAgoraRTCOptions {
   onPartnerResolved: (partnerId: string, partnerName: string) => void;
   onChatSessionResolved: (sessionId: string) => void;
   onNavigateHome: () => void;
+  onShowAlert?: (title: string, message: string, onClose?: () => void) => void;
 }
 
 export function useAgoraRTC({
@@ -37,6 +37,7 @@ export function useAgoraRTC({
   onPartnerResolved,
   onChatSessionResolved,
   onNavigateHome,
+  onShowAlert,
 }: UseAgoraRTCOptions) {
   const [callStatus, setCallStatus] = useState<CallStatus>(role === 'caller' ? 'calling' : 'active');
   const [duration, setDuration] = useState(0);
@@ -150,7 +151,7 @@ export function useAgoraRTC({
 
     engine.addListener('onError', (err: any, msg: string) => {
       console.error('[Agora] Error:', err, msg);
-      Alert.alert('Call Error', 'An error occurred during the call.');
+      onShowAlert?.('Call Error', 'An error occurred during the call.');
       handleEndCallRef.current?.(true);
     });
   };
@@ -183,6 +184,7 @@ export function useAgoraRTC({
       try {
         const hasPermission = await requestMicrophonePermission();
         if (!hasPermission) {
+          onShowAlert?.('Permission Denied', 'Microphone access is required for voice calls. Please enable it in your device settings.');
           handleEndCallRef.current?.(true);
           return;
         }
@@ -195,15 +197,13 @@ export function useAgoraRTC({
 
           const currentCallStatus = statusRes.data.status;
           if (!['calling', 'ringing', 'active'].includes(currentCallStatus)) {
-            Alert.alert('Call Ended', 'This call is no longer active.');
-            onNavigateHome();
+            onShowAlert?.('Call Ended', 'This call is no longer active.', onNavigateHome);
             return;
           }
         } catch (e) {
           if (isEndingCallRef.current) return;
           console.error('Failed to verify call status:', e);
-          Alert.alert('Error', 'Could not verify call status.');
-          onNavigateHome();
+          onShowAlert?.('Error', 'Could not verify call status.', onNavigateHome);
           return;
         }
 
@@ -241,8 +241,7 @@ export function useAgoraRTC({
       } catch (error) {
         if (isEndingCallRef.current) return;
         console.error('Failed to start call:', error);
-        Alert.alert('Error', 'Failed to join the call.');
-        onNavigateHome();
+        onShowAlert?.('Error', 'Failed to join the call.', onNavigateHome);
       }
     };
 

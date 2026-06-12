@@ -1,25 +1,37 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 
-const QUICK_REPLIES = ['Schedule', 'Update', 'Doubt', 'Thanks!', 'Got it'];
+const QUICK_REPLIES = [
+  { text: 'Schedule', bg: '#a4bdf5', color: '#163b8c' },
+  { text: 'Update', bg: '#a4f5ba', color: '#168c30' },
+  { text: 'Doubt', bg: '#f5e2a4', color: '#8c6a16' },
+  { text: 'Thanks!', bg: '#f5a4ac', color: '#8c164f' },
+  { text: 'Got it', bg: '#a4bdf5', color: '#163b8c' }
+];
 
 interface QuickRepliesProps {
   onReply: (text: string) => void;
+  bottomOffset?: number;
 }
 
-const QuickReplies: React.FC<QuickRepliesProps> = ({ onReply }) => {
+const QuickReplies: React.FC<QuickRepliesProps> = ({ onReply, bottomOffset = 0 }) => {
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container,
+      {
+        marginBottom: bottomOffset > 0 ? bottomOffset : 8
+      }
+    ]}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={styles.scrollContent}>
           {QUICK_REPLIES.map((reply) => (
             <TouchableOpacity
-              key={reply}
-              onPress={() => onReply(reply)}
-              style={styles.replyButton}
+              key={reply.text}
+              onPress={() => onReply(reply.text)}
+              style={[styles.replyButton, { backgroundColor: reply.bg }]}
               activeOpacity={0.7}
             >
-              <Text style={styles.replyText}>{reply}</Text>
+              <Text style={[styles.replyText, { color: reply.color }]}>{reply.text}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -46,14 +58,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   replyButton: {
-    backgroundColor: '#f0f0f0',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
   },
   replyText: {
     fontSize: 12,
-    color: '#444653',
     fontWeight: '500',
   },
 });

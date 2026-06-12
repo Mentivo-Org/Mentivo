@@ -133,7 +133,7 @@ router.get('/profile/:id/stats', async (req, res) => {
     }
 
     if (callsCount > 0) {
-      stats.calls = { exists: true, count: callsCount, label: `Call Sessions (${callsCount})` };
+      stats.calls = { exists: false, count: callsCount, label: `Call Sessions (${callsCount}) [PRESERVED]` };
     }
 
     if (ratingsCount > 0) {
@@ -235,14 +235,7 @@ router.post('/delete', async (req, res) => {
         }
       }
 
-      // Calls
-      if (opts.calls) {
-        if (role === 'student') {
-          await tx.callSession.deleteMany({ where: { student_id: id } });
-        } else {
-          await tx.callSession.deleteMany({ where: { mentor_id: id } });
-        }
-      }
+      // Call sessions are preserved for audit purposes and cannot be deleted.
 
       // Wallet / Transactions
       if (opts.wallet) {
@@ -261,6 +254,14 @@ router.post('/delete', async (req, res) => {
 
       // Core system sessions, tokens, and notifications (always clean up if user profile is being removed)
       if (opts.profile) {
+        // Double check call session constraint to prevent orphaned foreign keys and keep audit trials
+        const callsCount = await tx.callSession.count({
+          where: role === 'student' ? { student_id: id } : { mentor_id: id },
+        });
+        if (callsCount > 0) {
+          throw new Error('Cannot delete user profile because they have call session records which must be preserved for financial and audit logs.');
+        }
+
         await tx.fCMToken.deleteMany({ where: { userId: id } });
         await tx.refreshToken.deleteMany({ where: { userId: id } });
         await tx.notification.deleteMany({ where: { userId: id } });

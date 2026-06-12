@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import prisma from '../config/db.ts';
 import { authenticateAdmin } from '../middleware/auth.ts';
+import admin from '../config/firebase.ts';
 
 const router = Router();
 
@@ -40,15 +41,32 @@ router.put('/:id', async (req, res) => {
   res.json(updatedStudent);
 });
 
-// Delete student
+// Delete student — removes from both Prisma DB and Firebase Auth
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
 
-  await prisma.user.delete({
-    where: { id },
-  });
+  // Fetch the user's email before deleting so we can look up Firebase UID
+  const user = await prisma.user.findUnique({ where: { id }, select: { email: true } });
+
+  // 1. Delete from Firebase Auth (non-fatal if user doesn't exist there)
+  if (user?.email) {
+    try {
+      const firebaseUser = await admin.auth().getUserByEmail(user.email);
+      await admin.auth().deleteUser(firebaseUser.uid);
+      console.log(`[Admin] Deleted Firebase Auth user: ${user.email}`);
+    } catch (authErr: any) {
+      // auth/user-not-found is fine — just means they signed up via a method
+      // that didn't create a Firebase Auth entry (e.g. email/password via backend only)
+      if (authErr.code !== 'auth/user-not-found') {
+        console.error(`[Admin] Failed to delete Firebase Auth for ${user.email}:`, authErr.message);
+      }
+    }
+  }
+
+  // 2. Delete from database
+  await prisma.user.delete({ where: { id } });
 
   res.json({ message: 'Student deleted successfully.' });
 });
 
-export default router;
+export default router;

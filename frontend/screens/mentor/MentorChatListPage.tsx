@@ -95,7 +95,8 @@ const MentorChatListPage = () => {
           navigation.navigate('ChatPage', {
             partnerId: student.id,
             partnerName: student.name,
-            sessionId: session.id
+            sessionId: session.id,
+            partnerPhotoUrl: student.photo_url || null
           });
         } catch (error) {
           console.error('Failed to open favorite student chat:', error);
@@ -130,7 +131,8 @@ const MentorChatListPage = () => {
         onPress={() => navigation.navigate('ChatPage', { 
           partnerId: partner.id, 
           partnerName: partner.name,
-          sessionId: session.id 
+          sessionId: session.id,
+          partnerPhotoUrl: partner.photo_url || null
         })}
         style={styles.recentItem}
         activeOpacity={0.7}

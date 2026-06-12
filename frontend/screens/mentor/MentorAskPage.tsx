@@ -1,162 +1,387 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TextInput,
   TouchableOpacity,
   Dimensions,
   RefreshControl,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Image } from "expo-image";
-import { useNavigation, useScrollToTop } from "@react-navigation/native";
-
-import { useTabPressRefresh } from "../../hooks/useTabPressRefresh";
-
-const { width } = Dimensions.get("window");
+import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Ionicons from "@react-native-vector-icons/ionicons";
+import api from "../../services/api";
+import { AskEndpoints } from "../../constants/endpoint";
+import DialogBox from "../../components/DialogBox";
 
 export default function MentorAskPage() {
   const navigation = useNavigation<any>();
+  const [userId, setUserId] = useState<string>("");
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<"unanswered" | "popular">("unanswered");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertData, setAlertData] = useState({ title: '', message: '' });
+  const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [answeringId, setAnsweringId] = useState<string | null>(null);
-  const [answerText, setAnswerText] = useState("");
-  
-  const scrollViewRef = useRef<ScrollView>(null);
-  useScrollToTop(scrollViewRef);
+  const [isMoreLoading, setIsMoreLoading] = useState(false);
+
+  // In-line reply states
+  const [replyTextMap, setReplyTextMap] = useState<{ [key: string]: string }>({});
+  const [submittingMap, setSubmittingMap] = useState<{ [key: string]: boolean }>({});
+
+  useEffect(() => {
+    const getUserId = async () => {
+      try {
+        const userStr = await AsyncStorage.getItem("user");
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          setUserId(user.id || user.uid || "");
+        }
+      } catch (err) {
+        console.error("Error loading user info:", err);
+      }
+    };
+    getUserId();
+  }, []);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Fetch Questions based on Active Tab
+  const fetchQuestions = async (pageNum: number, search: string, refresh = false) => {
+    if (pageNum === 1) {
+      if (refresh) setIsRefreshing(true);
+      else setIsLoading(true);
+    } else {
+      setIsMoreLoading(true);
+    }
+
+    try {
+      const res = await api.get(AskEndpoints.questions, {
+        params: {
+          sort: activeTab,
+          search: search,
+          page: pageNum,
+          limit: 10,
+        },
+      });
+
+      if (res.status === 200) {
+        const fetchedQuestions = res.data.questions || [];
+        setTotalPages(res.data.pagination?.totalPages || 1);
+        if (pageNum === 1) {
+          setQuestions(fetchedQuestions);
+        } else {
+          setQuestions((prev) => [...prev, ...fetchedQuestions]);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching questions for mentor:", err);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+      setIsMoreLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setPage(1);
+    fetchQuestions(1, debouncedSearch);
+  }, [activeTab, debouncedSearch]);
 
   const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 1000);
+    setPage(1);
+    fetchQuestions(1, searchQuery, true);
   };
 
-  useTabPressRefresh(navigation, handleRefresh);
-
-  const questions = [
-    {
-      id: "1",
-      user: "Hera",
-      text: "What is he best way to solve calculus problem.",
-      time: "3h",
-      hearts: "012",
-      hasAnswered: false,
-    },
-    {
-      id: "2",
-      user: "Anonymous",
-      text: "What is he best way to solve calculus problem.",
-      time: "4m",
-      hearts: "012",
-      hasAnswered: false,
-    },
-    {
-      id: "3",
-      user: "Bobby",
-      text: "What is he best way to solve calculus problem.",
-      time: "5d",
-      hearts: "012",
-      hasAnswered: true,
-      answer: "The solution could be found by practicing regularly...",
-    },
-  ];
-
-  const handleAnswerSubmit = (id: string) => {
-    // In a real app, send answerText to backend
-    setAnsweringId(null);
-    setAnswerText("");
+  const handleLoadMore = () => {
+    if (page < totalPages && !isMoreLoading) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchQuestions(nextPage, searchQuery);
+    }
   };
 
-  const renderQuestion = (question: any) => (
-    <View key={question.id} style={styles.questionCard}>
-      <View style={styles.questionHeader}>
-        <View style={styles.avatarPlaceholder} />
-        <View style={styles.questionMainContent}>
-          <View style={styles.questionUserRow}>
-            <Text style={styles.userName}>{question.user}</Text>
-            <Text style={styles.timeText}>{question.time}</Text>
+  // Submit reply
+  const handleSubmitReply = async (questionId: string) => {
+    const text = replyTextMap[questionId];
+    if (!text || !text.trim()) return;
+
+    setSubmittingMap((prev) => ({ ...prev, [questionId]: true }));
+    try {
+      const res = await api.post(AskEndpoints.postAnswer(questionId), { text });
+      if (res.status === 201 || res.status === 200) {
+        // Clear input
+        setReplyTextMap((prev) => {
+          const updated = { ...prev };
+          delete updated[questionId];
+          return updated;
+        });
+
+        // If in unanswered tab, remove this question from list
+        if (activeTab === "unanswered") {
+          setQuestions((prev) => prev.filter((q) => q.id !== questionId));
+        } else {
+          // If in popular, refresh to load updated replies list
+          handleRefresh();
+        }
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.error || "Failed to submit answer.";
+      setAlertData({ title: "Error", message: msg });
+      setAlertVisible(true);
+    } finally {
+      setSubmittingMap((prev) => ({ ...prev, [questionId]: false }));
+    }
+  };
+
+  const handleVote = async (answerId: string, voteType: "UP" | "DOWN") => {
+    try {
+      const res = await api.post(AskEndpoints.voteAnswer(answerId), { voteType });
+      if (res.status === 200) {
+        const updatedAnswer = res.data;
+        setQuestions((prev) =>
+          prev.map((q) => {
+            const updatedAnswers = q.answers.map((a: any) =>
+              a.id === answerId ? { ...a, upvotes: updatedAnswer.upvotes, downvotes: updatedAnswer.downvotes } : a
+            );
+            return { ...q, answers: updatedAnswers };
+          })
+        );
+      }
+    } catch (err) {
+      console.error("Failed to vote:", err);
+    }
+  };
+
+  const getRelativeDay = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays <= 1) return "Today";
+    if (diffDays === 2) return "Yesterday";
+    return `${diffDays} days ago`;
+  };
+
+  const renderQuestionItem = ({ item }: { item: any }) => {
+    const topAnswer = item.answers && item.answers.length > 0 ? item.answers[0] : null;
+    const hasAlreadyAnswered = item.answers?.some((a: any) => a.mentorId === userId);
+
+    return (
+      <View style={styles.questionCard}>
+        {/* Question Header */}
+        <View style={styles.questionHeader}>
+          <View style={styles.avatarPlaceholder}>
+            <Ionicons name="person" size={16} color="#444653" />
           </View>
-          <Text style={styles.questionText}>{question.text}</Text>
+          <View style={styles.questionMainContent}>
+            <View style={styles.questionUserRow}>
+              <Text style={styles.userName}>{item.student?.name || "Student"}</Text>
+              <Text style={styles.dayText}>{getRelativeDay(item.createdAt)}</Text>
+            </View>
+            <Text style={styles.questionText}>{item.text}</Text>
+          </View>
         </View>
+
+        {/* Answers Container - Reddit Style */}
+        {activeTab === "popular" && topAnswer && (
+          <View style={styles.answersContainer}>
+            <View style={styles.answerCard}>
+              <View style={styles.answerHeader}>
+                <View style={styles.avatarPlaceholderSmall}>
+                  <Ionicons name="school" size={12} color="#2563eb" />
+                </View>
+                <Text style={styles.mentorName}>
+                  {topAnswer.mentor?.name || "Verified Mentor"} (
+                  {topAnswer.mentor?.mentorProfile?.iit_name || "IIT"})
+                </Text>
+              </View>
+              <Text style={styles.answerText}>{topAnswer.text}</Text>
+
+              {/* Vote Actions */}
+              <View style={styles.voteContainer}>
+                <TouchableOpacity
+                  onPress={() => handleVote(topAnswer.id, "UP")}
+                  style={styles.voteButton}
+                >
+                  <Ionicons name="arrow-up-circle-outline" size={20} color="#6b7280" />
+                  <Text style={styles.voteCount}>{topAnswer.upvotes}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleVote(topAnswer.id, "DOWN")}
+                  style={styles.voteButton}
+                >
+                  <Ionicons name="arrow-down-circle-outline" size={20} color="#6b7280" />
+                  <Text style={styles.voteCount}>{topAnswer.downvotes}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {item.answers.length > 1 && (
+              <TouchableOpacity
+                onPress={() => navigation.navigate("QuestionDetail", { questionId: item.id })}
+                style={styles.moreRepliesBtn}
+              >
+                <Text style={styles.moreRepliesText}>
+                  Show {item.answers.length - 1} more answers
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color="#2563eb" />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* Answer submission for Mentors */}
+        {!hasAlreadyAnswered && (
+          <View style={styles.replyForm}>
+            <TextInput
+              style={styles.replyInput}
+              placeholder="Type your answer to this question..."
+              placeholderTextColor="#9ca3af"
+              value={replyTextMap[item.id] || ""}
+              onChangeText={(txt) => setReplyTextMap((prev) => ({ ...prev, [item.id]: txt }))}
+              multiline
+            />
+            <TouchableOpacity
+              style={[
+                styles.replySubmitBtn,
+                !(replyTextMap[item.id] || "").trim() ? styles.replySubmitBtnDisabled : null,
+              ]}
+              onPress={() => handleSubmitReply(item.id)}
+              disabled={submittingMap[item.id] || !(replyTextMap[item.id] || "").trim()}
+            >
+              {submittingMap[item.id] ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Text style={styles.replySubmitBtnText}>Submit Answer</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {hasAlreadyAnswered && activeTab === "unanswered" && (
+          <View style={styles.answeredBadge}>
+            <Ionicons name="checkmark-circle" size={16} color="#10b981" />
+            <Text style={styles.answeredBadgeText}>You have answered this question</Text>
+          </View>
+        )}
       </View>
-      
-      <View style={styles.questionFooter}>
-        <TouchableOpacity 
-          onPress={() => setAnsweringId(question.id)}
-          disabled={question.hasAnswered}
-        >
-          <Text style={[styles.answerActionText, question.hasAnswered && {color: '#9ca3af'}]}>
-            {question.hasAnswered ? "Answered" : "Answer"}
-          </Text>
-        </TouchableOpacity>
-
-        <View style={styles.heartsContainer}>
-          <Image source={require("../../app-assets/heart-icon.svg")} style={styles.heartIcon} tintColor="#444653" />
-          <Text style={styles.heartsCount}>{question.hearts}</Text>
-        </View>
-      </View>
-
-      {/* Answer Input Area */}
-      {answeringId === question.id && !question.hasAnswered && (
-        <View style={styles.answerInputContainer}>
-          <TextInput
-            style={styles.answerInput}
-            placeholder="Type your answer here..."
-            placeholderTextColor="#9ca3af"
-            multiline
-            value={answerText}
-            onChangeText={setAnswerText}
-          />
-          <TouchableOpacity 
-            style={styles.sendButton}
-            onPress={() => handleAnswerSubmit(question.id)}
-          >
-            <Image source={require("../../app-assets/arrow-right-white.svg")} style={styles.sendIcon} tintColor="#2563eb" />
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Display Existing Answer */}
-      {question.hasAnswered && question.answer && (
-        <View style={styles.existingAnswerContainer}>
-          <Text style={styles.existingAnswerText}>{question.answer}</Text>
-        </View>
-      )}
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Inbox</Text>
-          <Text style={styles.headerSubtitle}>{questions.length} Questions</Text>
-        </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Mentor Inbox</Text>
+      </View>
 
-        <ScrollView 
-          ref={scrollViewRef}
-          showsVerticalScrollIndicator={false} 
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={
-            <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={["#2563eb"]} />
-          }
+      {/* Tabs */}
+      <View style={styles.tabsContainer}>
+        <TouchableOpacity
+          onPress={() => setActiveTab("unanswered")}
+          style={[styles.tabButton, activeTab === "unanswered" ? styles.tabButtonActive : null]}
         >
-          {questions.length > 0 ? (
-            questions.map(renderQuestion)
-          ) : (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No questions in your inbox yet.</Text>
-            </View>
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+          <Text
+            style={[
+              styles.tabButtonText,
+              activeTab === "unanswered" ? styles.tabButtonTextActive : null,
+            ]}
+          >
+            Unanswered
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setActiveTab("popular")}
+          style={[styles.tabButton, activeTab === "popular" ? styles.tabButtonActive : null]}
+        >
+          <Text
+            style={[
+              styles.tabButtonText,
+              activeTab === "popular" ? styles.tabButtonTextActive : null,
+            ]}
+          >
+            Popular
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Search Container */}
+      <View style={styles.searchSection}>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={16} color="#6b7280" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search Q&A..."
+            placeholderTextColor="#9ca3af"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+      </View>
+
+      {/* List */}
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2563eb" />
+        </View>
+      ) : (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={{ flex: 1 }}
+        >
+          <FlatList
+            data={questions}
+            renderItem={renderQuestionItem}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={handleRefresh}
+                colors={["#2563eb"]}
+              />
+            }
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={
+              isMoreLoading ? (
+                <ActivityIndicator size="small" color="#2563eb" style={{ marginVertical: 16 }} />
+              ) : null
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons name="chatbox-ellipses-outline" size={48} color="#9ca3af" />
+                <Text style={styles.emptyText}>No questions found.</Text>
+              </View>
+            }
+          />
+        </KeyboardAvoidingView>
+      )}
+      <DialogBox
+        visible={alertVisible}
+        title={alertData.title}
+        message={alertData.message}
+        onClose={() => setAlertVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -164,49 +389,104 @@ export default function MentorAskPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f9fafb",
   },
   header: {
-    paddingHorizontal: 16,
+    paddingHorizontal: "5%",
     paddingVertical: 12,
-    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
+    backgroundColor: "white",
   },
   headerTitle: {
-    fontSize: 24,
-    color: "black",
+    fontSize: 18,
     fontWeight: "bold",
+    color: "#1f2937",
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: "#444653",
-    marginTop: 4,
+  tabsContainer: {
+    flexDirection: "row",
+    backgroundColor: "#e5e7eb",
+    marginHorizontal: "5%",
+    marginTop: 12,
+    borderRadius: 8,
+    padding: 2,
   },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 100, // Space for tab bar
+  tabButton: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: "center",
+    borderRadius: 6,
   },
-  questionCard: {
-    marginBottom: 24,
+  tabButtonActive: {
     backgroundColor: "white",
-    padding: 16,
-    borderRadius: 12,
+  },
+  tabButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#4b5563",
+  },
+  tabButtonTextActive: {
+    color: "#1f2937",
+  },
+  searchSection: {
+    paddingHorizontal: "5%",
+    marginVertical: 12,
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    paddingHorizontal: 12,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: "#e5e7eb",
+    height: 40,
+  },
+  searchIcon: {
+    marginRight: 6,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#1f2937",
+  },
+  listContent: {
+    paddingHorizontal: "5%",
+    paddingBottom: 40,
+  },
+  questionCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#f3f4f6",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowRadius: 2,
+    elevation: 1,
   },
   questionHeader: {
     flexDirection: "row",
   },
   avatarPlaceholder: {
-    width: 32,
-    height: 32,
-    backgroundColor: "#c0c0c0",
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#e5e7eb",
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 12,
+  },
+  avatarPlaceholderSmall: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#eff6ff",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 6,
   },
   questionMainContent: {
     flex: 1,
@@ -215,97 +495,137 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 4,
   },
   userName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "black",
+    fontWeight: "bold",
+    color: "#374151",
+    fontSize: 14,
   },
-  timeText: {
-    fontSize: 12,
-    color: "#2563eb",
+  dayText: {
+    fontSize: 11,
+    color: "#6b7280",
   },
   questionText: {
     fontSize: 14,
-    color: "#444653",
+    color: "#1f2937",
     lineHeight: 20,
   },
-  questionFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 16,
-    paddingLeft: 44, // Align with text
+  answersContainer: {
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#f3f4f6",
+    paddingTop: 12,
   },
-  answerActionText: {
-    fontSize: 14,
+  answerCard: {
+    backgroundColor: "#f9fafb",
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#f3f4f6",
+  },
+  answerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  mentorName: {
+    fontSize: 12,
     fontWeight: "bold",
     color: "#2563eb",
   },
-  heartsContainer: {
+  answerText: {
+    fontSize: 13,
+    color: "#374151",
+    lineHeight: 18,
+  },
+  voteContainer: {
+    flexDirection: "row",
+    marginTop: 8,
+  },
+  voteButton: {
     flexDirection: "row",
     alignItems: "center",
+    marginRight: 16,
   },
-  heartIcon: {
-    width: 15,
-    height: 15,
-    marginRight: 6,
-  },
-  heartsCount: {
+  voteCount: {
     fontSize: 12,
-    color: "#444653",
+    color: "#6b7280",
+    marginLeft: 4,
     fontWeight: "500",
   },
-  answerInputContainer: {
-    marginTop: 16,
-    marginLeft: 44,
+  moreRepliesBtn: {
     flexDirection: "row",
-    alignItems: "flex-end",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+    paddingVertical: 6,
+  },
+  moreRepliesText: {
+    fontSize: 12,
+    color: "#2563eb",
+    fontWeight: "600",
+    marginRight: 4,
+  },
+  replyForm: {
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#f3f4f6",
+    paddingTop: 12,
+  },
+  replyInput: {
     backgroundColor: "#f9fafb",
-    borderRadius: 8,
     borderWidth: 1,
     borderColor: "#d1d5db",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  answerInput: {
-    flex: 1,
-    minHeight: 40,
-    maxHeight: 100,
-    fontSize: 14,
-    color: "black",
-  },
-  sendButton: {
-    padding: 8,
-    marginLeft: 8,
-  },
-  sendIcon: {
-    width: 20,
-    height: 20,
-  },
-  existingAnswerContainer: {
-    marginTop: 16,
-    marginLeft: 44,
-    backgroundColor: "#eff6ff",
     borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#bfdbfe",
+    padding: 8,
+    fontSize: 13,
+    color: "#1f2937",
+    textAlignVertical: "top",
+    minHeight: 60,
+    marginBottom: 8,
   },
-  existingAnswerText: {
-    fontSize: 14,
-    color: "#1e40af",
-    lineHeight: 20,
+  replySubmitBtn: {
+    backgroundColor: "#2563eb",
+    borderRadius: 6,
+    paddingVertical: 8,
+    alignItems: "center",
+  },
+  replySubmitBtnDisabled: {
+    backgroundColor: "#9ca3af",
+  },
+  replySubmitBtnText: {
+    color: "white",
+    fontSize: 13,
+    fontWeight: "bold",
+  },
+  answeredBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 12,
+    backgroundColor: "#ecfdf5",
+    padding: 8,
+    borderRadius: 6,
+  },
+  answeredBadgeText: {
+    fontSize: 12,
+    color: "#065f46",
+    fontWeight: "600",
+    marginLeft: 6,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   emptyContainer: {
-    padding: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 60,
+    alignItems: "center",
+    justifyContent: "center",
   },
   emptyText: {
-    fontSize: 16,
-    color: '#444653',
-    textAlign: 'center',
+    fontSize: 14,
+    color: "#6b7280",
+    marginTop: 12,
   },
 });

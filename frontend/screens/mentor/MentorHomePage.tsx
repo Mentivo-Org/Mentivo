@@ -1,24 +1,56 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Text, View, ScrollView, TouchableOpacity, RefreshControl, Dimensions, StyleSheet, Switch } from "react-native";
+import { Text, View, ScrollView, TouchableOpacity, RefreshControl, Dimensions, StyleSheet, Switch, LayoutAnimation, Platform, UIManager, Animated } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "../../services/retrieveKeys";
 import { Image } from "expo-image";
 import api from "../../services/api";
 import { MentorEndpoints, CallEndpoints } from "../../constants/endpoint";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import notifee, { AndroidImportance } from "@notifee/react-native";
-import { Alert, Linking } from "react-native";
+import notifee from "@notifee/react-native";
+import { Linking } from "react-native";
+import DialogBox from "../../components/DialogBox";
 
 const { width } = Dimensions.get("window");
 
+if (
+  Platform.OS === 'android' &&
+  !(global as any).nativeFabricUIManager &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const getLevelIcon = (lvl?: string) => {
+  const normLvl = lvl?.toLowerCase();
+  if (normLvl === 'verified') return require("../../app-assets/level-verified.svg");
+  if (normLvl === 'standard') return require("../../app-assets/level-standard.svg");
+  if (normLvl === 'signature') return require("../../app-assets/level-signature.svg");
+  if (normLvl === 'fellow') return require("../../app-assets/level-fellow.svg");
+  return require("../../app-assets/verified-check.svg");
+};
+
 export default function MentorHomePage() {
-  const { handleLogout } = useAuth();
   const navigation = useNavigation<any>();
   const [data, setData] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
+  const [expandedLevel, setExpandedLevel] = useState<string | null>(null);
+
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertData, setAlertData] = useState<{
+    title: string;
+    message: string;
+    primaryButtonText?: string;
+    onPrimaryPress?: () => void;
+    secondaryButtonText?: string;
+    onSecondaryPress?: () => void;
+  }>({ title: '', message: '' });
+
+  const toggleLevel = (levelName: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedLevel(expandedLevel === levelName ? null : levelName);
+  };
 
   // Check for Overlay permission (Display over other apps)
   const checkOverlayPermission = async () => {
@@ -31,24 +63,20 @@ export default function MentorHomePage() {
     const hasPrompted = await AsyncStorage.getItem('hasPromptedOverlay');
     
     if (!hasPrompted) {
-        Alert.alert(
-            "Enable Full-Screen Calls",
-            "To receive incoming calls while using other apps or when your screen is locked, please enable 'Display over other apps' in your system settings.",
-            [
-                { 
-                    text: "Maybe Later", 
-                    onPress: () => AsyncStorage.setItem('hasPromptedOverlay', 'true') 
-                },
-                { 
-                    text: "Open Settings", 
-                    onPress: async () => {
-                        await AsyncStorage.setItem('hasPromptedOverlay', 'true');
-                        // Open the specific Android overlay settings
-                        Linking.openSettings();
-                    }
-                }
-            ]
-        );
+        setAlertData({
+            title: "Enable Full-Screen Calls",
+            message: "To receive incoming calls while using other apps or when your screen is locked, please enable 'Display over other apps' in your system settings.",
+            primaryButtonText: "Open Settings",
+            onPrimaryPress: async () => {
+                await AsyncStorage.setItem('hasPromptedOverlay', 'true');
+                Linking.openSettings();
+            },
+            secondaryButtonText: "Maybe Later",
+            onSecondaryPress: async () => {
+                await AsyncStorage.setItem('hasPromptedOverlay', 'true');
+            }
+        });
+        setAlertVisible(true);
     }
   };
 
@@ -117,6 +145,12 @@ export default function MentorHomePage() {
     checkOverlayPermission(); // Prompt mentor for full-screen permission
   }, []);
 
+  useEffect(() => {
+    if (data?.profile?.mentorlevel && expandedLevel === null) {
+      setExpandedLevel(data.profile.mentorlevel);
+    }
+  }, [data]);
+
   useFocusEffect(
     useCallback(() => {
       fetchData(true); // Background fetch on focus
@@ -171,7 +205,7 @@ export default function MentorHomePage() {
                                 source={profile.user?.photo_url || require("../../app-assets/avatar-placeholder.svg")} 
                                 style={styles.headerAvatar} 
                             />
-                            <Image source={require("../../app-assets/verified-check.svg")} style={styles.verifiedBadge} />
+                            <Image source={getLevelIcon(profile?.mentorlevel)} style={styles.verifiedBadge} />
                         </View>
                         <View style={styles.nameContainer}>
                             <Text style={styles.greetingText}>Hi {profile.user?.name?.split(" ")[0] || "Mentor"}</Text>
@@ -192,11 +226,6 @@ export default function MentorHomePage() {
                         /> */}
                     </View>
                 </View>
-
-                <TouchableOpacity style={styles.withdrawButton}>
-                    <Image source={require("../../app-assets/wallet-fill.svg")} style={styles.walletIcon} tintColor="#444653" />
-                    <Text style={styles.withdrawText}>Withdraw</Text>
-                </TouchableOpacity>
             </View>
         </View>
 
@@ -257,7 +286,13 @@ export default function MentorHomePage() {
             {history.length > 0 ? (
                 history.map((session) => (
                     <View key={session.id} style={styles.historyItem}>
-                        <View style={styles.studentAvatar} />
+                        <View style={styles.studentAvatar}>
+                            {session.student?.photo_url ? (
+                                <Image source={{ uri: session.student.photo_url }} style={styles.avatarImg} />
+                            ) : (
+                                <Image source={require("../../app-assets/profile-circle.svg")} style={styles.avatarImg} tintColor="#c0c0c0" />
+                            )}
+                        </View>
                         <View style={styles.historyInfo}>
                             <View style={styles.historyTopRow}>
                                 <Text style={styles.studentName}>{session.student?.name || "Student"}</Text>
@@ -289,6 +324,8 @@ export default function MentorHomePage() {
                 requirements={getRequirements("Verified")} 
                 benefits={["Start earning immediately", "Get listed on the platform"]}
                 active={profile.mentorlevel === 'Verified'} 
+                isExpanded={expandedLevel === 'Verified'}
+                onToggle={() => toggleLevel('Verified')}
             />
             <PlanCard 
                 level="Standard" 
@@ -296,6 +333,8 @@ export default function MentorHomePage() {
                 requirements={getRequirements("Standard")} 
                 benefits={["Charge up to ₹10/min", "Better ranking in search"]}
                 active={profile.mentorlevel === 'Standard'} 
+                isExpanded={expandedLevel === 'Standard'}
+                onToggle={() => toggleLevel('Standard')}
             />
             <PlanCard 
                 level="Signature" 
@@ -303,6 +342,8 @@ export default function MentorHomePage() {
                 requirements={getRequirements("Signature")} 
                 benefits={["Charge up to ₹15/min", "Featured in search results"]}
                 active={profile.mentorlevel === 'Signature'} 
+                isExpanded={expandedLevel === 'Signature'}
+                onToggle={() => toggleLevel('Signature')}
             />
             <PlanCard 
                 level="Fellow" 
@@ -310,13 +351,27 @@ export default function MentorHomePage() {
                 requirements={getRequirements("Fellow")} 
                 benefits={["Highest earning potential", "Direct platform support"]}
                 active={profile.mentorlevel === 'Fellow'} 
+                isExpanded={expandedLevel === 'Fellow'}
+                onToggle={() => toggleLevel('Fellow')}
             />
         </View>
-
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
       </ScrollView>
+      <DialogBox
+        visible={alertVisible}
+        title={alertData.title}
+        message={alertData.message}
+        primaryButtonText={alertData.primaryButtonText}
+        onPrimaryPress={() => {
+            setAlertVisible(false);
+            alertData.onPrimaryPress?.();
+        }}
+        secondaryButtonText={alertData.secondaryButtonText}
+        onSecondaryPress={() => {
+            setAlertVisible(false);
+            alertData.onSecondaryPress?.();
+        }}
+        onClose={() => setAlertVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -338,72 +393,147 @@ function StatCard({ title, amount, subtitle }: any) {
   );
 }
 
-function PlanCard({ level, rate, requirements, benefits, active }: any) {
-    const getPlanBgColor = (lvl: string) => {
-        if (lvl === 'Standard' || lvl === 'Signature') return '#3b4b6b';
+function PlanCard({ level, rate, requirements, benefits, active, isExpanded, onToggle }: any) {
+    const getPlanBorderColor = (lvl: string) => {
+        if (lvl === 'Verified') return '#0077c8';
+        if (lvl === 'Standard') return '#0077c8';
+        if (lvl === 'Signature') return '#3b4b6b';
         if (lvl === 'Fellow') return '#0a192f';
-        return '#2563eb'; // Verified
+        return '#0077c8';
     }
 
-    const getPlanLeftBgColor = (lvl: string) => {
-        if (lvl === 'Standard' || lvl === 'Signature') return '#fffdf0';
-        if (lvl === 'Fellow') return '#fdf6d5';
+    const getPlanBgColor = (lvl: string) => {
+        if (lvl === 'Verified') return 'white';
+        if (lvl === 'Standard') return '#0077c8';
+        if (lvl === 'Signature') return '#3b4b6b';
+        if (lvl === 'Fellow') return '#0a192f';
         return 'white';
     }
 
+    const getPlanLeftBgColor = (lvl: string) => {
+        if (lvl === 'Verified') return '#edf5ff';
+        if (lvl === 'Standard') return 'white';
+        if (lvl === 'Signature') return 'white';
+        if (lvl === 'Fellow') return '#fbf8e7';
+        return 'white';
+    }
+
+    const getPlanTextColor = (lvl: string) => {
+        if (lvl === 'Verified') return '#0077c8';
+        return 'white';
+    }
+
+    const getLevelDisplayName = (lvl: string) => {
+        if (lvl === 'Signature') return 'PREMIUM';
+        if (lvl === 'Fellow') return 'ELITE';
+        return lvl.toUpperCase();
+    }
+
+    const textColor = getPlanTextColor(level);
+
+    // Animation values
+    const animValue = React.useRef(new Animated.Value(isExpanded ? 1 : 0)).current;
+
+    React.useEffect(() => {
+        if (isExpanded) {
+            animValue.setValue(0);
+            Animated.timing(animValue, {
+                toValue: 1,
+                duration: 250,
+                useNativeDriver: true,
+            }).start();
+        }
+    }, [isExpanded]);
+
+    const opacity = animValue.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 1],
+    });
+
+    const translateY = animValue.interpolate({
+        inputRange: [0, 1],
+        outputRange: [-15, 0],
+    });
+
     return (
         <View style={styles.planCardWrapper}>
-            <View style={[styles.planBanner, { backgroundColor: getPlanBgColor(level) }]}>
+            <TouchableOpacity 
+                activeOpacity={0.8}
+                onPress={onToggle}
+                style={[styles.planBanner, { 
+                    backgroundColor: getPlanBgColor(level), 
+                    borderWidth: 1.5, 
+                    borderColor: getPlanBorderColor(level) 
+                }]}
+            >
                 <View style={[styles.planBannerLeft, { backgroundColor: getPlanLeftBgColor(level) }]}>
-                    <Image source={require("../../app-assets/logo.svg")} style={styles.planBannerIcon} />
+                    <Image source={getLevelIcon(level)} style={styles.planBannerIcon} />
                 </View>
                 
                 <View style={styles.planBannerMiddle}>
-                    <Text style={styles.planBannerLevel}>{level.toUpperCase()}</Text>
-                    <Text style={styles.planBannerChargeLabel}>Charge up to</Text>
-                    <Text style={styles.planBannerChargeValue}>₹{rate}<Text style={styles.planBannerChargeUnit}>/min</Text></Text>
+                    <Text style={[styles.planBannerLevel, { color: textColor }]}>
+                        {getLevelDisplayName(level)}
+                    </Text>
+                    <Text style={[styles.planBannerChargeLabel, { color: textColor }]}>Charge up to</Text>
+                    <Text style={[styles.planBannerChargeValue, { color: textColor }]}>
+                        ₹{rate}
+                        <Text style={[styles.planBannerChargeUnit, { color: textColor }]}>/min</Text>
+                    </Text>
                 </View>
 
                 <View style={styles.planBannerRight}>
                     {requirements.slice(0, 2).map((req: string, index: number) => (
                         <View key={index} style={styles.planBannerReqRow}>
-                            <Image source={require("../../app-assets/tick-circle.svg")} style={styles.bannerTickIcon} tintColor="white" />
-                            <Text style={styles.planBannerReqText} numberOfLines={1}>{req}</Text>
+                            <Image 
+                                source={require("../../app-assets/tick-circle.svg")} 
+                                style={styles.bannerTickIcon} 
+                                tintColor={textColor} 
+                            />
+                            <Text style={[styles.planBannerReqText, { color: textColor }]} numberOfLines={1}>
+                                {req}
+                            </Text>
                         </View>
                     ))}
                 </View>
-            </View>
+            </TouchableOpacity>
 
-            {active && (
-                <View style={styles.planDetailsCard}>
-                    <View style={styles.planDetailsHeader}>
-                        <Text style={styles.planDetailsLabel}>Charge</Text>
-                        <Text style={styles.planDetailsRate}>₹{rate}/min</Text>
-                    </View>
-                    
-                    <View style={styles.planSection}>
-                        <Text style={[styles.planSectionTitle, {color: '#2563eb'}]}>Requirements</Text>
-                        {requirements.map((req: string) => (
-                            <View key={req} style={styles.planRow}>
-                                <Image source={require("../../app-assets/tick-circle.svg")} style={styles.tickIcon} tintColor="#25d366" />
-                                <Text style={styles.planRowText}>{req}</Text>
-                            </View>
-                        ))}
-                    </View>
+            {isExpanded && (
+                <Animated.View style={{ opacity, transform: [{ translateY }] }}>
+                    <View style={styles.planDetailsCard}>
+                        <View style={styles.planDetailsHeader}>
+                            {active && (
+                                <View style={{ backgroundColor: '#25d366', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, marginRight: 8 }}>
+                                    <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>ACTIVE</Text>
+                                </View>
+                            )}
+                            <Text style={styles.planDetailsLabel}>Charge</Text>
+                            <Text style={styles.planDetailsRate}>₹{rate}/min</Text>
+                        </View>
+                        
+                        <View style={styles.planSection}>
+                            <Text style={[styles.planSectionTitle, {color: '#2563eb'}]}>Requirements</Text>
+                            {requirements.map((req: string) => (
+                                <View key={req} style={styles.planRow}>
+                                    <Image source={require("../../app-assets/tick-circle.svg")} style={styles.tickIcon} tintColor="#25d366" />
+                                    <Text style={styles.planRowText}>{req}</Text>
+                                </View>
+                            ))}
+                        </View>
 
-                    <View style={styles.planSection}>
-                        <Text style={[styles.planSectionTitle, {color: '#2563eb'}]}>Benefits</Text>
-                        {benefits.map((ben: string) => (
-                            <View key={ben} style={styles.planRow}>
-                                <Image source={require("../../app-assets/tick-circle.svg")} style={styles.tickIcon} tintColor="#25d366" />
-                                <Text style={styles.planRowText}>{ben}</Text>
-                            </View>
-                        ))}
+                        <View style={styles.planSection}>
+                            <Text style={[styles.planSectionTitle, {color: '#2563eb'}]}>Benefits</Text>
+                            {benefits.map((ben: string) => (
+                                <View key={ben} style={styles.planRow}>
+                                    <Image source={require("../../app-assets/tick-circle.svg")} style={styles.tickIcon} tintColor="#25d366" />
+                                    <Text style={styles.planRowText}>{ben}</Text>
+                                </View>
+                            ))}
+                        </View>
                     </View>
-                </View>
+                </Animated.View>
             )}
         </View>
-    )
+    );
 }
 
 function formatRelativeDate(dateStr: string) {
@@ -428,7 +558,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
   },
   header: {
-    height: 160,
+    height: 140,
     position: 'relative',
   },
   headerBackground: {
@@ -436,7 +566,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 120,
+    height: 100,
     backgroundColor: '#2563eb',
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
@@ -669,7 +799,14 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#c0c0c0',
+    backgroundColor: '#f0f0f0',
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarImg: {
+    width: '100%',
+    height: '100%',
   },
   historyInfo: {
     flex: 1,

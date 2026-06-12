@@ -21,6 +21,7 @@ import InCallScreen from "./InCallScreen";
 import RatingScreen from "./student/RatingScreen";
 
 import StudentHomePage from "./student/StudentHomePage";
+import FavoriteMentorsPage from "./student/FavoriteMentorsPage";
 import StudentProfilePage from "./student/StudentProfilePage";
 import YourSession from "./student/YourSession";
 import MentorProfile from "./student/MentorProfile";
@@ -30,6 +31,7 @@ import ScheduleCall from "./student/ScheduleCall";
 import PaymentPage from "./student/PaymentPage";
 import StudentCallsPage from "./student/StudentCallsPage";
 import StudentAskPage from "./student/StudentAskPage";
+import QuestionDetailScreen from "./student/QuestionDetailScreen";
 import ChatListPage from "./chat/ChatListPage";
 import ChatPage from "./chat/ChatPage";
 import MentorChatListPage from "./mentor/MentorChatListPage";
@@ -352,7 +354,7 @@ export default function RootNavigator() {
     const unsubscribeForeground = notifee.onForegroundEvent(({ type, detail }) => {
       if (type === EventType.PRESS) {
         const data = detail.notification?.data || detail.data || {};
-        const { callId, channelName, callerName, callerPhoto, type: notificationType, sessionId, senderId, senderName } = data;
+        const { callId, channelName, callerName, callerPhoto, type: notificationType, sessionId, senderId, senderName, questionId } = data;
         if (callId) {
           navigate('IncomingCall', { callId, channelName, callerName, callerPhoto });
         } else if (notificationType === 'chat' || sessionId) {
@@ -361,6 +363,8 @@ export default function RootNavigator() {
             partnerName: senderName,
             sessionId: sessionId,
           });
+        } else if (notificationType === 'question_answered' || questionId) {
+          navigate('QuestionDetail', { questionId: questionId });
         }
       }
     });
@@ -385,6 +389,20 @@ export default function RootNavigator() {
             asForegroundService: false,
           },
         });
+      } else if (remoteMessage.data?.type === 'question_answered') {
+        const { questionId, title, body } = remoteMessage.data as any;
+        await notifee.displayNotification({
+          id: `qa_${questionId}_${Date.now()}`,
+          title: title || 'New Answer! 💡',
+          body: body || 'Someone answered your question.',
+          data: { type: 'question_answered', questionId },
+          android: {
+            channelId: 'messages',
+            importance: AndroidImportance.HIGH,
+            pressAction: { id: 'default', launchActivity: 'default' },
+            asForegroundService: false,
+          },
+        });
       }
     });
 
@@ -392,7 +410,7 @@ export default function RootNavigator() {
     const checkInitialNotification = async () => {
       const initialNotification = await notifee.getInitialNotification();
       const data = initialNotification?.notification?.data || initialNotification?.data || {};
-      const { callId, channelName, callerName, callerPhoto, type: notificationType, sessionId, senderId, senderName } = data;
+      const { callId, channelName, callerName, callerPhoto, type: notificationType, sessionId, senderId, senderName, questionId } = data;
       if (callId) {
         navigate('IncomingCall', { callId, channelName, callerName, callerPhoto });
       } else if (notificationType === 'chat' || sessionId) {
@@ -401,6 +419,8 @@ export default function RootNavigator() {
           partnerName: senderName,
           sessionId: sessionId,
         });
+      } else if (notificationType === 'question_answered' || questionId) {
+        navigate('QuestionDetail', { questionId: questionId });
       }
 
       // Also check pending call from background press
@@ -528,7 +548,7 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer ref={navigationRef} linking={linking}>
       {isSignedIn ? (
         <AuthStack.Navigator
           id="auth-stack"
@@ -539,6 +559,7 @@ export default function RootNavigator() {
         >
           <AuthStack.Screen name="Main" component={AuthenticatedTabs} />
           <AuthStack.Screen name="StudentProfilePage" component={StudentProfilePage} />
+          <AuthStack.Screen name="FavoriteMentors" component={FavoriteMentorsPage} />
           <AuthStack.Screen name="YourSession" component={YourSession} />
           <AuthStack.Screen name="MentorProfile" component={MentorProfile} />
           <AuthStack.Screen name="MentorProfilePage" component={MentorProfilePage} />
@@ -552,6 +573,7 @@ export default function RootNavigator() {
           <AuthStack.Screen name="MentorChatListPage" component={MentorChatListPage} />
           <AuthStack.Screen name="MentorChatPage" component={MentorChatPage} />
           <AuthStack.Screen name="StudentCallsPage" component={StudentCallsPage} />
+          <AuthStack.Screen name="QuestionDetail" component={QuestionDetailScreen} />
         </AuthStack.Navigator>
       ) : (
         <Stack.Navigator
@@ -561,7 +583,6 @@ export default function RootNavigator() {
             ...TransitionPresets.SlideFromRightIOS,
           }}
           initialRouteName={initialScreen}
-          linking={linking}
         >
           <Stack.Screen name="Landing" component={LandingPage} />
           <Stack.Screen name="RoleSelection" component={RoleSelection} />

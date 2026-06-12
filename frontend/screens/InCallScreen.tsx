@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import ChatPage from './chat/ChatPage';
 import { useAgoraRTC } from '../hooks/useAgoraRTC';
+import DialogBox from '../components/DialogBox';
 
 // Figma assets
 const imgIconstackIoProfileCircle = require('../app-assets/profile-circle.svg');
@@ -22,6 +23,13 @@ const InCallScreen = () => {
   const [partnerName, setPartnerName] = useState<string>(route.params.partnerName || route.params.callerName);
   const [isChatModalVisible, setIsChatModalVisible] = useState(false);
 
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertData, setAlertData] = useState<{
+    title: string;
+    message: string;
+    onClose?: () => void;
+  }>({ title: '', message: '' });
+
   const handleCallEnded = (finalStatus: string, remoteStatus?: string) => {
     if (role === 'caller' && finalStatus === 'completed') {
       navigation.replace('RatingScreen', {
@@ -31,9 +39,15 @@ const InCallScreen = () => {
       });
     } else {
       if (role === 'caller' && remoteStatus === 'rejected') {
-        Alert.alert('Call Rejected', `${callerName || 'Mentor'} rejected the call.`);
+        setAlertData({
+          title: 'Call Rejected',
+          message: `${callerName || 'Mentor'} rejected the call.`,
+          onClose: () => navigation.navigate('Main', { screen: 'Home' })
+        });
+        setAlertVisible(true);
+      } else {
+        navigation.navigate('Main', { screen: 'Home' });
       }
-      navigation.navigate('Main', { screen: 'Home' });
     }
   };
 
@@ -62,6 +76,10 @@ const InCallScreen = () => {
       setChatSessionId(sessionId);
     },
     onNavigateHome: () => navigation.navigate('Main', { screen: 'Home' }),
+    onShowAlert: (title, message, onClose) => {
+      setAlertData({ title, message, onClose });
+      setAlertVisible(true);
+    },
   });
 
   const formatDuration = (secs: number) => {
@@ -83,7 +101,11 @@ const InCallScreen = () => {
     if (chatSessionId) {
       setIsChatModalVisible(true);
     } else {
-      Alert.alert('Chat Unavailable', 'Chat is not available for this session.');
+      setAlertData({
+        title: 'Chat Unavailable',
+        message: 'Chat is not available for this session.'
+      });
+      setAlertVisible(true);
     }
   };
 
@@ -157,6 +179,15 @@ const InCallScreen = () => {
           onClose={() => setIsChatModalVisible(false)}
         />
       </Modal>
+      <DialogBox
+        visible={alertVisible}
+        title={alertData.title}
+        message={alertData.message}
+        onClose={() => {
+          setAlertVisible(false);
+          alertData.onClose?.();
+        }}
+      />
     </SafeAreaView>
   );
 };

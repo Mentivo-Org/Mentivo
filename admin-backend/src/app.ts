@@ -13,6 +13,8 @@ import emailRoutes from './routes/email.ts';
 import notificationRoutes from './routes/notifications.ts';
 import moderationRoutes from './routes/moderation.ts';
 import profileDeletionRoutes from './routes/profile-deletion.ts';
+import partnerRoutes from './routes/partners.ts';
+import configRoutes from './routes/config.ts';
 import prisma from './config/db.ts';
 
 dotenv.config();
@@ -113,6 +115,8 @@ app.use('/api/email', emailRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/moderation', moderationRoutes);
 app.use('/api/profile-deletion', profileDeletionRoutes);
+app.use('/api/partners', partnerRoutes);
+app.use('/api/config', configRoutes);
 
 // Global Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

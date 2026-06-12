@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import DialogBox from '../../components/DialogBox';
 import { Image } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from "@react-native-vector-icons/ionicons";
@@ -16,9 +17,13 @@ export default function RatingScreen() {
   const [comment, setComment] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertData, setAlertData] = useState({ title: '', message: '' });
+
   const handleSubmit = async () => {
     if (rating === 0) {
-      Alert.alert('Selection Required', 'Please select a star rating before submitting.');
+      setAlertData({ title: 'Selection Required', message: 'Please select a star rating before submitting.' });
+      setAlertVisible(true);
       return;
     }
 
@@ -33,11 +38,13 @@ export default function RatingScreen() {
         // Go back to home
         navigation.navigate("Main", { screen: "Home" });
       } else {
-        Alert.alert('Error', 'Failed to submit rating. Please try again.');
+        setAlertData({ title: 'Error', message: 'Failed to submit rating. Please try again.' });
+        setAlertVisible(true);
       }
     } catch (error) {
       console.error('Rating submission failed:', error);
-      Alert.alert('Error', 'An unexpected error occurred.');
+      setAlertData({ title: 'Error', message: 'An unexpected error occurred.' });
+      setAlertVisible(true);
     } finally {
       setLoading(false);
     }
@@ -104,6 +111,12 @@ export default function RatingScreen() {
         
         <Text style={styles.compulsoryHint}>* Rating is compulsory to continue</Text>
       </View>
+      <DialogBox
+        visible={alertVisible}
+        title={alertData.title}
+        message={alertData.message}
+        onClose={() => setAlertVisible(false)}
+      />
     </SafeAreaView>
   );
 }

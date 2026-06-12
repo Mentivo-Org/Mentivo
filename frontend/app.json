@@ -54,7 +54,7 @@
         "FOREGROUND_SERVICE",
         "RECEIVE_BOOT_COMPLETED",
       ],
-      "versionCode": 8
+      "versionCode": 9
     },
     "web": {
       "favicon": "./assets/icon.png"
@@ -62,7 +62,6 @@
     "plugins": [
       "@react-native-google-signin/google-signin",
       "@react-native-firebase/app",
-      "@react-native-firebase/auth",
       "@react-native-firebase/messaging"
     ]
   }

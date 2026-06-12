@@ -14,6 +14,8 @@ import agoraRouter from './routes/agora.ts'
 import profilePictureRouter from './routes/profilePicture.ts'
 import webhookRouter from './routes/webhooks.ts';
 import chatModerationRouter from './routes/chatModeration.ts';
+import askRouter from './routes/ask.ts';
+import partnersRouter from './routes/partners.ts';
 import prisma from './config/db.ts';
 import { startJobs } from './jobs/index.ts';
 import { initSocket } from './config/socket.ts';
@@ -148,6 +150,8 @@ app.use('/api/wallet', walletRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/chat-moderation', chatModerationRouter);
 app.use('/api/profile-picture',profilePictureRouter);
+app.use('/api/ask', askRouter);
+app.use('/api/partners', partnersRouter);
 
 //Handle agora token generation
 app.use('/api/agora/token', agoraRouter);

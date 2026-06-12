@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Keyboard, StatusBar } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ChatClient, ChatMessage as AgoraMessage } from 'react-native-agora-chat';
@@ -13,6 +13,12 @@ import MessageInput from '../../components/chat/MessageInput';
 import QuickReplies from '../../components/chat/QuickReplies';
 import ValidationWarning from '../../components/chat/ValidationWarning';
 import RateLimitIndicator from '../../components/chat/RateLimitIndicator';
+import { useAuth } from '../../services/retrieveKeys';
+import { CallEndpoints, MentorEndpoints } from '../../constants/endpoint';
+import { requestMicrophonePermission } from '../../services/permissions';
+import { useLoading } from '../../context/LoadingContext';
+import DialogBox from '../../components/DialogBox';
+import api from '../../services/api';
 
 const ChatPage = (props: any) => {
   const navigation = useNavigation();
@@ -32,6 +38,35 @@ const ChatPage = (props: any) => {
   const [validationWarning, setValidationWarning] = useState<{ message: string; type: 'error' | 'warning' | 'info' } | null>(null);
   const [rateLimitInfo, setRateLimitInfo] = useState<{ current: number; limit: number; resetTime?: number } | null>(null);
   const flatListRef = useRef<FlatList>(null);
+
+  const insets = useSafeAreaInsets();
+  const { showLoading, hideLoading } = useLoading();
+  const { role } = useAuth();
+  const isStudent = role === 'student';
+
+  const [partnerPhotoUrl, setPartnerPhotoUrl] = useState<string | null>(routeParams.partnerPhotoUrl || null);
+
+  useEffect(() => {
+    if (!partnerPhotoUrl && isStudent && partnerId) {
+      const fetchPartnerDetails = async () => {
+        try {
+          const response = await api.get(MentorEndpoints.getMentorById + partnerId);
+          if (response.status === 200 && response.data) {
+            const photo = response.data.user?.photo_url || response.data.photo_url || null;
+            if (photo) setPartnerPhotoUrl(photo);
+          }
+        } catch (e) {
+          console.error("Failed to fetch partner details:", e);
+        }
+      };
+      fetchPartnerDetails();
+    }
+  }, [partnerId, isStudent, partnerPhotoUrl]);
+
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [isInitiating, setIsInitiating] = useState(false);
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertData, setAlertData] = useState({ title: '', message: '' });
 
   useEffect(() => {
     // Register this session as active so notifications are suppressed while viewing
@@ -78,6 +113,93 @@ const ChatPage = (props: any) => {
     };
   }, [partnerId]);
 
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  const handleCallNow = async () => {
+    const hasPermission = await requestMicrophonePermission();
+    if (!hasPermission) {
+      setAlertData({
+        title: 'Permission Denied',
+        message: 'Microphone access is required for voice calls. Please enable it in your device settings.'
+      });
+      setAlertVisible(true);
+      return;
+    }
+
+    setIsInitiating(true);
+    showLoading('Initiating call...');
+    try {
+      const response = await api.post(CallEndpoints.initiate, { mentorId: partnerId });
+      
+      if (response.status === 200) {
+        const { sessionId, channelName, studentToken, maxDurationSeconds, mentorPhoto, chatSessionId } = response.data;
+        
+        navigation.navigate('InCall', {
+          callId: sessionId,
+          channelName,
+          callerName: partnerName,
+          role: 'caller',
+          initialToken: studentToken,
+          maxDuration: maxDurationSeconds,
+          mentorPhoto: mentorPhoto || null,
+          chatSessionId
+        });
+      }
+    } catch (error: any) {
+      console.error('Failed to initiate call:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to connect. Please try again.';
+      setAlertData({ title: 'Call Error', message: errorMsg });
+      setAlertVisible(true);
+    } finally {
+      setIsInitiating(false);
+      hideLoading();
+    }
+  };
+
+  const [isFavorite, setIsFavorite] = useState(false);
+
+  useEffect(() => {
+    if (isStudent && partnerId) {
+      const checkFavoriteStatus = async () => {
+        try {
+          const response = await api.get(MentorEndpoints.getFavoriteMentors);
+          if (response.status === 200 && Array.isArray(response.data)) {
+            const isFav = response.data.some((m: any) => m.mentorId === partnerId);
+            setIsFavorite(isFav);
+          }
+        } catch (e) {
+          console.error("Failed to fetch favorite mentors:", e);
+        }
+      };
+      checkFavoriteStatus();
+    }
+  }, [partnerId, isStudent]);
+
+  const toggleFavorite = async () => {
+    try {
+      const newStatus = !isFavorite;
+      setIsFavorite(newStatus);
+      await api.post(`${MentorEndpoints.toggleFavoriteMentor}${partnerId}/favorite`);
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      setIsFavorite(isFavorite); // Revert on failure
+    }
+  };
+
   const loadHistory = async () => {
     const normalizeId = (id: string | null | undefined) => id ? id.replace(/-/g, '').toLowerCase() : '';
     const normPartnerId = normalizeId(partnerId);
@@ -120,6 +242,8 @@ const ChatPage = (props: any) => {
   };
 
   const handleSend = async (textOverride?: string) => {
+    if (isStudent && !textOverride) return;
+    
     const textToSend = textOverride || inputText;
     if (!textToSend.trim()) return;
 
@@ -172,8 +296,15 @@ const ChatPage = (props: any) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="dark-content" backgroundColor="white" />
+      <View style={styles.container}>
+        <Image
+          source={require('../../app-assets/chat-bg.svg')}
+          style={StyleSheet.absoluteFillObject}
+          contentFit="fill"
+        />
+        {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => onClose ? onClose() : navigation.goBack()} style={styles.backButton}>
           <Image 
@@ -184,19 +315,30 @@ const ChatPage = (props: any) => {
         </TouchableOpacity>
         <View style={styles.headerProfile}>
           <Image 
-            source={require('../../app-assets/profile-circle.svg')}
+            source={partnerPhotoUrl ? { uri: partnerPhotoUrl } : require('../../app-assets/profile-circle.svg')}
             style={styles.profileIcon}
-            tintColor="white"
+            tintColor={partnerPhotoUrl ? undefined : 'white'}
           />
           <Text style={styles.headerTitle}>{partnerName}</Text>
         </View>
-        <TouchableOpacity style={styles.favoriteButton}>
-          <Image 
-            source={require('../../app-assets/heart-icon.svg')}
-            style={{ width: 20, height: 20 }}
-            tintColor="white"
-          />
-        </TouchableOpacity>
+        {isStudent && (
+          <TouchableOpacity onPress={toggleFavorite} style={styles.headerFavoriteButton}>
+            <Image 
+              source={require('../../app-assets/heart-icon.svg')}
+              style={{ width: 24, height: 24, opacity: isFavorite ? 1.0 : 0.4 }}
+              tintColor={isFavorite ? '#ef4444' : 'white'}
+            />
+          </TouchableOpacity>
+        )}
+        {isStudent && (
+          <TouchableOpacity onPress={handleCallNow} style={styles.callButton} disabled={isInitiating}>
+            <Image 
+              source={require('../../app-assets/phone-icon.svg')}
+              style={{ width: 24, height: 24 }}
+              tintColor="#2563eb"
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       {validationWarning && (
@@ -218,9 +360,9 @@ const ChatPage = (props: any) => {
 
       {/* Messages */}
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoidingView}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <Image 
           source={require('../../app-assets/bg-pattern.svg')}
@@ -244,29 +386,52 @@ const ChatPage = (props: any) => {
           onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
         />
 
-        <QuickReplies onReply={(text) => handleSend(text)} />
-        <MessageInput 
-          value={inputText}
-          onChangeText={setInputText}
-          onSend={() => handleSend()}
-        />
+        {!isStudent && (
+          <MessageInput 
+            value={inputText}
+            onChangeText={setInputText}
+            onSend={() => handleSend()}
+            isKeyboardVisible={isKeyboardVisible}
+            bottomOffset={!isKeyboardVisible && !isStudent ? insets.bottom : 0}
+          />
+        )}
+        
+        {!isKeyboardVisible && isStudent && (
+          <QuickReplies 
+            onReply={(text) => handleSend(text)} 
+            bottomOffset={insets.bottom}
+          />
+        )}
       </KeyboardAvoidingView>
+
+      <DialogBox
+        visible={alertVisible}
+        title={alertData.title}
+        message={alertData.message}
+        onPrimaryPress={() => setAlertVisible(false)}
+        primaryButtonText="OK"
+        onClose={() => setAlertVisible(false)}
+      />
+      </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#1E3A8A',
+    backgroundColor: 'transparent',
   },
   header: {
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   backButton: {
     padding: 8,
@@ -278,8 +443,9 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   profileIcon: {
-    width: 36,
-    height: 36,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
   },
   headerTitle: {
     color: 'white',
@@ -287,8 +453,21 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: 12,
   },
-  favoriteButton: {
+  headerFavoriteButton: {
+    marginRight: 60,
     padding: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  callButton: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    width: 60,
+    height: 44,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   keyboardAvoidingView: {
     flex: 1,

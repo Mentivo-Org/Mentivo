@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, RefreshControl, Alert, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, RefreshControl, Modal, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import DialogBox from '../../components/DialogBox';
 import { Image } from 'expo-image';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from "../../services/retrieveKeys";
@@ -10,6 +11,46 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from 'expo-image-picker';
 
 const { width, height } = Dimensions.get("window");
+
+const getLevelIcon = (lvl?: string) => {
+  const normLvl = lvl?.toLowerCase();
+  if (normLvl === 'verified') return require('../../app-assets/level-verified.svg');
+  if (normLvl === 'standard') return require('../../app-assets/level-standard.svg');
+  if (normLvl === 'signature') return require('../../app-assets/level-signature.svg');
+  if (normLvl === 'fellow') return require('../../app-assets/level-fellow.svg');
+  return require('../../app-assets/verified-check.svg');
+};
+
+const getLevelColors = (lvl?: string) => {
+  const normLvl = lvl?.toLowerCase();
+  if (normLvl === 'standard') {
+    return {
+      headerBg: '#0077c8',
+      headerText: '#ffffff',
+      headerIconTint: '#ffffff',
+    };
+  }
+  if (normLvl === 'signature') {
+    return {
+      headerBg: '#3b4b6b',
+      headerText: '#ffffff',
+      headerIconTint: '#ffffff',
+    };
+  }
+  if (normLvl === 'fellow') {
+    return {
+      headerBg: '#0a192f',
+      headerText: '#ffffff',
+      headerIconTint: '#ffffff',
+    };
+  }
+  // Default/Verified
+  return {
+    headerBg: '#D9D9D9',
+    headerText: '#444653',
+    headerIconTint: '#444653',
+  };
+};
 
 export default function MentorProfilePage() {
   const navigation = useNavigation<any>();
@@ -29,6 +70,9 @@ export default function MentorProfilePage() {
 
   // Online Status
   const [isOnline, setIsOnline] = useState(false);
+
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertData, setAlertData] = useState({ title: '', message: '' });
 
   const loadCachedData = async () => {
     try {
@@ -72,7 +116,8 @@ export default function MentorProfilePage() {
       if (response.status !== 200) {
         // Rollback
         setIsOnline(!nextValue);
-        Alert.alert("Error", "Failed to update online status");
+        setAlertData({ title: "Error", message: "Failed to update online status" });
+        setAlertVisible(true);
       }
     } catch (err) {
       setIsOnline(!nextValue);
@@ -98,7 +143,8 @@ export default function MentorProfilePage() {
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'We need camera roll permissions to change your profile picture.');
+      setAlertData({ title: 'Permission Denied', message: 'We need camera roll permissions to change your profile picture.' });
+      setAlertVisible(true);
       return;
     }
 
@@ -131,12 +177,14 @@ export default function MentorProfilePage() {
       });
 
       if (response.status === 200) {
-        Alert.alert('Success', 'Profile picture updated successfully');
+        setAlertData({ title: 'Success', message: 'Profile picture updated successfully' });
+        setAlertVisible(true);
         fetchData(true);
       }
     } catch (error) {
       console.error('Image upload failed:', error);
-      Alert.alert('Error', 'Failed to upload profile picture');
+      setAlertData({ title: 'Error', message: 'Failed to upload profile picture' });
+      setAlertVisible(true);
     } finally {
       setUploading(false);
     }
@@ -152,13 +200,15 @@ export default function MentorProfilePage() {
     try {
       const response = await api.patch(MentorEndpoints.updateProfile, { upiId: tempUpi });
       if (response.status === 200) {
-        Alert.alert('Success', 'UPI ID updated successfully');
+        setAlertData({ title: 'Success', message: 'UPI ID updated successfully' });
+        setAlertVisible(true);
         fetchData(true);
         setIsEditingUpi(false);
       }
     } catch (error) {
       console.error('Failed to update UPI:', error);
-      Alert.alert('Error', 'Failed to update UPI ID');
+      setAlertData({ title: 'Error', message: 'Failed to update UPI ID' });
+      setAlertVisible(true);
     } finally {
       setSavingUpi(false);
     }
@@ -167,7 +217,7 @@ export default function MentorProfilePage() {
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color="#0077c8" />
       </SafeAreaView>
     );
   }
@@ -185,11 +235,13 @@ export default function MentorProfilePage() {
 
   const profilePic = mentorData.user?.photo_url || require('../../app-assets/avatar-placeholder.svg');
 
+  const colors = getLevelColors(mentorData.mentorlevel);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Background Ellipse matching Group 52 */}
       <View style={styles.bgContainer}>
-        <View style={styles.ellipse18} />
+        <View style={[styles.ellipse18, { backgroundColor: colors.headerBg }]} />
       </View>
 
       <ScrollView 
@@ -200,11 +252,19 @@ export default function MentorProfilePage() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
-            <Image source={require('../../app-assets/arrow-back-up.svg')} style={styles.backIcon} tintColor="#444653" />
+            <Image 
+              source={require('../../app-assets/arrow-back-up.svg')} 
+              style={styles.backIcon} 
+              tintColor={colors.headerIconTint} 
+            />
           </TouchableOpacity>
           <View style={styles.logoContainer}>
-             <Image source={require('../../app-assets/logo.svg')} style={styles.logoIcon} />
-             <Text style={styles.logoText}>entivo</Text>
+             <Image 
+               source={require('../../app-assets/logo.svg')} 
+               style={styles.logoIcon} 
+               tintColor={colors.headerIconTint} 
+             />
+             <Text style={[styles.logoText, { color: colors.headerText }]}>entivo</Text>
           </View>
         </View>
 
@@ -218,7 +278,7 @@ export default function MentorProfilePage() {
         {/* Name & Title */}
         <View style={styles.nameSection}>
           <View style={styles.nameRow}>
-            <Image source={require('../../app-assets/verified-check.svg')} style={styles.verifiedIcon} />
+            <Image source={getLevelIcon(mentorData.mentorlevel)} style={styles.verifiedIcon} />
             <Text style={styles.nameText}>{mentorData.user?.name?.toUpperCase() || "MENTOR"}</Text>
           </View>
           <View style={styles.levelBadge}>
@@ -263,6 +323,12 @@ export default function MentorProfilePage() {
         </Text>
       </TouchableOpacity>
 
+      <DialogBox
+        visible={alertVisible}
+        title={alertData.title}
+        message={alertData.message}
+        onClose={() => setAlertVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -361,7 +427,7 @@ function DetailsSection({
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={onSaveUpi} disabled={savingUpi} style={styles.saveBtn}>
-                {savingUpi ? <ActivityIndicator size="small" color="#2563eb" /> : <Text style={styles.saveText}>Save</Text>}
+                {savingUpi ? <ActivityIndicator size="small" color="#0077c8" /> : <Text style={styles.saveText}>Save</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -483,7 +549,7 @@ const styles = StyleSheet.create({
     width: 168,
     height: 168,
     borderRadius: 84,
-    backgroundColor: '#2563eb', 
+    backgroundColor: '#0077c8', 
     padding: 2,
     justifyContent: 'center',
     alignItems: 'center',
@@ -504,7 +570,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 10,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077c8',
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -573,7 +639,7 @@ const styles = StyleSheet.create({
   },
   editLink: {
     fontSize: 12,
-    color: '#2563eb',
+    color: '#0077c8',
     fontWeight: 'bold',
   },
   editInputContainer: {
@@ -581,7 +647,7 @@ const styles = StyleSheet.create({
   },
   upiInput: {
     borderBottomWidth: 1,
-    borderBottomColor: '#2563eb',
+    borderBottomColor: '#0077c8',
     fontSize: 16,
     color: '#444653',
     paddingVertical: 4,
@@ -604,7 +670,7 @@ const styles = StyleSheet.create({
   },
   saveText: {
     fontSize: 12,
-    color: '#2563eb',
+    color: '#0077c8',
     fontWeight: 'bold',
   },
   logoutButton: {

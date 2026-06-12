@@ -33,6 +33,8 @@ export default function StudentHomePage() {
   const [user, setUser] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("All");
+  const [sortBy, setSortBy] = useState("rating");
+  const [isSortModalVisible, setIsSortModalVisible] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
   const slideAnim = useRef(new Animated.Value(-width * 0.7)).current;
@@ -201,6 +203,7 @@ export default function StudentHomePage() {
           isFavorite: false,
           isOnline: m.isOnline,
           photoUrl: m.user?.photo_url,
+          mentorlevel: m.mentorlevel,
         }));
         setDisplayedMentors(fetchedMentors);
       }
@@ -229,10 +232,11 @@ export default function StudentHomePage() {
     
     setIsLoading(true);
     const currentOffset = reset ? 0 : offset;
-    const isOnlineOnly = selectedFilter.includes("Online");
+    const isOnlineOnly = selectedFilter === "Online";
+    const levelParam = selectedFilter !== "All" && selectedFilter !== "Online" ? selectedFilter : "All";
 
     try {
-      const response = await api.get(`${MentorEndpoints.getMentorsPaginated}?offset=${currentOffset}&limit=${LIMIT}&onlineOnly=${isOnlineOnly}`);
+      const response = await api.get(`${MentorEndpoints.getMentorsPaginated}?offset=${currentOffset}&limit=${LIMIT}&onlineOnly=${isOnlineOnly}&sortBy=${sortBy}&level=${levelParam}`);
       
       if (response.status === 200) {
         const fetchedMentors = response.data;
@@ -250,6 +254,7 @@ export default function StudentHomePage() {
           isFavorite: false, // Update if you have a favorites system
           isOnline: m.isOnline,
           photoUrl: m.user?.photo_url,
+          mentorlevel: m.mentorlevel,
         }));
 
         if (formattedMentors.length < LIMIT) {
@@ -311,7 +316,7 @@ export default function StudentHomePage() {
 
   useEffect(() => {
     fetchMentors(true);
-  }, [selectedFilter]);
+  }, [selectedFilter, sortBy]);
 
   const toggleSidebar = () => {
     if (isSidebarVisible) {
@@ -341,7 +346,12 @@ export default function StudentHomePage() {
     handleLogout();
   }
 
-  const filters = ["All", "Online", "Standard", "Premium"];
+  const filters = ["All", "Online", "Standard", "Signature", "Fellow"];
+
+  const sortOptions = [
+    { label: "Rating (High to Low)", value: "rating" },
+    { label: "Number of Calls", value: "calls" },
+  ];
 
   const renderHeader = () => (
     <View>
@@ -436,7 +446,7 @@ export default function StudentHomePage() {
             onChangeText={setSearchQuery}
           />
         </View>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => setIsSortModalVisible(true)}>
           <Image source={require("../../app-assets/filter-icon.svg")} style={styles.icon24} />
         </TouchableOpacity>
       </View>
@@ -475,6 +485,42 @@ export default function StudentHomePage() {
         }
       />
 
+      {/* Sort Modal */}
+      <Modal
+        visible={isSortModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsSortModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setIsSortModalVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.sortModalContent}>
+              <Text style={styles.modalTitle}>Sort By</Text>
+              {sortOptions.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={styles.sortOption}
+                  onPress={() => {
+                    setSortBy(option.value);
+                    setIsSortModalVisible(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.sortOptionText,
+                    sortBy === option.value && styles.sortOptionTextActive
+                  ]}>
+                    {option.label}
+                  </Text>
+                  {sortBy === option.value && (
+                    <View style={styles.selectedDot} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
       {/* Sidebar Overlay */}
       {isSidebarVisible && (
         <View style={styles.sidebarOverlay}>
@@ -509,20 +555,25 @@ export default function StudentHomePage() {
             </View>
 
             <View style={styles.sidebarStatsRow}>
-              <View style={styles.sidebarStatCard}>
+              <TouchableOpacity 
+                style={styles.sidebarStatCard}
+                onPress={() => { toggleSidebar(); navigation.navigate("Payment"); }}
+              >
                 <Image source={require("../../app-assets/wallet-fill.svg")} style={styles.sidebarStatIcon} />
                 <View>
                   <Text style={styles.walletBalance}>₹ {walletBalance}</Text>
                   <Text style={styles.walletBonus}>+9m free</Text>
                 </View>
-              </View>
-              <View style={styles.sidebarStatCard}>
+              </TouchableOpacity>
+              {/* <View style={styles.sidebarStatCard}> */}
+                <TouchableOpacity onPress={() => { toggleSidebar(); navigation.navigate("FavoriteMentors"); }} style={styles.sidebarStatCard}>
                 <Image source={require("../../app-assets/heart-icon.svg")} style={styles.sidebarStatIcon} tintColor="#2563eb" />
                 <View>
                   <Text style={styles.statLabel}>My</Text>
                   <Text style={styles.statSubLabel}>Favourite</Text>
                 </View>
-              </View>
+                </TouchableOpacity>
+              {/* </View> */}
             </View>
 
             <View style={styles.sidebarLinks}>
@@ -896,5 +947,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#444653',
     fontStyle: 'italic',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  sortModalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 40,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#0b1c30',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  sortOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 15,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#f0f0f0',
+  },
+  sortOptionText: {
+    fontSize: 16,
+    color: '#444653',
+  },
+  sortOptionTextActive: {
+    color: '#2563eb',
+    fontWeight: 'bold',
+  },
+  selectedDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#2563eb',
   },
 });

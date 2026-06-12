@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import InCallManager from 'react-native-incall-manager';
@@ -8,11 +8,18 @@ import api from '../services/api';
 import { socketManager } from '../services/socketManager';
 import { CallEndpoints } from '../constants/endpoint';
 import { requestMicrophonePermission } from '../services/permissions';
+import DialogBox from '../components/DialogBox';
 
 const IncomingCallScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { callId, channelName, callerName, callerPhoto } = route.params;
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertData, setAlertData] = useState<{
+    title: string;
+    message: string;
+    onClose?: () => void;
+  }>({ title: '', message: '' });
 
   useEffect(() => {
     // Keep screen on during incoming call
@@ -61,7 +68,14 @@ const IncomingCallScreen = () => {
     const hasPermission = await requestMicrophonePermission();
     
     if (!hasPermission) {
-      handleReject();
+      setAlertData({
+        title: 'Permission Denied',
+        message: 'Microphone access is required for voice calls. Please enable it in your device settings.',
+        onClose: () => {
+          handleReject();
+        }
+      });
+      setAlertVisible(true);
       return;
     }
 
@@ -102,6 +116,15 @@ const IncomingCallScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
+      <DialogBox
+        visible={alertVisible}
+        title={alertData.title}
+        message={alertData.message}
+        onClose={() => {
+          setAlertVisible(false);
+          alertData.onClose?.();
+        }}
+      />
     </SafeAreaView>
   );
 };

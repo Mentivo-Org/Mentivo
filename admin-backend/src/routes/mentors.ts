@@ -3,6 +3,7 @@ import prisma from '../config/db.ts';
 import { authenticateAdmin } from '../middleware/auth.ts';
 import type { AuthRequest } from '../middleware/auth.ts';
 import supabase from '../services/supabase.ts';
+import admin from '../config/firebase.ts';
 
 const router = Router();
 
@@ -163,4 +164,29 @@ router.put('/:id', async (req, res) => {
     res.json(updatedMentor);
 });
 
-export default router;
+// Delete mentor — removes from both Firebase Auth and Prisma DB
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+
+  const user = await prisma.user.findUnique({ where: { id }, select: { email: true } });
+
+  // 1. Delete from Firebase Auth
+  if (user?.email) {
+    try {
+      const firebaseUser = await admin.auth().getUserByEmail(user.email);
+      await admin.auth().deleteUser(firebaseUser.uid);
+      console.log(`[Admin] Deleted Firebase Auth user: ${user.email}`);
+    } catch (authErr: any) {
+      if (authErr.code !== 'auth/user-not-found') {
+        console.error(`[Admin] Failed to delete Firebase Auth for ${user.email}:`, authErr.message);
+      }
+    }
+  }
+
+  // 2. Delete from database (mentorProfile cascade-deletes with user)
+  await prisma.user.delete({ where: { id } });
+
+  res.json({ message: 'Mentor deleted successfully.' });
+});
+
+export default router;

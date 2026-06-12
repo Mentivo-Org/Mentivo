@@ -33,6 +33,8 @@ export function useSession() {
     if (isHydrated && isSignedIn && user && guestPaths.includes(pathname)) {
       if (user.role === 'mentor') {
         router.replace('/mentor/home');
+      } else if (['coaching_partner', 'telegram_partner', 'other_partner'].includes(user.role)) {
+        router.replace('/dashboard');
       } else {
         router.replace('/student/home');
       }

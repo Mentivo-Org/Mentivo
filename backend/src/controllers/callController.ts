@@ -291,7 +291,7 @@ export const getMentorSessions = async (req: Request, res: Response) => {
       },
       include: {
         student: {
-          select: { name: true, email: true }
+          select: { name: true, email: true, photo_url: true }
         }
       },
       orderBy: { createdAt: 'desc' },

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import DialogBox from '../../components/DialogBox';
 import { Image } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import api from '../../services/api';
@@ -16,6 +17,8 @@ export default function MentorProfile() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { showLoading, hideLoading } = useLoading();
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertData, setAlertData] = useState({ title: '', message: '' });
   
   // Extract mentor data from params, with fallbacks
   const passedMentor = route.params?.mentor || {};
@@ -36,6 +39,7 @@ export default function MentorProfile() {
     isOnline: passedMentor.isOnline || false,
     bio: passedMentor.bio || 'Available for mentoring sessions.',
     photoUrl: passedMentor.photoUrl || passedMentor.photo_url,
+    mentorlevel: passedMentor.mentorlevel,
   };
 
   const toggleFavorite = async () => {
@@ -53,13 +57,18 @@ export default function MentorProfile() {
 
   const handleCallNow = async () => {
     if (!mentor.isOnline) {
-      Alert.alert('Mentor Offline', 'This mentor is currently offline. You can schedule a call instead.');
+      setAlertData({ title: 'Mentor Offline', message: 'This mentor is currently offline. You can schedule a call instead.' });
+      setAlertVisible(true);
       return;
     }
 
     // Check permissions
     const hasPermission = await requestMicrophonePermission();
-    if (!hasPermission) return;
+    if (!hasPermission) {
+      setAlertData({ title: 'Permission Denied', message: 'Microphone access is required for voice calls. Please enable it in your device settings.' });
+      setAlertVisible(true);
+      return;
+    }
 
     setIsInitiating(true);
     showLoading('Initiating call...');
@@ -83,7 +92,8 @@ export default function MentorProfile() {
     } catch (error: any) {
       console.error('Failed to initiate call:', error);
       const errorMsg = error.response?.data?.error || 'Failed to connect. Please try again.';
-      Alert.alert('Call Error', errorMsg);
+      setAlertData({ title: 'Call Error', message: errorMsg });
+      setAlertVisible(true);
     } finally {
       setIsInitiating(false);
       hideLoading();
@@ -97,12 +107,14 @@ export default function MentorProfile() {
       navigation.navigate('ChatPage', {
         partnerId: mentor.id,
         partnerName: mentor.name,
-        sessionId: session.id
+        sessionId: session.id,
+        partnerPhotoUrl: mentor.photoUrl || mentor.photo_url || null
       });
     } catch (error: any) {
       console.error('Failed to start chat:', error);
       const errorMsg = error.response?.data?.error || 'Failed to start chat. Please try again.';
-      Alert.alert('Chat Error', errorMsg);
+      setAlertData({ title: 'Chat Error', message: errorMsg });
+      setAlertVisible(true);
     } finally {
       hideLoading();
     }
@@ -121,6 +133,7 @@ export default function MentorProfile() {
           <AvatarContainer
             photoUrl={mentor.photoUrl}
             isOnline={mentor.isOnline}
+            mentorlevel={mentor.mentorlevel}
           />
           
           <View style={styles.nameSection}>
@@ -158,6 +171,12 @@ export default function MentorProfile() {
           })}
         />
       </View>
+      <DialogBox
+        visible={alertVisible}
+        title={alertData.title}
+        message={alertData.message}
+        onClose={() => setAlertVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -165,16 +184,26 @@ export default function MentorProfile() {
 interface AvatarContainerProps {
   photoUrl: string;
   isOnline: boolean;
+  mentorlevel?: string;
 }
 
-function AvatarContainer({ photoUrl, isOnline }: AvatarContainerProps) {
+const getLevelIcon = (lvl?: string) => {
+  const normLvl = lvl?.toLowerCase();
+  if (normLvl === 'verified') return require('../../app-assets/level-verified.svg');
+  if (normLvl === 'standard') return require('../../app-assets/level-standard.svg');
+  if (normLvl === 'signature') return require('../../app-assets/level-signature.svg');
+  if (normLvl === 'fellow') return require('../../app-assets/level-fellow.svg');
+  return require('../../app-assets/verified-check.svg'); // default
+};
+
+function AvatarContainer({ photoUrl, isOnline, mentorlevel }: AvatarContainerProps) {
   return (
     <View style={styles.avatarContainer}>
       <Image 
         source={photoUrl ? { uri: photoUrl } : require('../../app-assets/avatar-placeholder.svg')} 
         style={styles.avatar} 
       />
-      <Image source={require('../../app-assets/verified-check.svg')} style={styles.verifiedIcon} />
+      <Image source={getLevelIcon(mentorlevel)} style={styles.verifiedIcon} />
       {isOnline && <View style={styles.onlineDot} />}
     </View>
   );

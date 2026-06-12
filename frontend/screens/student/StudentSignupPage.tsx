@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -11,11 +11,12 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import * as Clipboard from 'expo-clipboard';
 import api from '../../services/api';
-import { LoginEndpoints } from '../../constants/endpoint';
+import { LoginEndpoints, PartnerEndpoints } from '../../constants/endpoint';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLoading } from '../../context/LoadingContext';
 import { PasswordInput } from '../../components/PasswordInput';
@@ -23,12 +24,75 @@ import DialogBox from '../../components/DialogBox';
 
 const StudentSignupPage = () => {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [referralCode, setReferralCode] = useState("");
 
-  const [alertData, setAlertData] = useState({title:'', message: ''})
+  const [alertData, setAlertData] = useState<{
+    title: string;
+    message: string;
+    primaryButtonText?: string;
+    onPrimaryPress?: () => void;
+    secondaryButtonText?: string;
+    onSecondaryPress?: () => void;
+    onClose?: () => void;
+  }>({ title: '', message: '' });
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
+
+  // Extract referral code if passed from routing / deep linking
+  useEffect(() => {
+    const { referral_id } = route.params ?? {};
+    if (referral_id) {
+      setReferralCode(referral_id);
+    } else {
+      const checkStoredReferral = async () => {
+        try {
+          const storedCode = await AsyncStorage.getItem('referredByCode');
+          if (storedCode) {
+            setReferralCode(storedCode);
+          }
+        } catch (err) {
+          console.error("Failed to load stored referral code:", err);
+        }
+      };
+      checkStoredReferral();
+    }
+  }, [route.params]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const checkClipboard = async () => {
+        try {
+          const hasString = await Clipboard.hasStringAsync();
+          if (hasString) {
+            const content = await Clipboard.getStringAsync();
+            if (content.startsWith('MENTIVO-')) {
+              const code = content.replace('MENTIVO-', '').trim();
+              if (code && code !== referralCode) {
+                setAlertData({
+                  title: "Referral Detected",
+                  message: `Do you want to apply the referral code "${code}" from your clipboard?`,
+                  primaryButtonText: "Apply",
+                  onPrimaryPress: () => setReferralCode(code),
+                  secondaryButtonText: "Cancel",
+                  onSecondaryPress: () => {},
+                  onClose: () => {}
+                });
+                setAlertVisible(true);
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Failed to read clipboard:", err);
+        }
+      };
+
+      checkClipboard();
+    }, [referralCode])
+  );
 
   // useRef for password — typing never triggers a parent re-render.
   const passwordRef = useRef("");
@@ -45,6 +109,27 @@ const StudentSignupPage = () => {
     if(Number(phone)<1000000000) {
       setAlertData({title: 'Invalid Phone Number', message: 'Please input a valid phone number'});
       setAlertVisible(true);
+      return;
+    }
+
+    // Verify referral code first if provided
+    if (referralCode) {
+      try {
+        showLoading("Verifying referral code...");
+        const valResponse = await api.post(PartnerEndpoints.validate, { code: referralCode });
+        if (!valResponse.data.valid) {
+          hideLoading();
+          setAlertData({title: 'Invalid Referral', message: 'The referral code is invalid.'});
+          setAlertVisible(true);
+          return;
+        }
+      } catch (valErr: any) {
+        hideLoading();
+        const errMsg = valErr.response?.data?.error || 'The referral code is invalid.';
+        setAlertData({title: 'Invalid Referral', message: errMsg});
+        setAlertVisible(true);
+        return;
+      }
     }
     
     try {
@@ -54,19 +139,55 @@ const StudentSignupPage = () => {
         password: passwordRef.current,
         name: fullName,
         phone: phone,
-        role: "student"
+        role: "student",
+        referredByReferralCode: referralCode || undefined
       });
 
       const { data } = response;
       hideLoading();
-      if (data.requiresVerification) {
-        // const { accessToken, refreshToken, user } = data;
-        // await AsyncStorage.setItem('accessToken', accessToken);
-        // await AsyncStorage.setItem('refreshToken', refreshToken);
-        // await AsyncStorage.setItem('user', JSON.stringify(user));
-        // await AsyncStorage.setItem('verifiedEmail', 'false');
+      
+      if (referralCode) {
+        try {
+          await AsyncStorage.removeItem('referredByCode');
+        } catch (e) {
+          console.error("Failed to remove referredByCode from storage:", e);
+        }
+      }
 
-        navigation.navigate("SendOtp", { email: email, name: fullName, role: "student" , phone});
+      if (data.requiresVerification) {
+        if (referralCode) {
+          setAlertData({
+            title: "Success",
+            message: "Referral code applied successfully. Please verify your email with the OTP sent.",
+            primaryButtonText: "OK",
+            onPrimaryPress: () => {
+              navigation.navigate("SendOtp", { email: email, name: fullName, role: "student", phone });
+            },
+            onClose: () => {
+              navigation.navigate("SendOtp", { email: email, name: fullName, role: "student", phone });
+            }
+          });
+          setAlertVisible(true);
+        } else {
+          navigation.navigate("SendOtp", { email: email, name: fullName, role: "student", phone });
+        }
+      } else {
+        if (referralCode) {
+          setAlertData({
+            title: "Success",
+            message: "Referral code applied successfully.",
+            primaryButtonText: "OK",
+            onPrimaryPress: () => {
+              navigation.navigate("RoleSelection");
+            },
+            onClose: () => {
+              navigation.navigate("RoleSelection");
+            }
+          });
+          setAlertVisible(true);
+        } else {
+          navigation.navigate("RoleSelection");
+        }
       }
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -205,6 +326,18 @@ const StudentSignupPage = () => {
               </View>
             </View>
 
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Referral Code (Optional)</Text>
+              <TextInput 
+                style={styles.input} 
+                placeholder="MENTIVO-XXXX" 
+                placeholderTextColor="rgba(68,70,83,0.5)"
+                value={referralCode}
+                onChangeText={setReferralCode}
+                autoCapitalize="none"
+              />
+            </View>
+
             <TouchableOpacity 
               style={styles.createButton}
               onPress={handleCreateAccount}
@@ -229,7 +362,25 @@ const StudentSignupPage = () => {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-      <DialogBox title={alertData.title} message={alertData.message} visible={alertVisible} onClose={()=> setAlertVisible(false)}/>
+      <DialogBox
+        title={alertData.title}
+        message={alertData.message}
+        visible={alertVisible}
+        primaryButtonText={alertData.primaryButtonText}
+        onPrimaryPress={alertData.onPrimaryPress ? () => {
+          setAlertVisible(false);
+          alertData.onPrimaryPress?.();
+        } : undefined}
+        secondaryButtonText={alertData.secondaryButtonText}
+        onSecondaryPress={alertData.onSecondaryPress ? () => {
+          setAlertVisible(false);
+          alertData.onSecondaryPress?.();
+        } : undefined}
+        onClose={() => {
+          setAlertVisible(false);
+          alertData.onClose?.();
+        }}
+      />
     </SafeAreaView>
   );
 };

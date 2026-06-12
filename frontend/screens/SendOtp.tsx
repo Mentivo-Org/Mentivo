@@ -50,8 +50,11 @@ const SendOtpScreen = () => {
     if (localPart.length <= 2) {
       // For short names like "ab@domain.com" -> "a*@domain.com"
       maskedLocal = localPart[0] + "*";
+    } else if (localPart.length <= 4) {
+      // For short names like "abc@domain.com" -> "ab*@domain.com"
+      maskedLocal = localPart.slice(0, localPart.length - 1) + "*";
     } else {
-      // Keeps the first and last character, masks everything in between
+      // Keeps the first and last two characters, masks everything in between
       const firstChars = localPart[0] + localPart[1];
       const lastChars =
         localPart[localPart.length - 2] + localPart[localPart.length - 1];
