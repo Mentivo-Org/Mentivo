@@ -131,6 +131,8 @@ export async function sendChatPushNotification(fcmTokens: string[], data: { sess
   try {
     await admin.messaging().sendEachForMulticast({
       tokens: fcmTokens,
+      // 'notification' payload triggers system tray on background/killed state.
+      // 'data' payload is available to both foreground and background JS handlers.
       notification: {
         title: data.senderName,
         body: data.message,
@@ -140,6 +142,12 @@ export async function sendChatPushNotification(fcmTokens: string[], data: { sess
         sessionId: data.sessionId,
         senderId: data.senderId,
         senderName: data.senderName,
+        // Include title/body in data so the notifee background handler can display it
+        title: data.senderName,
+        body: data.message,
+      },
+      android: {
+        priority: 'high',
       },
     });
   } catch (error) {

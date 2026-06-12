@@ -79,30 +79,27 @@ export const sendMessage = async (req: Request, res: Response) => {
       status: 'sent'
     });
 
-    await chatSessionService.updateLastMessage(session.id);
+    await chatSessionService.updateLastMessage(session.id, userId);
 
-    // If recipient is offline (app not open), send a push notification
+    // Always notify the recipient — FCM/notifee handles both foreground and background.
     (async () => {
       try {
-        const isOnline = await agoraChatRestService.isUserOnline(agoraTo);
-        if (!isOnline) {
-          const tokens = await prisma.fCMToken.findMany({
-            where: { userId: to },
-            select: { token: true },
+        const tokens = await prisma.fCMToken.findMany({
+          where: { userId: to },
+          select: { token: true },
+        });
+        const fcmTokens = tokens.map((t) => t.token);
+        if (fcmTokens.length > 0) {
+          const senderName = (req as any).user?.name || 'User';
+          await sendChatPushNotification(fcmTokens, {
+            sessionId: session.id,
+            senderId: userId,
+            senderName,
+            message: content,
           });
-          const fcmTokens = tokens.map((t) => t.token);
-          if (fcmTokens.length > 0) {
-            const senderName = (req as any).user?.name || 'User';
-            await sendChatPushNotification(fcmTokens, {
-              sessionId: session.id,
-              senderId: userId,
-              senderName,
-              message: content,
-            });
-          }
         }
       } catch (err) {
-        console.error('Error sending offline chat notification:', err);
+        console.error('Error sending chat notification:', err);
       }
     })();
 
@@ -132,6 +129,11 @@ export const markAsRead = async (req: Request, res: Response) => {
   const userId = (req as any).user.id;
   try {
     await chatMessageService.markSessionAsRead(sessionId, userId);
+    // Reset the unread counter on the session so the badge clears
+    await prisma.chatSession.update({
+      where: { id: sessionId },
+      data: { messageCount: 0 },
+    });
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

@@ -54,7 +54,7 @@ class ChatSessionService {
   }
 
   async getUserSessions(userId: string) {
-    return await prisma.chatSession.findMany({
+    const sessions = await prisma.chatSession.findMany({
       where: {
         OR: [
           { studentId: userId },
@@ -67,15 +67,30 @@ class ChatSessionService {
       },
       orderBy: { lastMessageAt: 'desc' },
     });
+
+    // Attach accurate per-user unread count: messages sent by the OTHER person
+    // that the current user has not yet read.
+    const withUnread = await Promise.all(
+      sessions.map(async (session) => {
+        const unreadCount = await prisma.chatMessage.count({
+          where: {
+            chatSessionId: session.id,
+            senderId: { not: userId },
+            status: { in: ['sent', 'delivered'] },
+          },
+        });
+        return { ...session, messageCount: unreadCount };
+      })
+    );
+
+    return withUnread;
   }
 
-  async updateLastMessage(id: string) {
+  async updateLastMessage(id: string, senderId: string) {
+    // Just update the timestamp; unread count is now computed live in getUserSessions.
     return await prisma.chatSession.update({
       where: { id },
-      data: {
-        lastMessageAt: new Date(),
-        messageCount: { increment: 1 },
-      },
+      data: { lastMessageAt: new Date() },
     });
   }
 
