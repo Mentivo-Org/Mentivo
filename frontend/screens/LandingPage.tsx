@@ -11,6 +11,7 @@ import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { PartnerEndpoints } from '../constants/endpoint';
 import api from '../services/api';
 import { useLoading } from '../context/LoadingContext';
 import DialogBox from '../components/DialogBox';
@@ -31,7 +32,7 @@ const LandingPage = () => {
       if (referral_id) {
         showLoading("Verifying referral code...");
         try {
-          const response = await api.post('/partners/validate', { code: referral_id });
+          const response = await api.post(PartnerEndpoints.validate, { code: referral_id });
           hideLoading();
           if (response.data.valid) {
             await AsyncStorage.setItem('referredByCode', referral_id);
