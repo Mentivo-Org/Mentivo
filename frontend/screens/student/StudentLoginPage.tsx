@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -22,7 +22,15 @@ import DialogBox from '../../components/DialogBox';
 const StudentLoginPage = () => {
   const navigation = useNavigation<any>();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  // useRef instead of useState — reading the value on submit only,
+  // so typing never triggers a parent re-render.
+  const passwordRef = useRef("");
+
+
+  // Stable callbacks — referentially equal across re-renders so React.memo
+  // on PasswordInput can bail out when the parent re-renders for other reasons.
+  const handleEmailChange = useCallback((text: string) => setEmail(text), []);
+  const handlePasswordChange = useCallback((text: string) => { passwordRef.current = text; }, []);
   const { setIsSignedIn, setRole, requestNotificationPermissions } = useAuth();
   const {showLoading, hideLoading}  = useLoading();
 
@@ -33,7 +41,7 @@ const StudentLoginPage = () => {
   const {referral_id} = route.params ?? {};
 
   const handleLogin = async () => {
-    if (!email || !password) {
+    if (!email || !passwordRef.current) {
       setAlertData({title:"Error", message: "Please fill in all fields"});
       setAlertVisible(true);
     } 
@@ -42,7 +50,7 @@ const StudentLoginPage = () => {
     try {
       const response = await api.post(LoginEndpoints.login, {
         email,
-        password,
+        password: passwordRef.current,
         role: "student"
       });
 
@@ -177,7 +185,7 @@ const StudentLoginPage = () => {
             placeholder="name@domain.com" 
             placeholderTextColor="#757684"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={handleEmailChange}
             keyboardType="email-address"
             autoCapitalize="none"
           />
@@ -191,8 +199,8 @@ const StudentLoginPage = () => {
             </TouchableOpacity>
           </View>
           <PasswordInput 
-            value={password}
-            onChangeText={setPassword}
+            defaultValue=""
+            onChangeText={handlePasswordChange}
           />
         </View>
 

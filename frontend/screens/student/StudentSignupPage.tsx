@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -26,13 +26,17 @@ const StudentSignupPage = () => {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
+
   const [alertData, setAlertData] = useState({title:'', message: ''})
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
+
+  // useRef for password — typing never triggers a parent re-render.
+  const passwordRef = useRef("");
+  const handlePasswordChange = useCallback((t: string) => { passwordRef.current = t; }, []);
   const {showLoading, hideLoading} = useLoading();
 
   const handleCreateAccount = async () => {
-    if (!fullName || !email || !password || !phone) {
+    if (!fullName || !email || !passwordRef.current || !phone) {
       setAlertData({title: 'Error', message: 'Please fill in all the required fields'});
       setAlertVisible(true);
       return;
@@ -47,7 +51,7 @@ const StudentSignupPage = () => {
       showLoading("Signing you up...");
       const response = await api.post(LoginEndpoints.signup, {
         email,
-        password,
+        password: passwordRef.current,
         name: fullName,
         phone: phone,
         role: "student"
@@ -190,8 +194,8 @@ const StudentSignupPage = () => {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Password</Text>
               <PasswordInput 
-                value={password}
-                onChangeText={setPassword}
+                defaultValue=""
+                onChangeText={handlePasswordChange}
                 style={styles.passwordContainer}
                 inputStyle={styles.passwordInput}
               />

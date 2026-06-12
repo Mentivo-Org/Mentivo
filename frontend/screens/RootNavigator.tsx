@@ -44,7 +44,8 @@ import DialogBox from "../components/DialogBox";
 import { Image } from "expo-image";
 import { StyleSheet, View, TouchableOpacity, Animated, AppState } from "react-native";
 import notifee, { EventType, AndroidImportance } from "@notifee/react-native";
-import { navigationRef, navigate } from "../services/navigation";
+import { getMessaging, onMessage } from "@react-native-firebase/messaging";
+import { navigationRef, navigate, getActiveChatSessionId } from "../services/navigation";
 
 import linking from "../linking";
 import { socketManager } from "../services/socketManager";
@@ -364,6 +365,29 @@ export default function RootNavigator() {
       }
     });
 
+    // Foreground FCM handler: show a notifee heads-up notification when a chat
+    // message arrives while the app is open (FCM suppresses its own UI in foreground).
+    const messaging = getMessaging();
+    const unsubscribeFcmForeground = onMessage(messaging, async (remoteMessage) => {
+      if (remoteMessage.data?.type === 'chat') {
+        const { sessionId, senderId, senderName, title, body } = remoteMessage.data as any;
+        // Don't show a notification if the user is already viewing this chat
+        if (getActiveChatSessionId() === sessionId) return;
+        await notifee.displayNotification({
+          id: `chat_${sessionId}_${Date.now()}`,
+          title: title || senderName || 'New Message',
+          body: body || 'You have a new message',
+          data: { type: 'chat', sessionId, senderId, senderName },
+          android: {
+            channelId: 'messages',
+            importance: AndroidImportance.HIGH,
+            pressAction: { id: 'default', launchActivity: 'default' },
+            asForegroundService: false,
+          },
+        });
+      }
+    });
+
     // 3. Cold start - app opened from killed state
     const checkInitialNotification = async () => {
       const initialNotification = await notifee.getInitialNotification();
@@ -450,6 +474,7 @@ export default function RootNavigator() {
 
     return () => {
       unsubscribeForeground();
+      unsubscribeFcmForeground();
       appStateSubscription.remove();
       if (socketCleanup) socketCleanup();
     };

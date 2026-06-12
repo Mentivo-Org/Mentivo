@@ -16,3 +16,17 @@ export function navigate(name: string, params?: any) {
     setTimeout(() => clearInterval(checkReady), 5000);
   }
 }
+
+// Tracks the chat session the user is currently viewing.
+// Set by ChatPage on mount; cleared on unmount.
+// Used to suppress push notifications for the open session.
+let _activeChatSessionId: string | null = null;
+
+export function setActiveChatSession(sessionId: string | null) {
+  _activeChatSessionId = sessionId;
+}
+
+export function getActiveChatSessionId(): string | null {
+  return _activeChatSessionId;
+}
+

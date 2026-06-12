@@ -7,6 +7,7 @@ import { ChatClient, ChatMessage as AgoraMessage } from 'react-native-agora-chat
 import { agoraChatService } from '../../services/chat/agoraChatClient';
 import { ClientValidation } from '../../services/chat/validation';
 import { chatSessionManager } from '../../services/chat/chatSessionManager';
+import { setActiveChatSession } from '../../services/navigation';
 import MessageBubble from '../../components/chat/MessageBubble';
 import MessageInput from '../../components/chat/MessageInput';
 import QuickReplies from '../../components/chat/QuickReplies';
@@ -33,6 +34,9 @@ const ChatPage = (props: any) => {
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
+    // Register this session as active so notifications are suppressed while viewing
+    setActiveChatSession(sessionId);
+
     const initChat = async () => {
       await agoraChatService.init();
       setIsConnecting(false);
@@ -67,7 +71,11 @@ const ChatPage = (props: any) => {
     };
 
     agoraChatService.addMessageListener(messageListener);
-    return () => agoraChatService.removeMessageListener(messageListener);
+    return () => {
+      // Clear the active session when leaving so notifications resume
+      setActiveChatSession(null);
+      agoraChatService.removeMessageListener(messageListener);
+    };
   }, [partnerId]);
 
   const loadHistory = async () => {

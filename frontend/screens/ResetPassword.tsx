@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -19,27 +19,30 @@ const ResetPassword = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const {accessToken, role} = route.params;
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const newPasswordRef = useRef("");
+  const confirmPasswordRef = useRef("");
+
+  const handleNewPasswordChange = useCallback((t: string) => { newPasswordRef.current = t; }, []);
+  const handleConfirmPasswordChange = useCallback((t: string) => { confirmPasswordRef.current = t; }, []);
 
   const { showLoading, hideLoading } = useLoading();
   const [alertData, setAlertData] = useState({ title: '', message: '' });
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
 
   const handleResetPassword = async () => {
-    if (!newPassword || !confirmPassword) {
+    if (!newPasswordRef.current || !confirmPasswordRef.current) {
       setAlertData({ title: 'Error', message: 'Please fill in both fields' });
       setAlertVisible(true);
       return;
     }
 
-    if (newPassword !== confirmPassword) {
+    if (newPasswordRef.current !== confirmPasswordRef.current) {
       setAlertData({ title: 'Error', message: 'Passwords do not match' });
       setAlertVisible(true);
       return;
     }
 
-    if (newPassword.length < 8) {
+    if (newPasswordRef.current.length < 8) {
       setAlertData({ title: 'Error', message: 'Password must be at least 8 characters' });
       setAlertVisible(true);
       return;
@@ -83,16 +86,16 @@ const ResetPassword = () => {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>New Password</Text>
           <PasswordInput 
-            value={newPassword}
-            onChangeText={setNewPassword}
+            defaultValue=""
+            onChangeText={handleNewPasswordChange}
           />
         </View>
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Confirm Password</Text>
           <PasswordInput 
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
+            defaultValue=""
+            onChangeText={handleConfirmPasswordChange}
           />
         </View>
 

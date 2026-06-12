@@ -28,7 +28,14 @@ const ChatListPage = () => {
       fetchData();
     };
     init();
-  }, []);
+
+    // Refresh data whenever this screen comes back into focus
+    // (e.g. returning from ChatPage after reading messages)
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchData();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const fetchData = async () => {
     try {
