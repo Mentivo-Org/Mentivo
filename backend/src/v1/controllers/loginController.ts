@@ -126,7 +126,7 @@ const upsertPrismaUser = async (
         email,
         name,
         phone: phone || null,
-        role: role || "student",
+        role: (role as any) || "student",
         isEmailVerified: false,
         authProvider: "email",
         referredByReferralCode: validReferralCode,

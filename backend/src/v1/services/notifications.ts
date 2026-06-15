@@ -72,7 +72,7 @@ export async function sendMentorPromotionAlert(fcmToken: string, level: string) 
   } catch (e) {}
 }
 
-export async function sendCallSignalingMessage(fcmToken: string, data: { callId: string, channelName: string, callerName: string }) {
+export async function sendCallSignalingMessage(fcmToken: string, data: { callId: string, channelName: string, callerName: string, callerPhoto?: string | null, chatSessionId?: string | null }) {
   if (!admin.apps.length || !fcmToken) return;
   try {
     await admin.messaging().send({
@@ -82,6 +82,8 @@ export async function sendCallSignalingMessage(fcmToken: string, data: { callId:
         callId: data.callId,
         channelName: data.channelName,
         callerName: data.callerName,
+        callerPhoto: data.callerPhoto || '',
+        chatSessionId: data.chatSessionId || '',
       },
       android: {
         priority: 'high',

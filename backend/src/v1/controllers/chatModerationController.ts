@@ -19,7 +19,7 @@ export const getReportedMessages = async (req: Request, res: Response) => {
 };
 
 export const resolveReportedMessage = async (req: Request, res: Response) => {
-  const { messageId } = req.params;
+  const messageId = req.params.messageId as string;
   const { action } = req.body; // 'allow', 'block'
   try {
     const status = action === 'allow' ? 'sent' : 'blocked';
@@ -45,7 +45,7 @@ export const getValidationRules = async (req: Request, res: Response) => {
 };
 
 export const updateValidationRule = async (req: Request, res: Response) => {
-  const { ruleId } = req.params;
+  const ruleId = req.params.ruleId as string;
   const { isActive, action, pattern, config } = req.body;
   try {
     const rule = await prisma.chatValidationRule.update({

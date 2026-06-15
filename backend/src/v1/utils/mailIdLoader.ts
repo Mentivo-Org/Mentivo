@@ -16,7 +16,7 @@ const loadData = async () => {
 
 const mailList = await loadData();
 
-export const emailValidator:object = async (email: string) => {
+export const emailValidator = async (email: string) => {
     try {
         if(!isEmail(email)) {
         return null;

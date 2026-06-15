@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { generateToken, generateChannelName } from '../services/agora.ts';
-import { lockToBusy, getPresenceState, setAvailable, setOffline } from '../services/presence.ts';
+import { lockToBusy, getPresenceState, setAvailable, setOffline, getAvailableMentors } from '../services/presence.ts';
 import { settleBilling } from '../services/billing.ts';
 import { sendCallSignalingMessage, sendCallCancelledMessage, sendChatPushNotification } from '../services/notifications.ts';
 import { emitToUser } from '../config/socket.ts';
@@ -109,7 +109,7 @@ export const initiateCall = async (req: Request, res: Response) => {
     ]);
     
     // 10. Get or Create Chat Session
-    let chatSessionId = null;
+    let chatSessionId: string | null = null;
     try {
       const agoraConvId = `${studentId}_${mentorId}`;
       const chatSession = await chatSessionService.getOrCreateSession(studentId as string, mentorId, agoraConvId);
@@ -333,7 +333,7 @@ export const scheduleCall = async (req: Request, res: Response) => {
 
 export const getMentorSchedule = async (req: Request, res: Response) => {
   try {
-    const { mentorId } = req.params;
+    const mentorId = req.params.mentorId as string;
     const now = new Date();
     const scheduledCalls = await prisma.callSession.findMany({
       where: {
@@ -752,15 +752,27 @@ export const freeMatchmaking = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'No mentors are online right now. Please try again later!' });
     }
 
-    // Matchmaking logic placeholder - we just pick the first available mentor
-    const matchedMentorId = availableMentorIds[0];
-    const mentor = await prisma.user.findUnique({
-      where: { id: matchedMentorId },
+    // Matchmaking logic: pick the online mentor with the least total_calls
+    const availableMentors = await prisma.user.findMany({
+      where: { id: { in: availableMentorIds } },
       include: { mentorProfile: true }
     });
 
-    if (!mentor || !mentor.mentorProfile || !mentor.mentorProfile.isOnline) {
+    if (availableMentors.length === 0) {
       return res.status(404).json({ error: 'Failed to match with an online mentor. Please try again.' });
+    }
+
+    availableMentors.sort((a, b) => {
+      const callsA = a.mentorProfile?.total_calls || 0;
+      const callsB = b.mentorProfile?.total_calls || 0;
+      return callsA - callsB;
+    });
+
+    const mentor = availableMentors[0];
+    const matchedMentorId = mentor.id;
+
+    if (!mentor.mentorProfile || !mentor.mentorProfile.isOnline) {
+      return res.status(404).json({ error: 'Matched mentor went offline. Please try again.' });
     }
 
     // 3. Lock matched mentor

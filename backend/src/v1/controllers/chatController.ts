@@ -28,7 +28,7 @@ export const getUserChatSessions = async (req: Request, res: Response) => {
 };
 
 export const getChatMessages = async (req: Request, res: Response) => {
-  const { sessionId } = req.params;
+  const sessionId = req.params.sessionId as string;
   const { limit, cursor } = req.query;
   
   const messages = await chatMessageService.getSessionMessages(
@@ -41,7 +41,7 @@ export const getChatMessages = async (req: Request, res: Response) => {
 };
 
 export const sendMessage = async (req: Request, res: Response) => {
-  const { sessionId } = req.params;
+  const sessionId = req.params.sessionId as string;
   const { content } = req.body;
   const userId = (req as any).user.id;
 
@@ -125,7 +125,7 @@ export const getChatToken = async (req: Request, res: Response) => {
 };
 
 export const markAsRead = async (req: Request, res: Response) => {
-  const { sessionId } = req.params;
+  const sessionId = req.params.sessionId as string;
   const userId = (req as any).user.id;
   try {
     await chatMessageService.markSessionAsRead(sessionId, userId);
@@ -141,7 +141,7 @@ export const markAsRead = async (req: Request, res: Response) => {
 };
 
 export const blockUser = async (req: Request, res: Response) => {
-  const { sessionId } = req.params;
+  const sessionId = req.params.sessionId as string;
   try {
     await chatSessionService.updateStatus(sessionId, 'blocked');
     res.json({ success: true });
@@ -151,7 +151,7 @@ export const blockUser = async (req: Request, res: Response) => {
 };
 
 export const reportMessage = async (req: Request, res: Response) => {
-  const { messageId } = req.params;
+  const messageId = req.params.messageId as string;
   try {
     await chatMessageService.reportMessage(messageId);
     res.json({ success: true });
@@ -161,7 +161,7 @@ export const reportMessage = async (req: Request, res: Response) => {
 };
 
 export const linkChatToCall = async (req: Request, res: Response) => {
-  const { sessionId } = req.params;
+  const sessionId = req.params.sessionId as string;
   const { callSessionId } = req.body;
   const userId = (req as any).user.id;
 

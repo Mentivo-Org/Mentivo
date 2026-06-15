@@ -7,7 +7,7 @@ export const iitNameExporter = async (req:Request,res: Response) => {
         const name = await emailValidator(email);
         // console.log(typeof name);
         console.log(name);
-        if(name!=='null') {
+        if(name && name!=='null') {
             return res.status(200).json({
                 name_of_iit: JSON.parse(name),
             })

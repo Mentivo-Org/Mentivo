@@ -57,6 +57,26 @@ class AgoraChatRestService {
     }
   }
 
+  async recallMessage(msgId: string, from: string, to: string = '', chatType: string = 'chat') {
+    try {
+      const headers = await this.getHeaders();
+      const response = await axios.post(
+        `${agoraChatBaseUrl}/messages/msg_recall`,
+        {
+          msg_id: msgId,
+          from: from,
+          to: to,
+          chat_type: chatType
+        },
+        { headers }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Agora recallMessage error:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
   async isUserOnline(userId: string): Promise<boolean> {
     try {
       const headers = await this.getHeaders();

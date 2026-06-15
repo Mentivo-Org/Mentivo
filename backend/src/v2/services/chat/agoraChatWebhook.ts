@@ -59,7 +59,7 @@ async function handleMessageSend(payload: any) {
     const sender = await prisma.user.findUnique({ where: { id: fromUuid } });
     if (!sender || sender.role !== 'student') {
       console.error('Unauthorized chat initiation: Only students can initiate a chat.');
-      await agoraChatRestService.recallMessage(msg_id, from);
+      await agoraChatRestService.recallMessage(msg_id, from, to);
       return;
     }
     
@@ -67,7 +67,7 @@ async function handleMessageSend(payload: any) {
       chatSession = await chatSessionService.getOrCreateSession(fromUuid, toUuid, `${fromUuid}_${toUuid}`);
     } catch (error) {
       console.error('Unauthorized chat initiation:', error);
-      await agoraChatRestService.recallMessage(msg_id, from);
+      await agoraChatRestService.recallMessage(msg_id, from, to);
       return;
     }
   }
@@ -84,8 +84,8 @@ async function handleMessageSend(payload: any) {
   });
 
   if (!result.isValid) {
-    await agoraChatRestService.recallMessage(msg_id, from);
+    await agoraChatRestService.recallMessage(msg_id, from, to);
   } else {
-    await chatSessionService.updateLastMessage(chatSession.id);
+    await chatSessionService.updateLastMessage(chatSession.id, fromUuid);
   }
 }

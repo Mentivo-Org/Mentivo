@@ -50,7 +50,7 @@ router.post('/login', async (req: Request, res: Response) => {
  * Get aggregated data for a coaching center's students.
  */
 router.get('/dashboard/:id', async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
 
   try {
     const students = await prisma.user.findMany({
@@ -67,8 +67,8 @@ router.get('/dashboard/:id', async (req: Request, res: Response) => {
     let totalCalls = 0;
     let totalDurationSecs = 0;
 
-    students.forEach(student => {
-      student.callSessionsStudent.forEach(session => {
+    (students as any[]).forEach(student => {
+      (student.callSessionsStudent || []).forEach((session: any) => {
         totalRevenueGenerated += Number(session.amountCharged);
         totalCalls++;
         totalDurationSecs += session.durationSecs;
@@ -87,8 +87,8 @@ router.get('/dashboard/:id', async (req: Request, res: Response) => {
         id: s.id,
         name: s.name,
         email: s.email,
-        callsCount: s.callSessionsStudent.length,
-        revenueGenerated: s.callSessionsStudent.reduce((acc, curr) => acc + Number(curr.amountCharged), 0)
+        callsCount: (s as any).callSessionsStudent?.length || 0,
+        revenueGenerated: ((s as any).callSessionsStudent || []).reduce((acc: number, curr: any) => acc + Number(curr.amountCharged), 0)
       }))
     });
   } catch (error) {

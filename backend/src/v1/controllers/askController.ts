@@ -106,7 +106,10 @@ export const createQuestion = async (req: Request, res: Response) => {
 
 // 3. Get questions (paginated, with coaching center prioritization)
 export const getQuestions = async (req: Request, res: Response) => {
-  const { sort, search, page, limit } = req.query;
+  const sort = req.query.sort as string | undefined;
+  const search = req.query.search as string | undefined;
+  const page = req.query.page as string | undefined;
+  const limit = req.query.limit as string | undefined;
   const userId = (req as any).user.id;
 
   try {
@@ -138,7 +141,7 @@ export const getQuestions = async (req: Request, res: Response) => {
       };
     }
 
-    let questions = [];
+    let questions: any[] = [];
     let totalCount = 0;
 
     // Sorting definition: sort popular by answer count, else by creation time
@@ -238,7 +241,7 @@ export const getQuestions = async (req: Request, res: Response) => {
 
 // 4. Edit a question
 export const updateQuestion = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   const { text } = req.body;
   const userId = (req as any).user.id;
 
@@ -285,7 +288,7 @@ export const updateQuestion = async (req: Request, res: Response) => {
 
 // 5. Soft-delete a question
 export const deleteQuestion = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   const userId = (req as any).user.id;
 
   try {
@@ -314,7 +317,7 @@ export const deleteQuestion = async (req: Request, res: Response) => {
 
 // 6. Post an answer to a question (Mentor only, once per question)
 export const createAnswer = async (req: Request, res: Response) => {
-  const { id: questionId } = req.params;
+  const questionId = req.params.id as string;
   const { text } = req.body;
   const mentorId = (req as any).user.id;
 
@@ -412,7 +415,7 @@ export const createAnswer = async (req: Request, res: Response) => {
 
 // 7. Vote on an answer (Upvote/Downvote)
 export const voteAnswer = async (req: Request, res: Response) => {
-  const { id: answerId } = req.params;
+  const answerId = req.params.id as string;
   const { voteType } = req.body; // 'UP' | 'DOWN'
   const userId = (req as any).user.id;
 
@@ -493,7 +496,7 @@ export const voteAnswer = async (req: Request, res: Response) => {
 
 // 8. Get question detail (single question with all its answers)
 export const getQuestionDetail = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
 
   try {
     const question = await prisma.question.findUnique({
