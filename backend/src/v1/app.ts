@@ -166,7 +166,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 const PORT = process.env.PORT_V1 || 4001;
 httpServer.listen(PORT, async () => {
-  console.log(`Mentivo V2 API running on port ${PORT}`);
+  console.log(`Mentivo V1 API running on port ${PORT}`);
   try {
     await ensureStorageBuckets();
   } catch (err) {
@@ -174,7 +174,7 @@ httpServer.listen(PORT, async () => {
   }
   try {
     await startJobs();
-    console.log('Background jobs started successfully in V2');
+    console.log('Background jobs started successfully in V1');
   } catch (err) {
     console.error('Failed to start background jobs:', err);
   }
