@@ -41,20 +41,6 @@ app.use(cors({
 // Route for fetching min versions on startup
 app.get('/api/config/version', getVersions);
 
-app.get('/api/health', async (req, res) => {
-  try {
-    // Prove the DB is active using Prisma
-    await prisma.user.findFirst({
-      select: { id: true }
-    });
-    
-    res.status(200).send('System Status: Active');
-  } catch (err) {
-    console.error('Health check failed:', err);
-    res.status(500).send('System Status: Paused');
-  }
-});
-
 // Proxy interceptor to route to sub-apps based on x-api-version header
 app.use('/', (req, res, next) => {
   const apiVersion = req.headers['x-api-version'];
