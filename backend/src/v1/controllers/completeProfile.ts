@@ -26,6 +26,11 @@ export const CompleteProfileMentor = async (req: Request, res: Response) => {
         })
     }
     console.log(req.body);
+    console.log('File debug:', {
+      mimetype: file.mimetype,
+      size: file.size,
+      bufferLength: file.buffer?.length  // 👈 if 0, proxy consumed the body  
+    });
     try {
       const fileExtension = mime.extension(file.mimetype);
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
