@@ -20,7 +20,9 @@ import configRouter from './routes/config.ts';
 import prisma from './config/db.ts';
 import { startJobs } from './jobs/index.ts';
 import { initSocket } from './config/socket.ts';
-import { ensureStorageBuckets } from './lib/supabaseAdmin.ts';
+import { ensureStorageBuckets, supabaseAdmin } from './lib/supabaseAdmin.ts';
+
+const supabaseBucketName = process.env.SUPABASE_ID_CARD_BUCKET_NAME;
 
 const app = express();
 const httpServer = createServer(app);
