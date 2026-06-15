@@ -44,6 +44,19 @@ export default function MentorVerificationPage() {
     }
   };
 
+  const handleReject = async (id: string) => {
+    if (!confirm("Are you sure you want to reject this mentor application?")) return;
+    setVerifyingId(id);
+    try {
+      await api.post(`/mentors/${id}/reject`, {});
+      setMentors(mentors.filter(m => m.mentorId !== id));
+    } catch (err) {
+      alert("Failed to reject mentor application.");
+    } finally {
+      setVerifyingId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -104,6 +117,7 @@ export default function MentorVerificationPage() {
 
               <div className="p-6 border-t border-gray-100 flex gap-3">
                  <button 
+                   onClick={() => handleReject(mentor.mentorId)}
                    disabled={verifyingId === mentor.mentorId}
                    className="flex-1 bg-white hover:bg-red-50 text-red-600 border border-red-200 font-medium py-2 rounded-lg transition-colors text-sm"
                  >
