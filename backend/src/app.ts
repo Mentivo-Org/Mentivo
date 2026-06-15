@@ -4,6 +4,10 @@ import cors from 'cors';
 import { getVersions } from '../modules/version/version.controller.ts';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 
+// Initialize the sub-apps so they listen on their respective ports
+import './v1/app.ts';
+import './v2/app.ts';
+
 const app = express();
 
 // CORS configuration at root Gateway level
