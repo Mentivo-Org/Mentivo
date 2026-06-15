@@ -22,7 +22,7 @@ const navItems = [
   { name: "Notification Center", href: "/dashboard/notifications", icon: Bell },
   { name: "Chat Moderation", href: "/dashboard/moderation", icon: ShieldCheck },
   { name: "Profile Deletion", href: "/dashboard/profile-deletion", icon: UserMinus },
-  { name: "Q&A Settings", href: "/dashboard/settings", icon: Settings },
+  { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
 export default function Sidebar() {

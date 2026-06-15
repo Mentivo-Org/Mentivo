@@ -344,7 +344,15 @@ export default function ProfileDeletionPage() {
               </h2>
             </div>
             
-            <div className="p-6 space-y-4">
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (confirmInput.toUpperCase() === "DELETE" && !isDeleting) {
+                  executeSelectiveDeletion();
+                }
+              }}
+              className="p-6 space-y-4"
+            >
               <p className="text-sm text-secondary">
                 You are about to delete records from <strong className="text-text">{Object.values(options).filter(Boolean).length}</strong> selected table(s) for <strong className="text-text">{selectedUser?.name}</strong>.
               </p>
@@ -375,15 +383,14 @@ export default function ProfileDeletionPage() {
                   Cancel
                 </button>
                 <button
-                  type="button"
+                  type="submit"
                   disabled={confirmInput.toUpperCase() !== "DELETE" || isDeleting}
-                  onClick={executeSelectiveDeletion}
                   className="flex-1 px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
                 >
                   {isDeleting ? "Deleting..." : "Permanently Delete"}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}

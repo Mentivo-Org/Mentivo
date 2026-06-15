@@ -9,19 +9,22 @@ const Footer = () => {
           MENTIVO
         </h2>
         <div className="flex justify-center flex-wrap gap-x-8 gap-y-2 mb-6">
-          <Link href="/" className="text-slate-500 hover:text-[#00288e] text-sm font-semibold transition-colors">
+          <Link href="/" className="text-slate-500 hover:text-[#0077CB] text-sm font-semibold transition-colors">
             Home
           </Link>
-          <Link href="/about" className="text-slate-500 hover:text-[#00288e] text-sm font-semibold transition-colors">
+          <Link href="/about" className="text-slate-500 hover:text-[#0077CB] text-sm font-semibold transition-colors">
             About Us
           </Link>
-          <Link href="https://mentivo.in/privacy" className="text-slate-500 hover:text-[#00288e] text-sm font-semibold transition-colors">
+          <Link href="https://mentivo.in/privacy" className="text-slate-500 hover:text-[#0077CB] text-sm font-semibold transition-colors">
             Privacy Policy
           </Link>
-          <Link href="/support" className="text-slate-500 hover:text-[#00288e] text-sm font-semibold transition-colors">
+          <Link href="/terms" className="text-slate-500 hover:text-[#0077CB] text-sm font-semibold transition-colors">
+            Terms of Use
+          </Link>
+          <Link href="/support" className="text-slate-500 hover:text-[#0077CB] text-sm font-semibold transition-colors">
             Account Deletion
           </Link>
-          <a href="mailto:support@mentivo.in" className="text-slate-500 hover:text-[#00288e] text-sm font-semibold transition-colors">
+          <a href="mailto:support@mentivo.in" className="text-slate-500 hover:text-[#0077CB] text-sm font-semibold transition-colors">
             Contact
           </a>
         </div>

@@ -10,6 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  Linking,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -26,10 +28,60 @@ const CompleteProfile = () => {
   const {showLoading, hideLoading} = useLoading();
   const { full_name, email, role, phone, iit, state } = route.params;
 
-  const [alertData, setAlertData] = useState({title: '', message: ''});
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  const [alertData, setAlertData] = useState<any>({title: '', message: ''});
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
 
   const {setIsSignedIn, handleLogout, requestNotificationPermissions, setRole} = useAuth();
+
+  const handleAndroidOverlayPermissionPrompt = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const hasPrompted = await AsyncStorage.getItem('hasPromptedOverlay');
+        if (!hasPrompted) {
+          setAlertData({
+            title: "Enable Full-Screen Calls",
+            message: "To receive incoming calls while using other apps or when your screen is locked, please enable 'Display over other apps' in your system settings.",
+            primaryButtonText: "Open Settings",
+            onPrimaryPress: async () => {
+              setAlertVisible(false);
+              await AsyncStorage.setItem('hasPromptedOverlay', 'true');
+              Linking.openSettings();
+              setIsSignedIn(true);
+            },
+            secondaryButtonText: "Maybe Later",
+            onSecondaryPress: async () => {
+              setAlertVisible(false);
+              await AsyncStorage.setItem('hasPromptedOverlay', 'true');
+              setIsSignedIn(true);
+            },
+          });
+          setAlertVisible(true);
+          return;
+        }
+      } catch (err) {
+        console.error('Error checking overlay permission:', err);
+      }
+    }
+    setIsSignedIn(true);
+  };
 
   const handleStartFresh = async () => {
     await handleLogout();
@@ -49,6 +101,7 @@ const CompleteProfile = () => {
     year: '',
     branch: '',
     expertise: '',
+    languages: '',
     idCard: null,
   });
 
@@ -93,6 +146,7 @@ const CompleteProfile = () => {
       data.append('year', formData.year);
       data.append('branch', formData.branch);
       data.append('expertise', formData.expertise);
+      data.append('languages', formData.languages);
       
       if (formData.idCard) {
         data.append('idCard', {
@@ -116,7 +170,7 @@ const CompleteProfile = () => {
         await AsyncStorage.setItem('role', 'mentor');
         setRole('mentor');
         requestNotificationPermissions();
-        setIsSignedIn(true);
+        await handleAndroidOverlayPermissionPrompt();
       }
     } catch(err: any) {
       setAlertData({title: 'Error', message: err.message || 'Something went wrong'});
@@ -146,12 +200,13 @@ const CompleteProfile = () => {
       if(response.status!==201) {
         setAlertData({title: 'Error in completing profile', message: response.data.error});
         setAlertVisible(true);
+      } else {
+        await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+        await AsyncStorage.setItem('role', response.data.user.role);
+        setRole(response.data.user.role);
+        requestNotificationPermissions();
+        await handleAndroidOverlayPermissionPrompt();
       }
-      await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
-      await AsyncStorage.setItem('role', response.data.user.role);
-      setRole(response.data.user.role);
-      requestNotificationPermissions();
-      setIsSignedIn(true);
     }
     catch(err) {
       setAlertData({title: 'Error', message: err});
@@ -181,7 +236,7 @@ const CompleteProfile = () => {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : (isKeyboardVisible ? 'height' : undefined)}
         style={styles.flex}
         keyboardVerticalOffset={Platform.OS === 'android' ? 70 : 0}
       >
@@ -256,6 +311,15 @@ const CompleteProfile = () => {
                     placeholder="Best in Organic Chemistry" 
                     placeholderTextColor="#757684"
                     onChangeText={(text) => setFormData((prev) => ({...prev, expertise: text}))}
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Languages Spoken</Text>
+                  <TextInput 
+                    style={styles.input} 
+                    placeholder="e.g. English, Hindi" 
+                    placeholderTextColor="#757684"
+                    onChangeText={(text) => setFormData((prev) => ({...prev, languages: text}))}
                   />
                 </View>
               </>
@@ -357,7 +421,16 @@ const CompleteProfile = () => {
           </View>
         </TouchableOpacity>
       </Modal>
-      <DialogBox visible={alertVisible} onClose={() => setAlertVisible(false)} title={alertData.title} message={alertData.message}/>
+      <DialogBox 
+        visible={alertVisible} 
+        onClose={alertData.onClose || (() => setAlertVisible(false))} 
+        title={alertData.title} 
+        message={alertData.message}
+        primaryButtonText={alertData.primaryButtonText}
+        onPrimaryPress={alertData.onPrimaryPress}
+        secondaryButtonText={alertData.secondaryButtonText}
+        onSecondaryPress={alertData.onSecondaryPress}
+      />
     </SafeAreaView>
   );
 };
@@ -442,7 +515,7 @@ const styles = StyleSheet.create({
   },
   required: {
     fontSize: 12,
-    color: '#00288e',
+    color: '#0077CB',
     fontWeight: '500',
   },
   input: {

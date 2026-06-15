@@ -6,7 +6,7 @@ export default function AboutSection() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="bg-white rounded-[40px] border border-slate-200 shadow-xl shadow-blue-500/5 overflow-hidden">
         {/* Header */}
-        <div className="bg-[#00288e] p-8 sm:p-12 text-white relative overflow-hidden">
+        <div className="bg-[#0077CB] p-8 sm:p-12 text-white relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-6">
@@ -26,7 +26,7 @@ export default function AboutSection() {
           {/* Mission Section */}
           <section>
             <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
-              <Target className="text-[#00288e]" size={28} />
+              <Target className="text-[#0077CB]" size={28} />
               Our Mission
             </h2>
             <p className="text-lg">
@@ -40,27 +40,27 @@ export default function AboutSection() {
           {/* Functionality Section */}
           <section>
             <h2 className="text-2xl font-black text-[#0b1c30] mb-8 flex items-center gap-3">
-              <Zap className="text-[#00288e]" size={28} />
+              <Zap className="text-[#0077CB]" size={28} />
               How Mentivo Works
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
                 <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-slate-200 flex items-center justify-center mb-4">
-                  <Users size={24} className="text-[#00288e]" />
+                  <Users size={24} className="text-[#0077CB]" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Verified IIT Mentors</h3>
                 <p className="text-sm">Every mentor on our platform is a current student or alumni of the IITs, verified through rigorous ID checks.</p>
               </div>
               <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
                 <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-slate-200 flex items-center justify-center mb-4">
-                  <Zap size={24} className="text-[#00288e]" />
+                  <Zap size={24} className="text-[#0077CB]" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Instant Voice Calls</h3>
                 <p className="text-sm">No scheduling headaches. Connect instantly via in-app VoIP calls whenever you need guidance.</p>
               </div>
               <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
                 <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-slate-200 flex items-center justify-center mb-4">
-                  <Shield size={24} className="text-[#00288e]" />
+                  <Shield size={24} className="text-[#0077CB]" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Per-Minute Billing</h3>
                 <p className="text-sm">Pay only for what you use. Transparent, fair, and budget-friendly pricing for every student.</p>
@@ -71,7 +71,7 @@ export default function AboutSection() {
           {/* Data Transparency Section */}
           <section className="bg-blue-50/50 p-8 sm:p-10 rounded-[32px] border border-blue-100">
             <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
-              <Shield className="text-[#00288e]" size={28} />
+              <Shield className="text-[#0077CB]" size={28} />
               Data Transparency & Trust
             </h2>
             <p className="mb-6">
@@ -79,7 +79,7 @@ export default function AboutSection() {
             </p>
             <div className="space-y-4">
               <div className="flex gap-4">
-                <div className="mt-1 flex-shrink-0 w-5 h-5 bg-[#00288e] rounded-full flex items-center justify-center">
+                <div className="mt-1 flex-shrink-0 w-5 h-5 bg-[#0077CB] rounded-full flex items-center justify-center">
                   <div className="w-2 h-2 bg-white rounded-full" />
                 </div>
                 <div>
@@ -88,7 +88,7 @@ export default function AboutSection() {
                 </div>
               </div>
               <div className="flex gap-4">
-                <div className="mt-1 flex-shrink-0 w-5 h-5 bg-[#00288e] rounded-full flex items-center justify-center">
+                <div className="mt-1 flex-shrink-0 w-5 h-5 bg-[#0077CB] rounded-full flex items-center justify-center">
                   <div className="w-2 h-2 bg-white rounded-full" />
                 </div>
                 <div>
@@ -97,7 +97,7 @@ export default function AboutSection() {
                 </div>
               </div>
               <div className="flex gap-4">
-                <div className="mt-1 flex-shrink-0 w-5 h-5 bg-[#00288e] rounded-full flex items-center justify-center">
+                <div className="mt-1 flex-shrink-0 w-5 h-5 bg-[#0077CB] rounded-full flex items-center justify-center">
                   <div className="w-2 h-2 bg-white rounded-full" />
                 </div>
                 <div>
@@ -111,7 +111,7 @@ export default function AboutSection() {
           {/* Final CTA/Footer Note */}
           <div className="text-center pt-8 border-t border-slate-100">
             <p className="text-sm font-medium text-slate-400 uppercase tracking-widest mb-4">Established 2026</p>
-            <p className="text-[#00288e] font-black text-xl tracking-tight">MENTIVO: Empowering Ambition.</p>
+            <p className="text-[#0077CB] font-black text-xl tracking-tight">MENTIVO: Empowering Ambition.</p>
           </div>
         </div>
       </div>

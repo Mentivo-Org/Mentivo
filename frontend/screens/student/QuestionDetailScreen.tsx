@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Dimensions,
+  Keyboard,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -35,6 +36,23 @@ export default function QuestionDetailScreen() {
   // Mentor answering states
   const [answerText, setAnswerText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     const getUserInfo = async () => {
@@ -144,8 +162,13 @@ export default function QuestionDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Header */}
-      <View style={styles.header}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : (isKeyboardVisible ? 'height' : undefined)}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'android' ? 70 : 0}
+      >
+        {/* Top Header */}
+        <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#374151" />
         </TouchableOpacity>
@@ -153,10 +176,6 @@ export default function QuestionDetailScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={{ flex: 1 }}
-      >
         {/* Question Header Card */}
         <View style={styles.questionCard}>
           <View style={styles.avatarPlaceholder}>
@@ -253,13 +272,13 @@ export default function QuestionDetailScreen() {
             </TouchableOpacity>
           </View>
         )}
-      </KeyboardAvoidingView>
       <DialogBox
         visible={alertVisible}
         title={alertData.title}
         message={alertData.message}
         onClose={() => setAlertVisible(false)}
       />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

@@ -111,7 +111,7 @@ export default function PartnerDashboard() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] gap-3 bg-slate-50">
-        <Loader2 className="animate-spin text-[#00288e]" size={36} />
+        <Loader2 className="animate-spin text-[#0077CB]" size={36} />
         <span className="text-slate-500 font-bold">Loading dashboard details...</span>
       </div>
     );

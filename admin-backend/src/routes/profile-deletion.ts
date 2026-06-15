@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import prisma from '../config/db.ts';
 import { authenticateAdmin } from '../middleware/auth.ts';
-import admin from '../config/firebase.ts';
 import supabase from '../services/supabase.ts';
 
 const router = Router();
@@ -92,16 +91,14 @@ router.get('/profile/:id/stats', async (req, res) => {
       ? await prisma.payout.count({ where: { mentorId: id } })
       : 0;
 
-    // Check Firebase Auth account
-    let hasFirebaseAuth = false;
-    if (user.email && admin.apps.length) {
-      try {
-        const firebaseUser = await admin.auth().getUserByEmail(user.email);
-        if (firebaseUser) {
-          hasFirebaseAuth = true;
-        }
-      } catch (e) {}
-    }
+    // Check Supabase Auth account
+    let hasSupabaseAuth = false;
+    try {
+      const { data: authUser, error: getAuthError } = await supabase.auth.admin.getUserById(id);
+      if (authUser && authUser.user && !getAuthError) {
+        hasSupabaseAuth = true;
+      }
+    } catch (e) {}
 
     // Check Supabase Storage file (for mentor Verification IDs)
     let hasStorageFile = false;
@@ -117,19 +114,29 @@ router.get('/profile/:id/stats', async (req, res) => {
 
     stats.profile = { exists: true, count: 1, label: 'User Profile Record (Primary DB)' };
 
-    if (hasFirebaseAuth) {
-      stats.auth = { exists: true, count: 1, label: 'Firebase Authentication Account' };
+    if (hasSupabaseAuth) {
+      stats.auth = { exists: true, count: 1, label: 'Supabase Authentication Account' };
     }
 
     if (hasStorageFile) {
       stats.storage = { exists: true, count: 1, label: 'Supabase Storage Identification File' };
     }
 
+    const hasCalls = callsCount > 0;
+
     if (user.role === 'student' && user.wallet) {
       const transCount = await prisma.walletTransaction.count({ where: { userId: id } });
-      stats.wallet = { exists: true, count: transCount + 1, label: `Wallet & Transactions (${transCount + 1})` };
+      stats.wallet = { 
+        exists: !hasCalls, 
+        count: transCount + 1, 
+        label: `Wallet & Transactions (${transCount + 1})${hasCalls ? ' [PRESERVED]' : ''}` 
+      };
     } else if (user.role === 'mentor' && user.mentorBalance) {
-      stats.wallet = { exists: true, count: 1, label: 'Mentor Payout Balance Account (1)' };
+      stats.wallet = { 
+        exists: !hasCalls, 
+        count: 1, 
+        label: `Mentor Payout Balance Account (1)${hasCalls ? ' [PRESERVED]' : ''}` 
+      };
     }
 
     if (callsCount > 0) {
@@ -197,20 +204,17 @@ router.post('/delete', async (req, res) => {
       }
     }
 
-    // 2. Delete Firebase Authentication
-    if (opts.auth && user.email) {
+    // 2. Delete Supabase Authentication
+    if (opts.auth) {
       try {
-        if (admin.apps.length) {
-          const firebaseUser = await admin.auth().getUserByEmail(user.email);
-          if (firebaseUser) {
-            await admin.auth().deleteUser(firebaseUser.uid);
-            console.log(`Deleted Firebase user for email: ${user.email}`);
-          }
+        const { error: authErr } = await supabase.auth.admin.deleteUser(id);
+        if (authErr) {
+          console.error(`Failed to delete Supabase auth user ${id}:`, authErr.message);
+        } else {
+          console.log(`Deleted Supabase Auth user for ID: ${id}`);
         }
       } catch (authErr: any) {
-        if (authErr.code !== 'auth/user-not-found') {
-          console.error(`Failed to delete Firebase authentication for ${user.email}:`, authErr);
-        }
+        console.error(`Failed to delete Supabase authentication for ${id}:`, authErr);
       }
     }
 
@@ -239,6 +243,13 @@ router.post('/delete', async (req, res) => {
 
       // Wallet / Transactions
       if (opts.wallet) {
+        const callsCount = await tx.callSession.count({
+          where: role === 'student' ? { student_id: id } : { mentor_id: id },
+        });
+        if (callsCount > 0) {
+          throw new Error('Wallet and transaction logs cannot be deleted because call records exist and must be preserved.');
+        }
+
         if (role === 'student') {
           await tx.wallet.deleteMany({ where: { userId: id } });
           await tx.walletTransaction.deleteMany({ where: { userId: id } });
@@ -254,13 +265,9 @@ router.post('/delete', async (req, res) => {
 
       // Core system sessions, tokens, and notifications (always clean up if user profile is being removed)
       if (opts.profile) {
-        // Double check call session constraint to prevent orphaned foreign keys and keep audit trials
         const callsCount = await tx.callSession.count({
           where: role === 'student' ? { student_id: id } : { mentor_id: id },
         });
-        if (callsCount > 0) {
-          throw new Error('Cannot delete user profile because they have call session records which must be preserved for financial and audit logs.');
-        }
 
         await tx.fCMToken.deleteMany({ where: { userId: id } });
         await tx.refreshToken.deleteMany({ where: { userId: id } });
@@ -269,7 +276,31 @@ router.post('/delete', async (req, res) => {
         if (role === 'mentor') {
           await tx.mentorProfile.deleteMany({ where: { mentorId: id } });
         }
-        await tx.user.delete({ where: { id } });
+
+        if (callsCount > 0) {
+          // Anonymize User record instead of deleting it to preserve Call and Wallet table constraints
+          await tx.user.update({
+            where: { id },
+            data: {
+              name: 'Deleted User',
+              email: `deleted-${id}@deleted.mentivo.in`,
+              phone: null,
+              referralCode: null,
+              referredByReferralCode: null,
+            }
+          });
+          console.log(`Anonymized User profile for user ID: ${id}`);
+        } else {
+          // If no call logs exist, execute full cascade deletion of wallet and user records
+          if (role === 'student') {
+            await tx.wallet.deleteMany({ where: { userId: id } });
+            await tx.walletTransaction.deleteMany({ where: { userId: id } });
+          } else {
+            await tx.mentorBalance.deleteMany({ where: { mentorId: id } });
+          }
+          await tx.user.delete({ where: { id } });
+          console.log(`Fully deleted User profile for user ID: ${id}`);
+        }
       }
     });
 

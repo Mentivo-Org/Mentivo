@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   AppState,
+  Keyboard,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -23,6 +24,23 @@ const SendOtpScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { email, name, role, phone, forgotPass, serverTime } = route.params;
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const inputs = useRef<any>([]);
   
@@ -252,7 +270,7 @@ const SendOtpScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : (isKeyboardVisible ? "height" : undefined)}
         style={styles.flex}
       >
         <View style={styles.header}>
@@ -413,7 +431,7 @@ const styles = StyleSheet.create({
   },
   resendAction: {
     fontSize: 14,
-    color: "#00288e",
+    color: "#0077CB",
     fontWeight: "600",
   },
   brandContainer: {

@@ -125,7 +125,7 @@ const buildUserFilter = (filters: any): Prisma.UserWhereInput => {
     if (filters.role) where.role = filters.role;
     if (filters.grade) where.grade = filters.grade;
     if (filters.verified !== undefined) {
-        where.mentorProfile = { verified: filters.verified };
+        where.mentorProfile = { verificationStatus: filters.verified ? 'VERIFIED' : 'PENDING' };
     }
     return where;
 }

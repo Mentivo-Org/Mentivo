@@ -89,7 +89,7 @@ const LandingPage = () => {
         {/* Hero Section */}
         <View style={styles.heroCard}>
           <Text style={styles.heroTitle}>IITian Guidance,</Text>
-          <Text style={[styles.heroTitle, { color: '#1d459c' }]}>Real Results</Text>
+          <Text style={[styles.heroTitle, { color: '#0077CB' }]}>Real Results</Text>
           
           <View style={styles.heroDescriptionContainer}>
             <View style={styles.verticalLineContainer}>
@@ -125,7 +125,7 @@ const LandingPage = () => {
           ].map((mentor, index) => (
             <View key={index} style={styles.mentorCard}>
               <View style={styles.mentorHeader}>
-                <Image source={require('../app-assets/avatar-placeholder.svg')} style={styles.mentorAvatar} />
+                <Image source={require('../app-assets/profile-circle.svg')} style={styles.mentorAvatar} />
                 <Image source={require('../app-assets/heart-icon.svg')} style={styles.heartIcon} />
               </View>
               <Text style={styles.mentorName}>{mentor.name}</Text>

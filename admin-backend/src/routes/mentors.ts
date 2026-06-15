@@ -4,6 +4,9 @@ import { authenticateAdmin } from '../middleware/auth.ts';
 import type { AuthRequest } from '../middleware/auth.ts';
 import supabase from '../services/supabase.ts';
 import admin from '../config/firebase.ts';
+import resend from '../services/resend.ts';
+import fs from 'fs';
+import path from 'path';
 
 const router = Router();
 
@@ -36,7 +39,7 @@ router.get('/', async (req, res) => {
 // List unverified mentors
 router.get('/unverified', async (req, res) => {
   const unverifiedMentors = await prisma.mentorProfile.findMany({
-    where: { verified: false },
+    where: { verificationStatus: 'PENDING' },
     include: { user: true },
   });
 
@@ -130,9 +133,66 @@ router.post('/:id/verify', async (req: AuthRequest, res) => {
   const updatedMentor = await prisma.mentorProfile.update({
     where: { mentorId: id },
     data: {
-      verified: true,
+      verificationStatus: 'VERIFIED',
       verified_by: adminEmail,
       verified_at: new Date(),
+      mentorlevel: "Verified"
+    },
+    include: {
+      user: true
+    }
+  });
+
+  const mentorEmail = updatedMentor.user?.email;
+  const mentorName = updatedMentor.user?.name || 'Mentor';
+
+  if (mentorEmail) {
+    try {
+      const pdfPath = path.join(process.cwd(), 'src/assets/mentor_guidelines.pdf');
+      const attachments = [];
+      if (fs.existsSync(pdfPath)) {
+        attachments.push({
+          filename: 'Mentivo_Mentor_Guidelines.pdf',
+          content: fs.readFileSync(pdfPath)
+        });
+      }
+
+      await resend.emails.send({
+        from: 'Mentivo Admin <admin@mentivo.in>',
+        to: mentorEmail,
+        subject: 'Mentivo Mentor Verification Approved!',
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px;">
+            <h2 style="color: #0077CB; margin-bottom: 16px;">Congratulations, ${mentorName}!</h2>
+            <p>We are pleased to inform you that your mentor profile on Mentivo has been verified and approved.</p>
+            <p>You can now log in to the app, set your status to online, and start taking calls from JEE aspirants.</p>
+            <p>We have attached the <strong>Mentivo Mentor Guidelines</strong> to this email. Please review the document carefully to understand the best practices, billing details, and platform expectations.</p>
+            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+            <p style="font-size: 12px; color: #94a3b8;">Mentivo Admin Team</p>
+          </div>
+        `,
+        attachments
+      });
+    } catch (emailErr) {
+      console.error('Failed to send verification email to mentor:', emailErr);
+    }
+  }
+
+  res.json(updatedMentor);
+});
+
+// Reject mentor
+router.post('/:id/reject', async (req: AuthRequest, res) => {
+  const { id } = req.params;
+  const adminEmail = req.user?.email;
+
+  const updatedMentor = await prisma.mentorProfile.update({
+    where: { mentorId: id },
+    data: {
+      verificationStatus: 'REJECTED',
+      verified_by: adminEmail,
+      verified_at: new Date(),
+      mentorlevel: null
     },
   });
 
@@ -189,4 +249,4 @@ router.delete('/:id', async (req, res) => {
   res.json({ message: 'Mentor deleted successfully.' });
 });
 
-export default router;
+export default router;

@@ -10,11 +10,13 @@ interface MentorCardProps {
   rating: number;
   calls: number;
   price: number;
+  originalPrice?: number | null;
   isFavorite: boolean;
   photoUrl?: string;
   isOnline?: boolean;
   onPress?: () => void;
   onFavoritePress?: () => void;
+  onCallPress?: () => void;
   mentorlevel?: string;
 }
 
@@ -35,18 +37,20 @@ const MentorCard: React.FC<MentorCardProps> = ({
   rating,
   calls,
   price,
+  originalPrice,
   isFavorite,
   photoUrl,
   isOnline,
   onPress,
   onFavoritePress,
+  onCallPress,
   mentorlevel,
 }) => {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.imageContainer}>
         <Image 
-          source={photoUrl ? { uri: photoUrl } : require('../app-assets/avatar-placeholder.svg')} 
+          source={photoUrl ? { uri: photoUrl } : require('../app-assets/profile-circle.svg')} 
           style={styles.avatar} 
         />
         {isOnline && <View style={styles.onlineDot} />}
@@ -87,10 +91,34 @@ const MentorCard: React.FC<MentorCardProps> = ({
       </View>
 
       <View style={styles.priceContainer}>
-        <Text style={styles.priceText}>
-          <Text style={styles.priceAmount}>₹{price}</Text>
-          <Text style={styles.priceUnit}>/min</Text>
-        </Text>
+        {onCallPress && (
+          <TouchableOpacity 
+            onPress={(e) => {
+              e.stopPropagation();
+              onCallPress();
+            }}
+            style={[
+              styles.callButton,
+              isOnline ? styles.callButtonOnline : styles.callButtonOffline
+            ]}
+            activeOpacity={0.6}
+          >
+            <Image 
+              source={require('../app-assets/phone-icon.svg')} 
+              style={styles.callIcon} 
+              tintColor="white"
+            />
+          </TouchableOpacity>
+        )}
+        <View style={{ alignItems: 'flex-end', marginTop: 4 }}>
+          {originalPrice && originalPrice > price ? (
+            <Text style={styles.originalPriceText}>₹{originalPrice}/min</Text>
+          ) : null}
+          <Text style={styles.priceText}>
+            <Text style={styles.priceAmount}>₹{price}</Text>
+            <Text style={styles.priceUnit}>/min</Text>
+          </Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -113,11 +141,12 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     position: 'relative',
+    alignSelf: 'center'
   },
   avatar: {
     width: 56,
     height: 56,
-    borderRadius: 8,
+    borderRadius: 28,
     backgroundColor: '#e2e8f0',
   },
   onlineDot: {
@@ -186,12 +215,37 @@ const styles = StyleSheet.create({
     color: '#444653',
   },
   priceContainer: {
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
     paddingBottom: 4,
     paddingRight: 4,
   },
+  callButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  callButtonOnline: {
+    backgroundColor: '#10b981',
+  },
+  callButtonOffline: {
+    backgroundColor: '#94a3b8',
+  },
+  callIcon: {
+    width: 14,
+    height: 14,
+  },
   priceText: {
-    fontSize: 12,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  originalPriceText: {
+    fontSize: 10,
+    color: '#9ca3af',
+    textDecorationLine: 'line-through',
+    marginBottom: 1,
   },
   priceAmount: {
     fontWeight: 'bold',

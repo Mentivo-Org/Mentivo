@@ -4,7 +4,7 @@ import Svg, { Path, G, Circle } from 'react-native-svg';
 
 const { width, height } = Dimensions.get('window');
 
-const AnimatedG = Animated.createAnimatedComponent(G);
+const AnimatedG = Animated.createAnimatedComponent(G) as any;
 
 interface LoadingScreenProps {
   message?: string;
@@ -60,6 +60,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ message }) => {
               <Circle cx={pivotX} cy={pivotY} r="0.253241" fill="#4A82FD" />
 
               {/* Pendulum assembly (animated) */}
+              {/* @ts-ignore */}
               <AnimatedG
                 style={{
                   transform: [

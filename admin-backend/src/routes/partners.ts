@@ -103,11 +103,11 @@ router.post('/create', async (req: AuthRequest, res) => {
       subject: 'Welcome to Mentivo Partner Program - Complete Your Registration',
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; borderRadius: 16px;">
-          <h2 style="color: #00288e; margin-bottom: 16px;">Welcome to Mentivo, ${name}!</h2>
+          <h2 style="color: #0077CB; margin-bottom: 16px;">Welcome to Mentivo, ${name}!</h2>
           <p>You have been registered as a <strong>${role.replace('_', ' ')}</strong> on the Mentivo Partner platform.</p>
           <p>Please click the button below to set up your password and access your dashboard. This invitation link is valid for <strong>24 hours</strong> only.</p>
           <div style="margin: 24px 0;">
-            <a href="${inviteLink}" style="background-color: #00288e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Set Up Your Password</a>
+            <a href="${inviteLink}" style="background-color: #0077CB; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Set Up Your Password</a>
           </div>
           <p style="font-size: 12px; color: #64748b;">If you cannot click the button, copy and paste this link in your browser: <br/> ${inviteLink}</p>
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />

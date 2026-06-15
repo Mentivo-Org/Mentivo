@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import ChatPage from './chat/ChatPage';
-import { useAgoraRTC } from '../hooks/useAgoraRTC';
 import DialogBox from '../components/DialogBox';
+import { useCall } from '../context/CallContext';
 
 // Figma assets
 const imgIconstackIoProfileCircle = require('../app-assets/profile-circle.svg');
@@ -18,11 +18,24 @@ const InCallScreen = () => {
   const route = useRoute<any>();
   const { callId, channelName, callerName, role, initialToken, mentorPhoto } = route.params;
 
-  const [chatSessionId, setChatSessionId] = useState<string | undefined>(route.params.chatSessionId);
-  const [partnerId, setPartnerId] = useState<string | undefined>(route.params.partnerId);
-  const [partnerName, setPartnerName] = useState<string>(route.params.partnerName || route.params.callerName);
-  const [isChatModalVisible, setIsChatModalVisible] = useState(false);
+  const {
+    callId: activeCallId,
+    callStatus,
+    duration,
+    isMuted,
+    isSpeakerOn,
+    chatSessionId,
+    partnerId,
+    partnerName,
+    startCallSession,
+    endCallSession,
+    toggleMute,
+    toggleSpeaker,
+    setMinimized,
+    setChatSessionId,
+  } = useCall();
 
+  const [isChatModalVisible, setIsChatModalVisible] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertData, setAlertData] = useState<{
     title: string;
@@ -30,57 +43,19 @@ const InCallScreen = () => {
     onClose?: () => void;
   }>({ title: '', message: '' });
 
-  const handleCallEnded = (finalStatus: string, remoteStatus?: string) => {
-    if (role === 'caller' && finalStatus === 'completed') {
-      navigation.replace('RatingScreen', {
+  useEffect(() => {
+    if (callId && callId !== activeCallId) {
+      startCallSession({
         callId,
-        mentorName: callerName || 'Mentor',
+        channelName,
+        callerName,
+        role,
+        initialToken,
         mentorPhoto,
+        chatSessionId: route.params.chatSessionId,
       });
-    } else {
-      if (role === 'caller' && remoteStatus === 'rejected') {
-        setAlertData({
-          title: 'Call Rejected',
-          message: `${callerName || 'Mentor'} rejected the call.`,
-          onClose: () => navigation.navigate('Main', { screen: 'Home' })
-        });
-        setAlertVisible(true);
-      } else {
-        navigation.navigate('Main', { screen: 'Home' });
-      }
     }
-  };
-
-  const {
-    callStatus,
-    duration,
-    isMuted,
-    isSpeakerOn,
-    handleEndCall,
-    toggleMute,
-    toggleSpeaker,
-  } = useAgoraRTC({
-    callId,
-    channelName,
-    role,
-    initialToken,
-    callerName,
-    mentorPhoto,
-    initialChatSessionId: chatSessionId,
-    onCallEnded: handleCallEnded,
-    onPartnerResolved: (id, name) => {
-      setPartnerId(id);
-      setPartnerName(name);
-    },
-    onChatSessionResolved: (sessionId) => {
-      setChatSessionId(sessionId);
-    },
-    onNavigateHome: () => navigation.navigate('Main', { screen: 'Home' }),
-    onShowAlert: (title, message, onClose) => {
-      setAlertData({ title, message, onClose });
-      setAlertVisible(true);
-    },
-  });
+  }, [callId]);
 
   const formatDuration = (secs: number) => {
     const mins = Math.floor(secs / 60);
@@ -109,11 +84,27 @@ const InCallScreen = () => {
     }
   };
 
+  const handleMinimize = () => {
+    setMinimized(true);
+    navigation.goBack();
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.topInfo}>
-        <Text style={styles.callerName}>{callerName || 'Mentorship Session'}</Text>
-        <Text style={styles.statusText}>{getStatusText()}</Text>
+      {/* Header with Minimize Button */}
+      <View style={styles.headerRow}>
+        <TouchableOpacity style={styles.minimizeButton} onPress={handleMinimize}>
+          <Image
+            source={require('../app-assets/arrow-back-up.svg')}
+            style={styles.backIcon}
+            tintColor="#2563eb"
+          />
+        </TouchableOpacity>
+        <View style={styles.topInfo}>
+          <Text style={styles.callerName}>{callerName || 'Mentorship Session'}</Text>
+          <Text style={styles.statusText}>{getStatusText()}</Text>
+        </View>
+        <View style={{ width: 40 }} /> {/* Balance the layout spacing */}
       </View>
 
       <View style={styles.profileContainer}>
@@ -150,7 +141,7 @@ const InCallScreen = () => {
           />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.endButton} onPress={() => handleEndCall(true)}>
+        <TouchableOpacity style={styles.endButton} onPress={() => endCallSession(true)}>
           <Image
             source={imgEndCall}
             style={styles.icon}
@@ -171,14 +162,17 @@ const InCallScreen = () => {
       </View>
 
       <Modal visible={isChatModalVisible} animationType="slide" onRequestClose={() => setIsChatModalVisible(false)}>
-        <ChatPage
-          inCall={true}
-          sessionId={chatSessionId}
-          partnerId={partnerId}
-          partnerName={partnerName || callerName}
-          onClose={() => setIsChatModalVisible(false)}
-        />
+        {chatSessionId && (
+          <ChatPage
+            inCall={true}
+            sessionId={chatSessionId}
+            partnerId={partnerId || undefined}
+            partnerName={partnerName || callerName}
+            onClose={() => setIsChatModalVisible(false)}
+          />
+        )}
       </Modal>
+
       <DialogBox
         visible={alertVisible}
         title={alertData.title}
@@ -197,9 +191,28 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  minimizeButton: {
+    padding: 8,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backIcon: {
+    width: 24,
+    height: 24,
+    transform: [{ rotate: '-90deg' }], // point down for minimization indicator
+  },
   topInfo: {
     alignItems: 'center',
-    marginTop: 24,
+    flex: 1,
   },
   statusText: {
     fontSize: 12,

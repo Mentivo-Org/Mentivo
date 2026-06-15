@@ -17,6 +17,7 @@ const ChatListPage = () => {
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [role, setRole] = useState('student');
 
   useEffect(() => {
     const init = async () => {
@@ -24,6 +25,7 @@ const ChatListPage = () => {
       if (userJson) {
         const user = JSON.parse(userJson);
         setCurrentUserId(user.id);
+        setRole(user.role);
       }
       fetchData();
     };
@@ -44,6 +46,7 @@ const ChatListPage = () => {
       if (userJson) {
         const user = JSON.parse(userJson);
         userRole = user.role;
+        setRole(user.role);
       }
 
       if (userRole === 'mentor') {
@@ -63,7 +66,8 @@ const ChatListPage = () => {
           iit_name: fav.iit_name,
           branch: fav.branch || '',
           year: fav.year || '',
-          price: fav.price || 10,
+          price: fav.rate_per_min || 10,
+          originalPrice: fav.originalPrice || null,
           photo_url: fav.user?.photo_url || fav.photo_url,
           photoUrl: fav.user?.photo_url || fav.photo_url,
           bio: fav.bio || '',
@@ -103,7 +107,7 @@ const ChatListPage = () => {
       activeOpacity={0.7}
     >
       <Image 
-        source={mentor.photo_url ? { uri: mentor.photo_url } : require('../../app-assets/avatar-placeholder.svg')}
+        source={mentor.photo_url ? { uri: mentor.photo_url } : require('../../app-assets/profile-circle.svg')}
         style={styles.avatar}
       />
       <View style={styles.itemTextContainer}>
@@ -134,7 +138,7 @@ const ChatListPage = () => {
         activeOpacity={0.7}
       >
         <Image 
-          source={partner.photo_url ? { uri: partner.photo_url } : require('../../app-assets/avatar-placeholder.svg')}
+          source={partner.photo_url ? { uri: partner.photo_url } : require('../../app-assets/profile-circle.svg')}
           style={styles.avatar}
         />
         <View style={styles.itemTextContainer}>
@@ -146,7 +150,7 @@ const ChatListPage = () => {
           </View>
           <View style={styles.itemSubRow}>
             <Text style={styles.itemSubtitle} numberOfLines={1}>
-              {partner.grade!=null ? ("Grade "+ partner.grade) : partner.iit_name }
+              {partner.grade!=null ? ((partner.grade!=="Dropper"? ("Grade "+partner.grade): partner.grade)) : partner.iit_name }
             </Text>
             {hasUnread && (
               <View style={styles.unreadBadge}>
@@ -201,7 +205,7 @@ const ChatListPage = () => {
             tintColor="#444653"
           />
           <TextInput
-            placeholder="Explore mentor by IIT name"
+            placeholder={role === 'mentor' ? "Search student" : "Explore mentor by IIT name"}
             style={styles.searchInput}
             placeholderTextColor="#444653"
             value={searchQuery}
@@ -257,44 +261,6 @@ const ChatListPage = () => {
         </ScrollView>
       )}
 
-      {/* Floating Bottom Bar */}
-      <View style={styles.floatingBottomBar}>
-        <View style={styles.relativeWrapper}>
-          {/* Circle Background for Active Icon */}
-          <View style={styles.ellipseBg}>
-             <Image 
-                source={require('../../app-assets/ellipse-12.svg')}
-                style={{ width: 37, height: 37 }}
-             />
-          </View>
-
-          {/* Main Blue Bar */}
-          <View style={styles.blueBar}>
-            <TouchableOpacity onPress={() => navigation.navigate('Home')} activeOpacity={0.7}>
-              <Image 
-                source={require('../../app-assets/mentoring-icon-white.svg')}
-                style={styles.bottomBarIcon}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => navigation.navigate('Ask')} activeOpacity={0.7}>
-              <Image 
-                source={require('../../app-assets/circle-plus.svg')}
-                style={styles.bottomBarIcon}
-              />
-            </TouchableOpacity>
-          </View>
-
-          {/* Chat Active Indicator */}
-          <View style={styles.chatActiveContainer}>
-              <View style={styles.chatActiveWrapper}>
-                 <Image 
-                   source={require('../../app-assets/chat-round-active.svg')}
-                   style={styles.chatActiveIcon}
-                 />
-              </View>
-          </View>
-        </View>
-      </View>
     </SafeAreaView>
   );
 };
@@ -390,7 +356,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 56,
     height: 56,
-    borderRadius: 8,
+    borderRadius: 28,
     backgroundColor: '#c0c0c0',
   },
   itemTextContainer: {
@@ -447,63 +413,7 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     fontSize: 14,
   },
-  floatingBottomBar: {
-    position: 'absolute',
-    bottom: 40,
-    alignSelf: 'center',
-    alignItems: 'center',
-  },
-  relativeWrapper: {
-    position: 'relative',
-    width: 195,
-    height: 37,
-  },
-  ellipseBg: {
-    position: 'absolute',
-    top: -18,
-    left: '50%',
-    marginLeft: -18.5,
-    width: 37,
-    height: 37,
-  },
-  blueBar: {
-    backgroundColor: '#2563eb',
-    height: 37,
-    width: 195,
-    borderRadius: 43,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingHorizontal: 24,
-  },
-  bottomBarIcon: {
-    width: 16,
-    height: 16,
-  },
-  chatActiveContainer: {
-    position: 'absolute',
-    top: -13,
-    left: '50%',
-    marginLeft: -14,
-  },
-  chatActiveWrapper: {
-    backgroundColor: 'white',
-    borderRadius: 14,
-    padding: 6,
-    width: 28,
-    height: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 2,
-    elevation: 3,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  chatActiveIcon: {
-    width: 16,
-    height: 16,
-  },
+
   emptyScreenContainer: {
     flex: 1,
     justifyContent: 'center',

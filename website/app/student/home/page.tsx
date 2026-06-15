@@ -3,12 +3,15 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
-import { LogOut, User as UserIcon, BookOpen, Clock, Wallet } from 'lucide-react';
+import { LogOut, User as UserIcon, BookOpen, Clock, Wallet, Loader2 } from 'lucide-react';
+import api from '@/lib/api';
 
 export default function StudentHomePage() {
   const { user, logout, isSignedIn } = useAuthStore();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [loadingBalance, setLoadingBalance] = useState(true);
 
   useEffect(() => {
     setMounted(true);
@@ -16,6 +19,23 @@ export default function StudentHomePage() {
       router.push('/login');
     }
   }, [isSignedIn, router]);
+
+  useEffect(() => {
+    const fetchBalance = async () => {
+      try {
+        const response = await api.get('/wallet/balance');
+        setBalance(response.data.balance);
+      } catch (err) {
+        console.error('Failed to fetch credits balance:', err);
+      } finally {
+        setLoadingBalance(false);
+      }
+    };
+
+    if (isSignedIn) {
+      fetchBalance();
+    }
+  }, [isSignedIn]);
 
   if (!mounted || !isSignedIn) return null;
 
@@ -56,13 +76,22 @@ export default function StudentHomePage() {
         <div className="space-y-8">
           <div className="bg-[#00288e] p-8 rounded-[32px] text-white shadow-xl shadow-blue-900/20">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold">Wallet Balance</h3>
+              <h3 className="text-xl font-bold">Session Credits</h3>
               <Wallet size={24} />
             </div>
-            <p className="text-4xl font-black mb-2">₹0.00</p>
+            <p className="text-4xl font-black mb-2">
+              {loadingBalance ? (
+                <Loader2 className="animate-spin inline" size={24} />
+              ) : (
+                `${balance !== null ? balance : 0} Credits`
+              )}
+            </p>
             <p className="text-blue-200 text-sm mb-6">First 5 minutes are free!</p>
-            <button className="w-full bg-white text-[#00288e] py-4 rounded-2xl font-bold hover:bg-blue-50 transition-all">
-              Add Money
+            <button
+              onClick={() => router.push('/add-credits')}
+              className="w-full bg-white text-[#00288e] py-4 rounded-2xl font-bold hover:bg-blue-50 transition-all active:scale-95"
+            >
+              Add Credits
             </button>
           </div>
 

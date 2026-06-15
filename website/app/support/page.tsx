@@ -60,7 +60,7 @@ Regards,
       <div className="max-w-7xl mx-auto">
         <div className="bg-white rounded-[40px] border border-slate-200 shadow-xl shadow-blue-500/5 overflow-hidden">
           {/* Header */}
-          <div className="bg-[#00288e] p-8 sm:p-12 text-white relative overflow-hidden">
+          <div className="bg-[#0077CB] p-8 sm:p-12 text-white relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
             <div className="relative z-10">
               <div className="flex items-center gap-3 mb-6">
@@ -80,7 +80,7 @@ Regards,
             {/* Context/Overview */}
             <section className="bg-slate-50 border border-slate-200 p-6 sm:p-8 rounded-3xl">
               <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <ShieldCheck size={24} className="text-[#00288e]" />
+                <ShieldCheck size={24} className="text-[#0077CB]" />
                 Account Deletion & Data Request Information
               </h2>
               <p className="text-slate-600 mb-4 text-sm sm:text-base">
@@ -102,7 +102,7 @@ Regards,
 
                 <div className="flex gap-3 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                   <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                    <Clock className="text-[#00288e]" size={18} />
+                    <Clock className="text-[#0077CB]" size={18} />
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-800 text-sm">Processing Time</h4>
@@ -118,7 +118,7 @@ Regards,
               {/* Option A: Full Deletion */}
               <section className="space-y-6 bg-slate-50/50 p-6 sm:p-8 rounded-3xl border border-slate-150">
                 <h2 className="text-2xl font-black text-[#0b1c30] flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-lg bg-[#00288e] text-white flex items-center justify-center text-sm font-bold shrink-0">A</span>
+                  <span className="w-8 h-8 rounded-lg bg-[#0077CB] text-white flex items-center justify-center text-sm font-bold shrink-0">A</span>
                   Full Account Deletion
                 </h2>
                 <p className="text-slate-600 text-sm">
@@ -163,7 +163,7 @@ Regards,
               {/* Option B: Partial Deletion */}
               <section className="space-y-6 bg-slate-50/50 p-6 sm:p-8 rounded-3xl border border-slate-150">
                 <h2 className="text-2xl font-black text-[#0b1c30] flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-lg bg-[#00288e] text-white flex items-center justify-center text-sm font-bold shrink-0">B</span>
+                  <span className="w-8 h-8 rounded-lg bg-[#0077CB] text-white flex items-center justify-center text-sm font-bold shrink-0">B</span>
                   Partial Information Deletion
                 </h2>
                 <p className="text-slate-600 text-sm">
@@ -215,7 +215,7 @@ Regards,
                   <p className="text-slate-600 mb-2">Send the copied template from your registered email address to:</p>
                   <a
                     href="mailto:support@mentivo.in"
-                    className="inline-flex items-center gap-2 font-extrabold text-[#00288e] hover:underline bg-white px-3 py-1.5 rounded-lg border border-blue-100"
+                    className="inline-flex items-center gap-2 font-extrabold text-[#0077CB] hover:underline bg-white px-3 py-1.5 rounded-lg border border-blue-100"
                   >
                     <Mail size={16} />
                     support@mentivo.in

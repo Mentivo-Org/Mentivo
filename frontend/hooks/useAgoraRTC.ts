@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
+import { DeviceEventEmitter } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { joinChannel, leaveChannel, getAgoraEngine, setSpeakerphoneOn } from '../services/agora';
 import api from '../services/api';
@@ -100,7 +101,7 @@ export function useAgoraRTC({
   };
 
   // ----- Agora event listeners -----
-  const registerAgoraListeners = (engine: any, activeChatSessionId: string | null, statusResData: any) => {
+  const registerAgoraListeners = (engine: any, activeChatSessionId: string | null, statusResData: any, token: string | undefined, channelName: string | undefined) => {
     engine.addListener('onJoinChannelSuccess', async (_connection: any, _elapsed: number) => {
       console.log('[Agora] Joined channel successfully');
       setIsConnected(true);
@@ -124,8 +125,26 @@ export function useAgoraRTC({
             ongoing: true,
             onlyAlertOnce: true,
             pressAction: { id: 'default', launchActivity: 'default' },
+            actions: [
+              {
+                title: 'End Call',
+                pressAction: {
+                  id: 'end_call',
+                },
+              },
+            ],
+            showChronometer: true,
+            timestamp: Date.now(),
           },
-          data: { callId, screen: 'InCall' },
+          data: { 
+            callId, 
+            channelName, 
+            callerName, 
+            role, 
+            initialToken: token, 
+            mentorPhoto, 
+            screen: 'InCall' 
+          },
         });
       } catch (e) {
         console.error('Failed to show ongoing call notification:', e);
@@ -235,7 +254,7 @@ export function useAgoraRTC({
 
         const engine = getAgoraEngine();
         const activeChatSessionId = initialChatSessionId || statusRes.data?.chatSessionId;
-        registerAgoraListeners(engine, activeChatSessionId, statusRes.data);
+        registerAgoraListeners(engine, activeChatSessionId, statusRes.data, token, channelName);
 
         await joinChannel(token, channelName, uid);
       } catch (error) {
@@ -295,6 +314,17 @@ export function useAgoraRTC({
   useEffect(() => {
     handleEndCallRef.current = handleEndCall;
   });
+
+  // Listen for End Call action events from notifications
+  useEffect(() => {
+    const endCallSub = DeviceEventEmitter.addListener('end_active_call', () => {
+      console.log('[DeviceEventEmitter] Received end_active_call event from notification');
+      handleEndCallRef.current?.(true);
+    });
+    return () => {
+      endCallSub.remove();
+    };
+  }, []);
 
   // ----- Audio controls -----
   const toggleMute = () => {

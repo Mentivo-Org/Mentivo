@@ -5,7 +5,7 @@ import { getMessaging, requestPermission, getToken, onTokenRefresh, Authorizatio
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import api from './api';
 import { socketManager } from './socketManager';
-import { NotificationEndpoints } from '../constants/endpoint';
+import { NotificationEndpoints, MentorEndpoints, LoginEndpoints } from '../constants/endpoint';
 import { useLoading } from '../context/LoadingContext';
 
 // 1. Define the shape of our state
@@ -14,10 +14,14 @@ interface AuthContextType {
   setIsSignedIn: (value: boolean | null) => void;
   role: string | null;
   setRole: (value: string | null) => void;
+  user: any;
+  setUser: (value: any) => void;
+  mentorlevel: string | null;
+  verificationStatus: string | null;
   checkLoginStatus: () => Promise<void>;
   handleLogout: () => Promise<void>;
   requestNotificationPermissions: () => Promise<void>;
-  isLoading: boolean
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,54 +30,91 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { showLoading, hideLoading } = useLoading();
   const [isSignedIn, setIsSignedIn] = useState<boolean | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [user, setUserState] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  // Inside AuthProvider
-const checkLoginStatus = async () => {
-  console.log("Checking login status...");
-  try {
-    const access = await AsyncStorage.getItem('accessToken');
-    const refresh = await AsyncStorage.getItem('refreshToken');
-    const user = await AsyncStorage.getItem('user');
-    const storedRole = await AsyncStorage.getItem('role');
-    var verifiedEmail = await AsyncStorage.getItem('verifiedEmail');
-    if(verifiedEmail !== 'true') {
-      verifiedEmail = null;
-    }
-    console.log("Tokens found:", { access: !!access, refresh: !!refresh, user: !!user,  verifiedEmail: !!verifiedEmail });
 
-    setIsSignedIn(!!(access && refresh && verifiedEmail && user));
-    setRole(storedRole);
-    console.log("Logged in status: ", !!(access && refresh && user && verifiedEmail) ? "ACTIVE" : "LOGGED OUT")
-  } catch (e) {
-    console.error("AsyncStorage Error:", e);
-    setIsSignedIn(false); 
-  }
-};
+  const mentorlevel = user?.mentorProfile?.mentorlevel || null;
+  const verificationStatus = user?.mentorProfile?.verificationStatus || null;
 
-const handleLogout = async ()=> {
-  showLoading("Logging out...");
-  try {
-    const fcmToken = await AsyncStorage.getItem('fcmToken');
-    const response = await api.patch(NotificationEndpoints.syncFcmToken, {token: fcmToken});
-    if(response.status!==200) {
-      console.error("Error removing fcm token from database");
+  const setUser = async (u: any) => {
+    setUserState(u);
+    if (u) {
+      await AsyncStorage.setItem('user', JSON.stringify(u));
+    } else {
+      await AsyncStorage.removeItem('user');
     }
-    await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user', 'verifiedEmail', 'fcmToken', 'role']);
-    const isGoogleSignedIn = await GoogleSignin.hasPreviousSignIn();
-    if(isGoogleSignedIn) {
-      await GoogleSignin.signOut();
+  };
+
+  const checkLoginStatus = async () => {
+    console.log("Checking login status...");
+    try {
+      const access = await AsyncStorage.getItem('accessToken');
+      const refresh = await AsyncStorage.getItem('refreshToken');
+      const userJson = await AsyncStorage.getItem('user');
+      const storedRole = await AsyncStorage.getItem('role');
+      var verifiedEmail = await AsyncStorage.getItem('verifiedEmail');
+      if(verifiedEmail !== 'true') {
+        verifiedEmail = null;
+      }
+      console.log("Tokens found:", { access: !!access, refresh: !!refresh, user: !!userJson,  verifiedEmail: !!verifiedEmail });
+
+      const parsedUser = userJson ? JSON.parse(userJson) : null;
+      setUserState(parsedUser);
+
+      setIsSignedIn(!!(access && refresh && verifiedEmail && userJson));
+      setRole(storedRole);
+      console.log("Logged in status: ", !!(access && refresh && userJson && verifiedEmail) ? "ACTIVE" : "LOGGED OUT")
+
+      // Fetch fresh user profile in background to sync details like verificationStatus
+      if (access && refresh && verifiedEmail && parsedUser) {
+        api.get(LoginEndpoints.whoAmI).then(async (res) => {
+          if (res.status === 200 && res.data?.user) {
+            await setUser(res.data.user);
+          }
+        }).catch((err) => {
+          console.error("Failed to sync fresh user profile from backend:", err);
+        });
+      }
+    } catch (e) {
+      console.error("AsyncStorage Error:", e);
+      setIsSignedIn(false); 
     }
-    setIsSignedIn(false);
-    setRole(null);
-    console.log("User successfully signed out");
+  };
+
+  const handleLogout = async ()=> {
+    showLoading("Logging out...");
+    try {
+      const currentRole = role || await AsyncStorage.getItem('role');
+      if (currentRole === 'mentor') {
+        try {
+          await api.post(MentorEndpoints.setStatus, { isOnline: false });
+          console.log("Mentor status set to offline during logout");
+        } catch (statusErr) {
+          console.error("Failed to update mentor status to offline on logout:", statusErr);
+        }
+      }
+      const fcmToken = await AsyncStorage.getItem('fcmToken');
+      const response = await api.patch(NotificationEndpoints.syncFcmToken, {token: fcmToken});
+      if(response.status!==200) {
+        console.error("Error removing fcm token from database");
+      }
+      await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user', 'verifiedEmail', 'fcmToken', 'role']);
+      const isGoogleSignedIn = await GoogleSignin.hasPreviousSignIn();
+      if(isGoogleSignedIn) {
+        await GoogleSignin.signOut();
+      }
+      setIsSignedIn(false);
+      setRole(null);
+      setUserState(null);
+      console.log("User successfully signed out");
+    }
+    catch(e) {
+      console.error("Logout failed", e);
+    }
+    finally {
+      hideLoading();
+    }
   }
-  catch(e) {
-    console.error("Logout failed", e);
-  }
-  finally {
-    hideLoading();
-  }
-}
 
   // 2. Run this ONLY when the app starts
   useEffect(() => {
@@ -247,7 +288,7 @@ const handleLogout = async ()=> {
   }, [isSignedIn]);
 
   return (
-    <AuthContext.Provider value={{ isSignedIn, setIsSignedIn, role, setRole, checkLoginStatus, handleLogout, requestNotificationPermissions, isLoading }}>
+    <AuthContext.Provider value={{ isSignedIn, setIsSignedIn, role, setRole, user, setUser, mentorlevel, verificationStatus, checkLoginStatus, handleLogout, requestNotificationPermissions, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

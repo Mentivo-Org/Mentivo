@@ -54,7 +54,7 @@ function VerifyOtpContent() {
           <p className="text-red-600 font-medium">Invalid verification link. Please sign up again.</p>
           <button 
             onClick={() => router.push('/signup')}
-            className="mt-4 text-[#00288e] font-bold hover:underline"
+            className="mt-4 text-[#0077CB] font-bold hover:underline"
           >
             Back to Signup
           </button>
@@ -98,7 +98,7 @@ function VerifyOtpContent() {
                   maxLength={6}
                   value={token}
                   onChange={(e) => setToken(e.target.value.replace(/\D/g, ''))}
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#00288e]/20 focus:border-[#00288e] transition-all text-center text-2xl font-black tracking-[0.5em]"
+                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#0077CB]/20 focus:border-[#0077CB] transition-all text-center text-2xl font-black tracking-[0.5em]"
                   placeholder="000000"
                 />
               </div>
@@ -107,7 +107,7 @@ function VerifyOtpContent() {
             <button
               type="submit"
               disabled={loading || token.length !== 6}
-              className="w-full bg-[#00288e] text-white py-4 rounded-2xl font-bold hover:bg-[#001d66] transition-all transform active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-[#0077CB] text-white py-4 rounded-2xl font-bold hover:bg-[#001d66] transition-all transform active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 className="animate-spin" size={20} /> : 'Verify & Continue'}
             </button>
@@ -116,7 +116,7 @@ function VerifyOtpContent() {
               Didn&apos;t receive the code?{' '}
               <button 
                 type="button"
-                className="text-[#00288e] font-bold hover:underline"
+                className="text-[#0077CB] font-bold hover:underline"
                 onClick={() => {/* Implement resend logic if needed */}}
               >
                 Resend Code
@@ -133,7 +133,7 @@ export default function VerifyOtpPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
-        <Loader2 className="animate-spin text-[#00288e]" size={48} />
+        <Loader2 className="animate-spin text-[#0077CB]" size={48} />
       </div>
     }>
       <VerifyOtpContent />

@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 16,
-    color: '#00288e',
+    color: '#0077CB',
     fontWeight: '500',
   },
 });

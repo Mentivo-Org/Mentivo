@@ -101,9 +101,7 @@ const StudentLoginPage = () => {
     try {
       await GoogleSignin.hasPlayServices();
       await GoogleSignin.signOut();
-      const userInfo = await GoogleSignin.signIn({
-        prompt: 'select_account'
-      });
+      const userInfo = await GoogleSignin.signIn();
       
       const idToken = userInfo?.data?.idToken;
       showLoading("Logging you in...");
@@ -315,7 +313,7 @@ const styles = StyleSheet.create({
   signUpText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#00288e',
+    color: '#0077CB',
   },
 });
 

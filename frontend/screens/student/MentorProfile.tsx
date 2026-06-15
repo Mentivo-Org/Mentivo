@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DialogBox from '../../components/DialogBox';
@@ -9,6 +9,7 @@ import { MentorEndpoints, CallEndpoints } from '../../constants/endpoint';
 import { useLoading } from '../../context/LoadingContext';
 import { requestMicrophonePermission } from '../../services/permissions';
 import { chatSessionManager } from '../../services/chat/chatSessionManager';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get("window");
 
@@ -36,22 +37,65 @@ export default function MentorProfile() {
     reviews: passedMentor.reviews || 0,
     sessions: passedMentor.calls || 0,
     price: passedMentor.price || 10,
+    originalPrice: passedMentor.originalPrice || null,
     isOnline: passedMentor.isOnline || false,
     bio: passedMentor.bio || 'Available for mentoring sessions.',
     photoUrl: passedMentor.photoUrl || passedMentor.photo_url,
     mentorlevel: passedMentor.mentorlevel,
   };
 
+  useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      try {
+        const storedFavs = await AsyncStorage.getItem('favouriteMentors');
+        if (storedFavs) {
+          const favs: string[] = JSON.parse(storedFavs);
+          if (mentor.id) {
+            setIsFavorite(favs.includes(mentor.id));
+          }
+        }
+      } catch (error) {
+        console.error('Error reading favorites from AsyncStorage:', error);
+      }
+    };
+    checkFavoriteStatus();
+  }, [mentor.id]);
+
   const toggleFavorite = async () => {
+    const originalStatus = isFavorite;
     try {
       const newStatus = !isFavorite;
       setIsFavorite(newStatus);
+      
+      // Update AsyncStorage
+      const storedFavs = await AsyncStorage.getItem('favouriteMentors');
+      let favs: string[] = storedFavs ? JSON.parse(storedFavs) : [];
+      if (newStatus) {
+        if (!favs.includes(mentor.id)) {
+          favs.push(mentor.id);
+        }
+      } else {
+        favs = favs.filter(id => id !== mentor.id);
+      }
+      await AsyncStorage.setItem('favouriteMentors', JSON.stringify(favs));
       
       await api.post(`${MentorEndpoints.toggleFavoriteMentor}${mentor.id}/favorite`);
     } catch (error) {
       console.error('Error toggling favorite:', error);
       // Revert state if API fails
-      setIsFavorite(isFavorite);
+      setIsFavorite(originalStatus);
+      
+      // Revert AsyncStorage
+      const storedFavs = await AsyncStorage.getItem('favouriteMentors');
+      let favs: string[] = storedFavs ? JSON.parse(storedFavs) : [];
+      if (originalStatus) {
+        if (!favs.includes(mentor.id)) {
+          favs.push(mentor.id);
+        }
+      } else {
+        favs = favs.filter(id => id !== mentor.id);
+      }
+      await AsyncStorage.setItem('favouriteMentors', JSON.stringify(favs));
     }
   };
 
@@ -108,7 +152,7 @@ export default function MentorProfile() {
         partnerId: mentor.id,
         partnerName: mentor.name,
         sessionId: session.id,
-        partnerPhotoUrl: mentor.photoUrl || mentor.photo_url || null
+        partnerPhotoUrl: mentor.photoUrl || null
       });
     } catch (error: any) {
       console.error('Failed to start chat:', error);
@@ -143,8 +187,13 @@ export default function MentorProfile() {
           </View>
 
           <View style={styles.priceTag}>
-            <Text style={styles.priceAmount}>₹{mentor.price}</Text>
-            <Text style={styles.priceUnit}>/min</Text>
+            {mentor.originalPrice && mentor.originalPrice > mentor.price ? (
+              <Text style={styles.originalPriceText}>₹{mentor.originalPrice}/min</Text>
+            ) : null}
+            <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+              <Text style={styles.priceAmount}>₹{mentor.price}</Text>
+              <Text style={styles.priceUnit}>/min</Text>
+            </View>
           </View>
         </View>
 
@@ -200,7 +249,7 @@ function AvatarContainer({ photoUrl, isOnline, mentorlevel }: AvatarContainerPro
   return (
     <View style={styles.avatarContainer}>
       <Image 
-        source={photoUrl ? { uri: photoUrl } : require('../../app-assets/avatar-placeholder.svg')} 
+        source={photoUrl ? { uri: photoUrl } : require('../../app-assets/profile-circle.svg')} 
         style={styles.avatar} 
       />
       <Image source={getLevelIcon(mentorlevel)} style={styles.verifiedIcon} />
@@ -224,7 +273,7 @@ function StatsRow({ isFavorite, toggleFavorite, sessions, rating, reviews }: Sta
         <Image 
           source={require('../../app-assets/heart-icon.svg')} 
           style={styles.statIcon} 
-          tintColor={isFavorite ? "#2563eb" : "#444653"}
+          tintColor={isFavorite ? "#ef4444" : "#444653"}
         />
         <Text style={styles.statLabel}>MY FAVOURITE</Text>
       </TouchableOpacity>
@@ -352,11 +401,16 @@ const styles = StyleSheet.create({
     color: '#444653',
   },
   priceTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     position: 'absolute',
     right: 0,
-    top: 10,
+    top: 6,
+  },
+  originalPriceText: {
+    fontSize: 10,
+    color: '#9ca3af',
+    textDecorationLine: 'line-through',
+    marginBottom: 1,
   },
   priceAmount: {
     fontSize: 12,

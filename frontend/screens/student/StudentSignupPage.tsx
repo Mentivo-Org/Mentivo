@@ -9,6 +9,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -24,6 +25,23 @@ import DialogBox from '../../components/DialogBox';
 
 const StudentSignupPage = () => {
   const navigation = useNavigation<any>();
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
   const route = useRoute<any>();
   
   const [fullName, setFullName] = useState("");
@@ -204,9 +222,7 @@ const StudentSignupPage = () => {
     try {
       await GoogleSignin.hasPlayServices();
       await GoogleSignin.signOut();
-      const userInfo = await GoogleSignin.signIn({
-        prompt: 'select_account'
-      });
+      const userInfo = await GoogleSignin.signIn();
       
       const idToken = userInfo?.data?.idToken; 
       if(idToken) {
@@ -240,8 +256,9 @@ const StudentSignupPage = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView 
-        behavior="padding"
+        behavior={Platform.OS === 'ios' ? 'padding' : (isKeyboardVisible ? 'height' : undefined)}
         style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'android' ? 70 : 0}
       >
         <ScrollView 
           contentContainerStyle={styles.container} 
@@ -488,7 +505,7 @@ const styles = StyleSheet.create({
   },
   required: {
     fontSize: 12,
-    color: '#00288e',
+    color: '#0077CB',
     fontWeight: '500',
   },
   passwordContainer: {

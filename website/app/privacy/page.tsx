@@ -7,7 +7,7 @@ export default function PrivacyPolicy() {
       <div className="max-w-7xl mx-auto">
         <div className="bg-white rounded-[40px] border border-slate-200 shadow-xl shadow-blue-500/5 overflow-hidden">
           {/* Header */}
-          <div className="bg-[#00288e] p-8 sm:p-12 text-white relative overflow-hidden">
+          <div className="bg-[#0077CB] p-8 sm:p-12 text-white relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
             <div className="relative z-10">
               <div className="flex items-center gap-3 mb-6">
@@ -33,7 +33,7 @@ export default function PrivacyPolicy() {
           <div className="p-8 sm:p-12 space-y-12 text-slate-600 leading-relaxed">
             <section>
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 bg-blue-50 text-[#00288e] rounded-lg flex items-center justify-center text-sm font-bold">1</span>
+                <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">1</span>
                 Introduction
               </h2>
               <p>
@@ -50,7 +50,7 @@ export default function PrivacyPolicy() {
 
             <section>
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 bg-blue-50 text-[#00288e] rounded-lg flex items-center justify-center text-sm font-bold">2</span>
+                <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">2</span>
                 Information We Collect
               </h2>
               <div className="space-y-6">
@@ -87,7 +87,7 @@ export default function PrivacyPolicy() {
 
             <section>
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 bg-blue-50 text-[#00288e] rounded-lg flex items-center justify-center text-sm font-bold">3</span>
+                <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">3</span>
                 How We Use Your Information
               </h2>
               <p className="mb-4">We use the information we collect to:</p>
@@ -107,7 +107,7 @@ export default function PrivacyPolicy() {
 
             <section>
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 bg-blue-50 text-[#00288e] rounded-lg flex items-center justify-center text-sm font-bold">4</span>
+                <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">4</span>
                 How We Share Your Information
               </h2>
               <p className="mb-6">We do not sell your personal data. We may share your information in the following circumstances:</p>
@@ -147,7 +147,7 @@ export default function PrivacyPolicy() {
 
             <section>
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 bg-blue-50 text-[#00288e] rounded-lg flex items-center justify-center text-sm font-bold">5</span>
+                <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">5</span>
                 Data Retention
               </h2>
               <p>
@@ -158,7 +158,7 @@ export default function PrivacyPolicy() {
 
             <section>
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 bg-blue-50 text-[#00288e] rounded-lg flex items-center justify-center text-sm font-bold">6</span>
+                <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">6</span>
                 Data Security
               </h2>
               <ul className="list-disc pl-6 space-y-2">
@@ -171,7 +171,7 @@ export default function PrivacyPolicy() {
 
             <section>
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 bg-blue-50 text-[#00288e] rounded-lg flex items-center justify-center text-sm font-bold">7</span>
+                <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">7</span>
                 Children&apos;s Privacy
               </h2>
               <p>
@@ -182,41 +182,41 @@ export default function PrivacyPolicy() {
 
             <section>
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 bg-blue-50 text-[#00288e] rounded-lg flex items-center justify-center text-sm font-bold">8</span>
+                <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">8</span>
                 Your Rights
               </h2>
               <p className="mb-4">Depending on applicable law, you have the right to:</p>
               <ul className="list-disc pl-6 space-y-2 text-slate-700">
-                <li><strong className="text-[#00288e]">Access:</strong> Request a copy of the personal data we hold about you.</li>
-                <li><strong className="text-[#00288e]">Correction:</strong> Request correction of inaccurate or incomplete data.</li>
-                <li><strong className="text-[#00288e]">Deletion:</strong> Request deletion of your personal data.</li>
-                <li><strong className="text-[#00288e]">Withdrawal of Consent:</strong> Withdraw consent for data processing.</li>
+                <li><strong className="text-[#0077CB]">Access:</strong> Request a copy of the personal data we hold about you.</li>
+                <li><strong className="text-[#0077CB]">Correction:</strong> Request correction of inaccurate or incomplete data.</li>
+                <li><strong className="text-[#0077CB]">Deletion:</strong> Request deletion of your personal data.</li>
+                <li><strong className="text-[#0077CB]">Withdrawal of Consent:</strong> Withdraw consent for data processing.</li>
               </ul>
             </section>
 
             <section className="bg-slate-50 p-8 rounded-[32px] border border-slate-200">
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
-                <Lock size={28} className="text-[#00288e]" />
+                <Lock size={28} className="text-[#0077CB]" />
                 Contact Us
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center">
-                      <Mail size={20} className="text-[#00288e]" />
+                      <Mail size={20} className="text-[#0077CB]" />
                     </div>
                     <div>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Email Support</p>
-                      <a href="mailto:privacy@mentivo.in" className="text-slate-900 font-bold hover:text-[#00288e] transition-colors">privacy@mentivo.in</a>
+                      <a href="mailto:privacy@mentivo.in" className="text-slate-900 font-bold hover:text-[#0077CB] transition-colors">privacy@mentivo.in</a>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center">
-                      <Globe size={20} className="text-[#00288e]" />
+                      <Globe size={20} className="text-[#0077CB]" />
                     </div>
                     <div>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Website</p>
-                      <a href="https://www.mentivo.in" className="text-slate-900 font-bold hover:text-[#00288e] transition-colors">www.mentivo.in</a>
+                      <a href="https://www.mentivo.in" className="text-slate-900 font-bold hover:text-[#0077CB] transition-colors">www.mentivo.in</a>
                     </div>
                   </div>
                 </div>
@@ -225,7 +225,7 @@ export default function PrivacyPolicy() {
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Grievance Officer</p>
                   <p className="text-slate-900 font-black">Abhirajya Yadav</p>
                   <p className="text-sm text-slate-500 font-medium">Founder & CEO, Mentivo</p>
-                  <a href="mailto:grievance@mentivo.in" className="text-[#00288e] text-sm font-bold hover:underline mt-2 inline-block">grievance@mentivo.in</a>
+                  <a href="mailto:grievance@mentivo.in" className="text-[#0077CB] text-sm font-bold hover:underline mt-2 inline-block">grievance@mentivo.in</a>
                 </div>
               </div>
             </section>

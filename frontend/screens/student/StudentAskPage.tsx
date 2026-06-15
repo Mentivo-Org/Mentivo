@@ -12,6 +12,7 @@ import {
   RefreshControl,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
@@ -43,8 +44,25 @@ export default function StudentAskPage() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [questionText, setQuestionText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
   const [askConfig, setAskConfig] = useState<any>({
-    maxQuestionWords: null,
+    maxQuestionChars: null,
     maxQuestionsPerPeriod: 5,
     periodHours: 24,
   });
@@ -142,17 +160,13 @@ export default function StudentAskPage() {
     }
   };
 
-  // Count words
-  const getWordCount = (text: string) => {
-    return text.trim().split(/\s+/).filter(Boolean).length;
-  };
 
   // Handle post question
   const handlePostQuestion = async () => {
     if (!questionText.trim()) return;
 
-    if (askConfig.maxQuestionWords && getWordCount(questionText) > askConfig.maxQuestionWords) {
-      setAlertData({ title: "Word Limit Exceeded", message: `Question exceeds word limit of ${askConfig.maxQuestionWords} words.` });
+    if (askConfig.maxQuestionChars && questionText.length > askConfig.maxQuestionChars) {
+      setAlertData({ title: "Character Limit Exceeded", message: `Question exceeds character limit of ${askConfig.maxQuestionChars} characters.` });
       setAlertVisible(true);
       return;
     }
@@ -311,7 +325,7 @@ export default function StudentAskPage() {
     );
   };
 
-  const wordCount = getWordCount(questionText);
+  const charCount = questionText.length;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -386,7 +400,7 @@ export default function StudentAskPage() {
         onRequestClose={() => setIsModalVisible(false)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          behavior={Platform.OS === "ios" ? "padding" : (isKeyboardVisible ? "padding" : undefined)}
           style={styles.modalOverlay}
         >
           <View style={styles.modalContent}>
@@ -407,11 +421,11 @@ export default function StudentAskPage() {
               onChangeText={setQuestionText}
             />
 
-            {/* Word count limits */}
+            {/* Character count limits */}
             <View style={styles.limitInfo}>
-              <Text style={[styles.wordCountText, askConfig.maxQuestionWords && wordCount > askConfig.maxQuestionWords ? { color: "#ef4444" } : null]}>
-                Words: {wordCount}
-                {askConfig.maxQuestionWords ? ` / ${askConfig.maxQuestionWords}` : ""}
+              <Text style={[styles.charCountText, askConfig.maxQuestionChars && charCount > askConfig.maxQuestionChars ? { color: "#ef4444" } : null]}>
+                Characters: {charCount}
+                {askConfig.maxQuestionChars ? ` / ${askConfig.maxQuestionChars}` : ""}
               </Text>
               <Text style={styles.rateLimitText}>
                 Limit: {askConfig.maxQuestionsPerPeriod} questions / {askConfig.periodHours}h
@@ -687,7 +701,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 16,
   },
-  wordCountText: {
+  charCountText: {
     fontSize: 12,
     color: "#6b7280",
   },

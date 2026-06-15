@@ -22,13 +22,14 @@ export default function AppWrapper({
   const isPrivacyPage = pathname === "/privacy";
   const isAboutPage = pathname === "/about";
   const isSupportPage = pathname === "/support";
-  const isMaintenanceMode = initialMaintenanceMode && !isPrivacyPage && !isAboutPage && !isSupportPage;
+  const isTermsPage = pathname === "/terms";
+  const isMaintenanceMode = initialMaintenanceMode && !isPrivacyPage && !isAboutPage && !isSupportPage && !isTermsPage;
 
   // If we're not ready (still hydrating or validating session), render nothing.
   // This prevents the "white flash" by not rendering the initial layout 
   // until we know exactly what should be on the screen.
-  // In Maintenance Mode, or on static pages like Privacy/About/Support, we show the page immediately.
-  if (!isReady && !isMaintenanceMode && !isPrivacyPage && !isAboutPage && !isSupportPage) {
+  // In Maintenance Mode, or on static pages like Privacy/About/Support/Terms, we show the page immediately.
+  if (!isReady && !isMaintenanceMode && !isPrivacyPage && !isAboutPage && !isSupportPage && !isTermsPage) {
     return null;
   }
 

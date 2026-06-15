@@ -22,8 +22,9 @@ export function proxy(request: NextRequest) {
     const isSupportPage = pathname.startsWith('/support');
     const isReferralPage = pathname.startsWith('/referral');
     const isSetupPasswordPage = pathname.startsWith('/setup-password');
+    const isTermsPage = pathname.startsWith('/terms');
 
-    if (!isStaticAsset && !isMaintenancePage && !isPrivacyPage && !isAboutPage && !isSupportPage && !isReferralPage && !isSetupPasswordPage) {
+    if (!isStaticAsset && !isMaintenancePage && !isPrivacyPage && !isAboutPage && !isSupportPage && !isReferralPage && !isSetupPasswordPage && !isTermsPage) {
       // Rewrite the request to the maintenance page
       // This keeps the URL in the browser address bar but serves the maintenance content
       return NextResponse.rewrite(new URL('/maintenance', request.url));

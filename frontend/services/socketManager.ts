@@ -24,9 +24,15 @@ class SocketManager {
       this.socket.disconnect();
     }
 
+    // Retrieve global api version from axios defaults (set by VersionContext)
+    // Needs import: import api from './api';
+    const apiVersion = require('./api').default.defaults.headers.common['x-api-version'] || 'v1';
+
     this.userId = userId;
     this.socket = io(SOCKET_URL, {
       auth: { token },
+      query: { version: apiVersion },
+      extraHeaders: { 'x-api-version': apiVersion },
       // Allow polling as a fallback — Render's proxy handles both.
       // socket.io will upgrade to websocket automatically once connected.
       transports: ['polling', 'websocket'],

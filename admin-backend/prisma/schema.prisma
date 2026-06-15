@@ -132,13 +132,14 @@ model MentorProfile {
   branch         String?
   year           Int?
   verificationStatus VerificationStatus @default(PENDING)
-  mentorlevel    MentorLevel @default(Verified)
+  mentorlevel    MentorLevel?
   verified_by    String?
   verified_at    DateTime?
   id_doc_url     String?
   upiId          String?     @map("upi_id")
   bio            String?
   expertise      String
+  languages      String?
   rate_per_min   Decimal     @default(7.00) @db.Decimal(6, 2)
   avg_rating     Decimal     @default(0) @db.Decimal(3, 2)
   total_calls    Int         @default(0)
@@ -408,7 +409,8 @@ model AskConfig {
   id                     String   @id @default("default")
   maxQuestionsPerPeriod  Int      @default(5)
   periodHours            Int      @default(24)
-  maxQuestionWords       Int?     
+  maxQuestionChars       Int?     @map("maxQuestionWords")
+  maxAnswerChars         Int?
 
   @@map("ask_configs")
 }
@@ -422,4 +424,11 @@ model PartnerBalance {
   user           User      @relation(fields: [partnerId], references: [id])
 
   @@map("partner_balances")
+}
+
+model AppSetting {
+  key   String @id
+  value String
+
+  @@map("app_settings")
 }

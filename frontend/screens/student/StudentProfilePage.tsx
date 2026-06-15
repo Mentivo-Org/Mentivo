@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 5,
     fontWeight: 'bold',
-    color: '#1d459c', // Sleeves blue to match Mentivo
+    color: '#0077CB', // Sleeves blue to match Mentivo
     letterSpacing: 0.5,
   },
   avatarSection: {

@@ -22,6 +22,8 @@ const lengths = [
   { length: '20 min' },
   { length: '25 min' },
   { length: '30 min' },
+  { length: '45 min' },
+  { length: '60 min' },
 ];
 
 export default function ScheduleCall() {
@@ -31,6 +33,7 @@ export default function ScheduleCall() {
 
   const [alertData, setAlertData] = useState({title: "", message: ""});
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
+  const [pendingNavigate, setPendingNavigate] = useState<boolean>(false);
   const [existingSchedules, setExistingSchedules] = useState<any[]>([]);
 
   // Generate the next 14 days starting from today
@@ -145,8 +148,8 @@ export default function ScheduleCall() {
 
       if (response.status === 200) {
         setAlertData({title: 'Success', message:'Call scheduled successfully!'});
+        setPendingNavigate(true);
         setAlertVisible(true);
-        navigation.navigate("Main", {screen: 'Home'})
       }
     } catch (error: any) {
       console.error('Failed to schedule call:', error);
@@ -245,7 +248,25 @@ export default function ScheduleCall() {
           </TouchableOpacity>
         </View>
       </View>
-      <DialogBox visible={alertVisible} title={alertData.title} message={alertData.message}/>
+      <DialogBox
+        visible={alertVisible}
+        title={alertData.title}
+        message={alertData.message}
+        onPrimaryPress={() => {
+          setAlertVisible(false);
+          if (pendingNavigate) {
+            setPendingNavigate(false);
+            navigation.navigate("Main", { screen: 'Home' });
+          }
+        }}
+        onClose={() => {
+          setAlertVisible(false);
+          if (pendingNavigate) {
+            setPendingNavigate(false);
+            navigation.navigate("Main", { screen: 'Home' });
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }

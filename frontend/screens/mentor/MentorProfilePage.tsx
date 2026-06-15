@@ -47,8 +47,8 @@ const getLevelColors = (lvl?: string) => {
   // Default/Verified
   return {
     headerBg: '#D9D9D9',
-    headerText: '#444653',
-    headerIconTint: '#444653',
+    headerText: '#0077c8',
+    headerIconTint: '#0077c8',
   };
 };
 
@@ -233,7 +233,7 @@ export default function MentorProfilePage() {
     );
   }
 
-  const profilePic = mentorData.user?.photo_url || require('../../app-assets/avatar-placeholder.svg');
+  const profilePic = mentorData.user?.photo_url || require('../../app-assets/profile-circle.svg');
 
   const colors = getLevelColors(mentorData.mentorlevel);
 
@@ -497,10 +497,10 @@ const styles = StyleSheet.create({
   },
   ellipse18: {
     position: 'absolute',
-    top: -240, 
-    left: -91, 
-    width: 573,
-    height: 470,
+    top: -350, 
+    left: '-15%', 
+    width: '130%',
+    height: 570,
     borderRadius: 286.5,
     backgroundColor: 'white', 
     shadowColor: '#000',
@@ -531,12 +531,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoIcon: {
-    width: 13,
-    height: 14,
+    width: 20,
+    height: 21,
   },
   logoText: {
-    fontSize: 12,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: 400,
     color: '#444653',
     marginLeft: 2,
   },

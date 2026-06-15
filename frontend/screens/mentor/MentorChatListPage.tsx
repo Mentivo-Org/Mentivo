@@ -108,7 +108,7 @@ const MentorChatListPage = () => {
       activeOpacity={0.7}
     >
       <Image 
-        source={student.photo_url ? { uri: student.photo_url } : require('../../app-assets/avatar-placeholder.svg')}
+        source={student.photo_url ? { uri: student.photo_url } : require('../../app-assets/profile-circle.svg')}
         style={styles.avatar}
       />
       <View style={styles.itemTextContainer}>
@@ -138,7 +138,7 @@ const MentorChatListPage = () => {
         activeOpacity={0.7}
       >
         <Image 
-          source={partner.photo_url ? { uri: partner.photo_url } : require('../../app-assets/avatar-placeholder.svg')}
+          source={partner.photo_url ? { uri: partner.photo_url } : require('../../app-assets/profile-circle.svg')}
           style={styles.avatar}
         />
         <View style={styles.itemTextContainer}>

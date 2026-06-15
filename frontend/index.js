@@ -2,7 +2,7 @@ import { registerRootComponent } from 'expo';
 import { getMessaging, setBackgroundMessageHandler } from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { PermissionsAndroid, Platform } from 'react-native';
+import { PermissionsAndroid, Platform, DeviceEventEmitter } from 'react-native';
 import api from './services/api';
 
 import App from './App';
@@ -66,13 +66,13 @@ setBackgroundMessageHandler(messaging, async (remoteMessage) => {
   }
 
   if (remoteMessage.data?.type === 'incoming_call') {
-    const { callId, channelName, callerName } = remoteMessage.data;
+    const { callId, channelName, callerName, callerPhoto } = remoteMessage.data;
 
     await notifee.displayNotification({
       id: callId, // Use callId as notification ID to allow easy cancellation
       title: `Incoming call from ${callerName}`,
       body: 'Tap to answer',
-      data: { callId, channelName, callerName },
+      data: { callId, channelName, callerName, callerPhoto },
       android: {
         channelId: 'incoming_calls',
         importance: AndroidImportance.HIGH,
@@ -126,18 +126,28 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
   if (type === EventType.ACTION_PRESS) {
     if (pressAction.id === 'accept') {
       console.log('User accepted call from background');
-      const { callId, channelName, callerName } = notification.data;
-      await AsyncStorage.setItem('pendingCallData', JSON.stringify({ callId, channelName, callerName }));
+      const { callId, channelName, callerName, callerPhoto } = notification.data;
+      await AsyncStorage.setItem('pendingCallData', JSON.stringify({ callId, channelName, callerName, callerPhoto }));
       // App will be launched by launchActivity: 'default'
     } else if (pressAction.id === 'reject') {
       console.log('User rejected call from background');
       const callId = notification.data.callId;
       try {
-        await api.post(`/api/calls/${callId}/reject`);
+        await api.post(`/calls/${callId}/reject`);
       } catch (error) {
         console.error('Failed to reject call in background:', error);
       }
       await notifee.cancelNotification(notification.id);
+    } else if (pressAction.id === 'end_call') {
+      console.log('User ended call from background');
+      const callId = notification.data.callId;
+      try {
+        await api.post(`/calls/${callId}/end`);
+      } catch (error) {
+        console.error('Failed to end call in background:', error);
+      }
+      await notifee.cancelNotification(notification.id);
+      DeviceEventEmitter.emit('end_active_call');
     }
   }
 });

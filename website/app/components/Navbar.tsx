@@ -24,13 +24,13 @@ const Navbar = () => {
               <Link href="/#stats" className="text-slate-600 hover:text-slate-900 px-3 py-2 text-sm font-medium transition-colors">
                 Progress
               </Link>
-              <Link href="/login" className="bg-[#00288e] text-white px-6 py-2 rounded-full text-sm font-semibold hover:bg-[#001d66] transition-all shadow-lg shadow-blue-500/20">
+              <Link href="/login" className="bg-[#0077CB] text-white px-6 py-2 rounded-full text-sm font-semibold hover:bg-[#001d66] transition-all shadow-lg shadow-blue-500/20">
                 Get Started
               </Link>
             </div>
           </div>
           <div className="md:hidden">
-             <Link href="/login" className="bg-[#00288e] text-white px-5 py-2 rounded-full text-sm font-semibold">
+             <Link href="/login" className="bg-[#0077CB] text-white px-5 py-2 rounded-full text-sm font-semibold">
                 Login
               </Link>
           </div>

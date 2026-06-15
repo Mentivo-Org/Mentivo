@@ -10,12 +10,12 @@ export default function MaintenancePage() {
   const progressWidth = `${percentage}%`;
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#f8f9ff] selection:bg-[#00288e]/10 selection:text-[#00288e]">
+    <div className="flex flex-col min-h-screen bg-[#f8f9ff] selection:bg-[#0077CB]/10 selection:text-[#0077CB]">
       {/* Top Header */}
       <header className="absolute top-0 left-0 right-0 z-50 flex justify-end p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
         <Link 
           href="https://mentivo.in/privacy" 
-          className="text-sm font-semibold text-[#00288e] hover:text-[#0b1c30] transition-colors duration-200"
+          className="text-sm font-semibold text-[#0077CB] hover:text-[#0b1c30] transition-colors duration-200"
         >
           Privacy Policy
         </Link>
@@ -29,27 +29,27 @@ export default function MaintenancePage() {
         
         {/* Grid Background Pattern */}
         <div className="absolute inset-0 z-0 opacity-[0.03]" 
-             style={{ backgroundImage: 'linear-gradient(#00288e 1px, transparent 1px), linear-gradient(90deg, #00288e 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+             style={{ backgroundImage: 'linear-gradient(#0077CB 1px, transparent 1px), linear-gradient(90deg, #0077CB 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
         <div className="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10 px-4 sm:px-6 lg:px-8">
           {/* Left Hero Section */}
           <div className="lg:col-span-7 flex flex-col items-start space-y-8 text-center lg:text-left items-center lg:items-start">
             {/* "COMING SOON" Badge */}
             <div className="inline-flex items-center space-x-2 bg-[#dce9ff] border border-[#c4c5d5] px-4 py-2 rounded-full shadow-sm">
-              <Sparkles className="w-4 h-4 text-[#00288e]" />
-              <span className="text-[#00288e] text-sm font-semibold tracking-wider uppercase">COMING SOON</span>
+              <Sparkles className="w-4 h-4 text-[#0077CB]" />
+              <span className="text-[#0077CB] text-sm font-semibold tracking-wider uppercase">COMING SOON</span>
             </div>
 
             {/* Headline */}
             <div className="space-y-4">
-              <h1 className="text-7xl sm:text-8xl lg:text-[8rem] font-black text-[#00288e] tracking-tighter leading-none mb-6">
+              <h1 className="text-7xl sm:text-8xl lg:text-[8rem] font-black text-[#0077CB] tracking-tighter leading-none mb-6">
                 Mentivo
               </h1>
               <div className="space-y-2">
                 <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#0b1c30] tracking-tight">
                   Something Great is
                 </h2>
-                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#00288e] tracking-tight">
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#0077CB] tracking-tight">
                   in the Works
                 </h2>
               </div>
@@ -66,14 +66,14 @@ export default function MaintenancePage() {
             <div className="w-full max-w-md aspect-square bg-white border border-[#c4c5d5] rounded-3xl shadow-2xl p-10 relative flex flex-col items-center justify-center text-center space-y-8 overflow-hidden group">
               {/* Card Background Texture */}
               <div className="absolute inset-0 opacity-[0.05] group-hover:opacity-[0.08] transition-opacity duration-500" 
-                   style={{ backgroundImage: 'radial-gradient(#00288e 1.5px, transparent 1.5px)', backgroundSize: '24px 24px' }} />
+                   style={{ backgroundImage: 'radial-gradient(#0077CB 1.5px, transparent 1.5px)', backgroundSize: '24px 24px' }} />
               
-              <Layers className="absolute top-6 right-6 w-6 h-6 text-[#00288e] opacity-20" />
-              <Zap className="absolute bottom-6 left-6 w-8 h-8 text-[#00288e] opacity-20" />
+              <Layers className="absolute top-6 right-6 w-6 h-6 text-[#0077CB] opacity-20" />
+              <Zap className="absolute bottom-6 left-6 w-8 h-8 text-[#0077CB] opacity-20" />
 
               {/* Main Illustration/Icon */}
               <div className="w-20 h-20 bg-[#e5eeff] border border-[#c4c5d5] rounded-full flex items-center justify-center relative z-10 shadow-inner">
-                <Users className="w-10 h-10 text-[#00288e]" />
+                <Users className="w-10 h-10 text-[#0077CB]" />
               </div>
 
               {/* Card Content */}
@@ -88,11 +88,11 @@ export default function MaintenancePage() {
               <div className="w-full space-y-4 relative z-10">
                 <div className="h-3 w-full bg-[#e5eeff] rounded-full overflow-hidden shadow-sm">
                   <div 
-                    className="h-full bg-[#00288e] rounded-full transition-all duration-1000 ease-out" 
+                    className="h-full bg-[#0077CB] rounded-full transition-all duration-1000 ease-out" 
                     style={{ width: progressWidth }} 
                   />
                 </div>
-                <p className="text-[#00288e] font-bold text-sm tracking-wide">
+                <p className="text-[#0077CB] font-bold text-sm tracking-wide">
                   Platform Status: {percentage}% Complete
                 </p>
               </div>
@@ -108,15 +108,15 @@ export default function MaintenancePage() {
       <footer className="border-t border-[#c4c5d5] bg-[#f8f9ff] py-10 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex flex-col items-center md:items-start space-y-1">
-            <span className="text-2xl font-extrabold text-[#00288e] tracking-tight">Mentivo</span>
+            <span className="text-2xl font-extrabold text-[#0077CB] tracking-tight">Mentivo</span>
             <p className="text-[#006591] text-sm text-center md:text-left font-medium opacity-80">
               © 2026 Mentivo. Empowering the next generation of engineers.
             </p>
           </div>
           <nav className="flex items-center space-x-8 text-[#444653] text-sm font-semibold opacity-80">
-            <Link href="/" className="hover:text-[#00288e] transition-colors duration-200">Home</Link>
-            <Link href="https://mentivo.in/privacy" className="hover:text-[#00288e] transition-colors duration-200">Privacy Policy</Link>
-            <a href="mailto:support@mentivo.in" className="hover:text-[#00288e] transition-colors duration-200">Contact</a>
+            <Link href="/" className="hover:text-[#0077CB] transition-colors duration-200">Home</Link>
+            <Link href="https://mentivo.in/privacy" className="hover:text-[#0077CB] transition-colors duration-200">Privacy Policy</Link>
+            <a href="mailto:support@mentivo.in" className="hover:text-[#0077CB] transition-colors duration-200">Contact</a>
           </nav>
         </div>
       </footer>

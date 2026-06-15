@@ -42,8 +42,16 @@ CREATE TABLE IF NOT EXISTS "partner_balances" (
 -- 5. Add verificationStatus to mentor_profiles if not exists
 ALTER TABLE "mentor_profiles" ADD COLUMN IF NOT EXISTS "verificationStatus" "VerificationStatus" NOT NULL DEFAULT 'PENDING';
 
--- 6. Migrate existing verified boolean data to verificationStatus enum
-UPDATE "mentor_profiles" SET "verificationStatus" = 'VERIFIED' WHERE "verified" = true;
+DO $$ 
+BEGIN
+    IF EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name='mentor_profiles' AND column_name='verified'
+    ) THEN
+        EXECUTE 'UPDATE "mentor_profiles" SET "verificationStatus" = ''VERIFIED'' WHERE "verified" = true';
+    END IF;
+END $$;
 
 -- 7. Drop verified column if exists
 ALTER TABLE "mentor_profiles" DROP COLUMN IF EXISTS "verified";

@@ -21,6 +21,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation, useScrollToTop } from "@react-navigation/native";
 import MentorCard from "../../components/MentorCard";
 import { useAuth } from "../../services/retrieveKeys";
+import { useLoading } from "../../context/LoadingContext";
 import DialogBox from "../../components/DialogBox";
 import api from "../../services/api";
 import { WalletEndpoints, MentorEndpoints, LoginEndpoints, CallEndpoints } from "../../constants/endpoint";
@@ -29,11 +30,13 @@ const { width, height } = Dimensions.get("window");
 
 export default function StudentHomePage() {
   const { handleLogout } = useAuth();
+  const { showLoading, hideLoading } = useLoading();
   const navigation = useNavigation<any>();
   const [user, setUser] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("All");
   const [sortBy, setSortBy] = useState("rating");
+  const [selectedLanguage, setSelectedLanguage] = useState("");
   const [isSortModalVisible, setIsSortModalVisible] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
@@ -57,6 +60,9 @@ export default function StudentHomePage() {
   const [onlineCount, setOnlineCount] = useState(0);
   const [upcomingCall, setUpcomingCall] = useState<any>(null);
   const [syncCountdown, setSyncCountdown] = useState<string>("");
+  const [settings, setSettings] = useState<any>({});
+  const [isFirstCallFree, setIsFirstCallFree] = useState(false);
+  const [showSyncButton, setShowSyncButton] = useState(false);
   const LIMIT = 10;
 
   const fetchUpcomingCall = async () => {
@@ -68,6 +74,7 @@ export default function StudentHomePage() {
       } else {
         setUpcomingCall(null);
         setSyncCountdown("");
+        setShowSyncButton(false);
       }
     } catch (error) {
       console.error("Failed to fetch upcoming call:", error);
@@ -81,16 +88,144 @@ export default function StudentHomePage() {
     
     if (diffMs <= 0) {
       setSyncCountdown("Now");
+      setShowSyncButton(true);
       return;
     }
 
     const diffMins = Math.floor(diffMs / (1000 * 60));
+    if (diffMins <= 10) {
+      setShowSyncButton(true);
+    } else {
+      setShowSyncButton(false);
+    }
+
     if (diffMins < 60) {
       setSyncCountdown(`in ${diffMins} min`);
     } else {
       const hours = Math.floor(diffMins / 60);
       const mins = diffMins % 60;
       setSyncCountdown(`in ${hours}h ${mins}m`);
+    }
+  };
+
+  const fetchSettingsAndEligibility = async () => {
+    try {
+      const [settingsRes, sessionsRes] = await Promise.all([
+        api.get("/config/settings"),
+        api.get(CallEndpoints.getStudentSessions)
+      ]);
+      if (settingsRes.status === 200) {
+        setSettings(settingsRes.data);
+      }
+      if (sessionsRes.status === 200) {
+        setIsFirstCallFree(sessionsRes.data.length === 0);
+      }
+    } catch (err) {
+      console.error("Failed to fetch settings/eligibility:", err);
+    }
+  };
+
+  const handleSyncMentor = async () => {
+    if (!upcomingCall || !upcomingCall.mentor) return;
+    
+    if (walletBalance < 10) {
+      setAlertData({
+        title: "Insufficient Balance",
+        message: "Please add money to your wallet to start the call."
+      });
+      setAlertVisible(true);
+      return;
+    }
+
+    showLoading("Syncing with mentor...");
+    try {
+      const response = await api.post(CallEndpoints.initiate, { mentorId: upcomingCall.mentor_id });
+      if (response.status === 200) {
+        const { sessionId, channelName, studentToken, maxDurationSeconds, mentorPhoto, chatSessionId } = response.data;
+        
+        navigation.navigate('InCall', {
+          callId: sessionId,
+          channelName,
+          callerName: upcomingCall.mentor.name || "Mentor",
+          role: 'caller',
+          initialToken: studentToken,
+          maxDuration: maxDurationSeconds,
+          mentorPhoto: mentorPhoto || upcomingCall.mentor.photo_url,
+          chatSessionId
+        });
+      }
+    } catch (error: any) {
+      console.error('Failed to initiate scheduled call:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to connect. Please try again.';
+      setAlertData({ title: 'Call Error', message: errorMsg });
+      setAlertVisible(true);
+    } finally {
+      hideLoading();
+    }
+  };
+
+  const handleCardCallPress = async (mentor: any) => {
+    if (walletBalance < 10) {
+      setAlertData({
+        title: "Insufficient Balance",
+        message: "Please add money to your wallet to start the call."
+      });
+      setAlertVisible(true);
+      return;
+    }
+
+    showLoading("Initiating call...");
+    try {
+      const response = await api.post(CallEndpoints.initiate, { mentorId: mentor.id });
+      if (response.status === 200) {
+        const { sessionId, channelName, studentToken, maxDurationSeconds, mentorPhoto, chatSessionId } = response.data;
+        
+        navigation.navigate('InCall', {
+          callId: sessionId,
+          channelName,
+          callerName: mentor.name,
+          role: 'caller',
+          initialToken: studentToken,
+          maxDuration: maxDurationSeconds,
+          mentorPhoto: mentorPhoto || mentor.photoUrl,
+          chatSessionId
+        });
+      }
+    } catch (error: any) {
+      console.error('Failed to initiate call:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to connect. Please try again.';
+      setAlertData({ title: 'Call Error', message: errorMsg });
+      setAlertVisible(true);
+    } finally {
+      hideLoading();
+    }
+  };
+
+  const handleFreeMatchmaking = async () => {
+    showLoading("Finding a mentor...");
+    try {
+      const response = await api.post(CallEndpoints.freeMatchmaking);
+      if (response.status === 200) {
+        const { sessionId, channelName, studentToken, maxDurationSeconds, mentorPhoto, chatSessionId, mentorName } = response.data;
+        
+        navigation.navigate('InCall', {
+          callId: sessionId,
+          channelName,
+          callerName: mentorName || "Mentor",
+          role: 'caller',
+          initialToken: studentToken,
+          maxDuration: maxDurationSeconds,
+          mentorPhoto,
+          chatSessionId
+        });
+      }
+    } catch (error: any) {
+      console.error('Failed to matchmaking free call:', error);
+      const errorMsg = error.response?.data?.error || 'No mentors are online right now. Please try again later!';
+      setAlertData({ title: 'Matchmaking Error', message: errorMsg });
+      setAlertVisible(true);
+    } finally {
+      hideLoading();
     }
   };
 
@@ -200,6 +335,7 @@ export default function StudentHomePage() {
           rating: m.avg_rating || 0,
           calls: m.total_calls || 0,
           price: m.rate_per_min || 10,
+          originalPrice: m.originalPrice || null,
           isFavorite: false,
           isOnline: m.isOnline,
           photoUrl: m.user?.photo_url,
@@ -236,7 +372,7 @@ export default function StudentHomePage() {
     const levelParam = selectedFilter !== "All" && selectedFilter !== "Online" ? selectedFilter : "All";
 
     try {
-      const response = await api.get(`${MentorEndpoints.getMentorsPaginated}?offset=${currentOffset}&limit=${LIMIT}&onlineOnly=${isOnlineOnly}&sortBy=${sortBy}&level=${levelParam}`);
+      const response = await api.get(`${MentorEndpoints.getMentorsPaginated}?offset=${currentOffset}&limit=${LIMIT}&onlineOnly=${isOnlineOnly}&sortBy=${sortBy}&level=${levelParam}&language=${encodeURIComponent(selectedLanguage)}`);
       
       if (response.status === 200) {
         const fetchedMentors = response.data;
@@ -251,6 +387,7 @@ export default function StudentHomePage() {
           rating: m.avg_rating || 0,
           calls: m.total_calls || 0,
           price: m.rate_per_min || 10,
+          originalPrice: m.originalPrice || null,
           isFavorite: false, // Update if you have a favorites system
           isOnline: m.isOnline,
           photoUrl: m.user?.photo_url,
@@ -283,6 +420,7 @@ export default function StudentHomePage() {
     fetchWalletBalance();
     fetchOnlineCount();
     fetchUpcomingCall();
+    fetchSettingsAndEligibility();
     fetchMentors(true);
   };
 
@@ -301,12 +439,14 @@ export default function StudentHomePage() {
       loadUser();
       fetchWalletBalance();
       fetchUpcomingCall();
+      fetchSettingsAndEligibility();
     });
 
     syncFavorites();
     fetchWalletBalance();
     fetchOnlineCount();
     fetchUpcomingCall();
+    fetchSettingsAndEligibility();
     fetchMentors(true); // Initial fetch
 
     return () => {
@@ -316,7 +456,7 @@ export default function StudentHomePage() {
 
   useEffect(() => {
     fetchMentors(true);
-  }, [selectedFilter, sortBy]);
+  }, [selectedFilter, sortBy, selectedLanguage]);
 
   const toggleSidebar = () => {
     if (isSidebarVisible) {
@@ -364,13 +504,32 @@ export default function StudentHomePage() {
         
         <View style={styles.separator} />
 
-        {syncCountdown ? (
-          <TouchableOpacity style={styles.mentorSyncButton}>
-            <Text style={styles.mentorSyncText}>Mentor Sync </Text>
+        {isFirstCallFree ? (
+          <TouchableOpacity style={styles.freeCallBanner} onPress={handleFreeMatchmaking}>
+            <View style={styles.freeCallRow}>
+              <Image source={require("../../app-assets/clock.svg")} style={styles.freeCallIcon} tintColor="white" />
+              <Text style={styles.freeCallTitle}>Your IITian, One Call Away First session free for new users</Text>
+            </View>
+            <Text style={styles.freeCallSubtitle}>Tap to match with an online mentor instantly!</Text>
+          </TouchableOpacity>
+        ) : showSyncButton && syncCountdown ? (
+          <TouchableOpacity style={styles.mentorSyncButton} onPress={handleSyncMentor}>
+            <Text style={styles.mentorSyncText}>Sync Mentor</Text>
             <View style={styles.syncTimerBadge}>
               <Text style={styles.syncTimerText}>{syncCountdown}</Text>
             </View>
           </TouchableOpacity>
+        ) : (settings.promotionalText || settings.announcement) ? (
+          <View style={styles.noSyncContainer}>
+            {settings.promotionalText ? (
+              <Text style={styles.greetingPromoText}>{settings.promotionalText}</Text>
+            ) : null}
+            {settings.announcement ? (
+              <Text style={[styles.greetingAnnouncementText, settings.promotionalText && { marginTop: 6 }]}>
+                {settings.announcement}
+              </Text>
+            ) : null}
+          </View>
         ) : (
           <View style={styles.noSyncContainer}>
             <Text style={styles.noSyncText}>No calls scheduled for today</Text>
@@ -434,7 +593,7 @@ export default function StudentHomePage() {
       {/* Header & Search */}
       <View style={styles.header}>
         <TouchableOpacity onPress={toggleSidebar}>
-          <Image source={require("../../app-assets/sidebar-toggle.svg")} style={styles.icon24} />
+          <Image source={require("../../app-assets/sidebar-toggle.svg")} style={[styles.icon24, {marginTop: '50%'}]} />
         </TouchableOpacity>
         <View style={styles.searchContainer}>
           <Image source={require("../../app-assets/search-icon.svg")} style={styles.searchIcon} />
@@ -460,7 +619,8 @@ export default function StudentHomePage() {
             {...item}
             isFavorite={favoriteIds.includes(item.id)}
             onFavoritePress={() => handleToggleFavorite(item.id)}
-            onPress={() => navigation.navigate("MentorProfile", { mentor: item })}
+            onCallPress={() => handleCardCallPress(item)}
+            onPress={() => navigation.navigate("MentorProfile", { mentor: { ...item, isFavorite: favoriteIds.includes(item.id) } })}
           />
         )}
         ListHeaderComponent={renderHeader}
@@ -494,29 +654,57 @@ export default function StudentHomePage() {
       >
         <TouchableWithoutFeedback onPress={() => setIsSortModalVisible(false)}>
           <View style={styles.modalOverlay}>
-            <View style={styles.sortModalContent}>
-              <Text style={styles.modalTitle}>Sort By</Text>
-              {sortOptions.map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  style={styles.sortOption}
-                  onPress={() => {
-                    setSortBy(option.value);
-                    setIsSortModalVisible(false);
-                  }}
-                >
-                  <Text style={[
-                    styles.sortOptionText,
-                    sortBy === option.value && styles.sortOptionTextActive
-                  ]}>
-                    {option.label}
-                  </Text>
-                  {sortBy === option.value && (
-                    <View style={styles.selectedDot} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.sortModalContent}>
+                <Text style={styles.modalTitle}>Sort By</Text>
+                {sortOptions.map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={styles.sortOption}
+                    onPress={() => {
+                      setSortBy(option.value);
+                    }}
+                  >
+                    <Text style={[
+                      styles.sortOptionText,
+                      sortBy === option.value && styles.sortOptionTextActive
+                    ]}>
+                      {option.label}
+                    </Text>
+                    {sortBy === option.value && (
+                      <View style={styles.selectedDot} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+
+                <Text style={[styles.modalTitle, { marginTop: 20, marginBottom: 10 }]}>Language</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="e.g. English, Hindi"
+                  placeholderTextColor="#757684"
+                  value={selectedLanguage}
+                  onChangeText={setSelectedLanguage}
+                />
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity 
+                    style={styles.clearButton} 
+                    onPress={() => {
+                      setSelectedLanguage("");
+                      setIsSortModalVisible(false);
+                    }}
+                  >
+                    <Text style={styles.clearButtonText}>Clear</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.applyButton} 
+                    onPress={() => setIsSortModalVisible(false)}
+                  >
+                    <Text style={styles.applyButtonText}>Apply</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
@@ -561,8 +749,7 @@ export default function StudentHomePage() {
               >
                 <Image source={require("../../app-assets/wallet-fill.svg")} style={styles.sidebarStatIcon} />
                 <View>
-                  <Text style={styles.walletBalance}>₹ {walletBalance}</Text>
-                  <Text style={styles.walletBonus}>+9m free</Text>
+                  <Text style={styles.walletBalance}>{walletBalance} Credits</Text>
                 </View>
               </TouchableOpacity>
               {/* <View style={styles.sidebarStatCard}> */}
@@ -581,7 +768,7 @@ export default function StudentHomePage() {
                 <Text style={styles.sidebarLinkText}>Your session</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.sidebarLink} onPress={() => { toggleSidebar(); navigation.navigate("Payment"); }}>
-                <Text style={styles.sidebarLinkText}>Payment</Text>
+                <Text style={styles.sidebarLinkText}>Session Credits</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.sidebarLink, styles.logoutLink]} onPress={handleLogoutClick}>
                 <Text style={styles.sidebarLinkText}>Logout</Text>
@@ -649,6 +836,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
+  greetingInfoContainer: {
+    marginTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: "#f3f4f6",
+    paddingTop: 10,
+  },
+  greetingPromoText: {
+    color: "#0077CB",
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 6,
+    textAlign: 'center'
+  },
+  greetingAnnouncementText: {
+    color: "#4b5563",
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'center'
+  },
   greetingCard: {
     backgroundColor: "white",
     borderRadius: 8,
@@ -672,7 +878,7 @@ const styles = StyleSheet.create({
   userNameText: {
     fontSize: 32,
     fontWeight: "bold",
-    color: "#1d459c",
+    color: "#0077CB",
     letterSpacing: -1.2,
   },
   separator: {
@@ -696,7 +902,7 @@ const styles = StyleSheet.create({
   countdownValue: {
     fontSize: 32,
     fontWeight: "bold",
-    color: "#1d459c",
+    color: "#0077CB",
     marginRight: 4,
   },
   countdownUnitContainer: {
@@ -740,7 +946,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   filterContainer: {
-    marginVertical: 20,
   },
   filterChip: {
     backgroundColor: "white",
@@ -748,6 +953,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 15,
     marginRight: 10,
+    marginTop: 16,
+    marginBottom: 27,
     flexDirection: "row",
     alignItems: "center",
     shadowColor: "#000",
@@ -896,7 +1103,7 @@ const styles = StyleSheet.create({
   walletBalance: {
     fontSize: 12,
     fontWeight: "bold",
-    color: "#1d459c",
+    color: "#0077CB",
   },
   walletBonus: {
     fontSize: 8,
@@ -905,7 +1112,7 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     fontWeight: "bold",
-    color: "#1d459c",
+    color: "#0077CB",
   },
   statSubLabel: {
     fontSize: 8,
@@ -988,5 +1195,104 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#2563eb',
+  },
+  promoBanner: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#bfdbfe',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 12,
+    marginHorizontal: 16,
+  },
+  promoText: {
+    color: '#1e40af',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  freeCallBanner: {
+    backgroundColor: '#10b981',
+    borderRadius: 12,
+    padding: 10,
+    marginTop: 12,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  freeCallRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  freeCallIcon: {
+    width: 18,
+    height: 18,
+  },
+  freeCallTitle: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  freeCallSubtitle: {
+    color: '#e0f2fe',
+    fontSize: 11,
+    marginLeft: 26,
+  },
+  announcementBanner: {
+    backgroundColor: '#fffbeb',
+    borderColor: '#fef3c7',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 12,
+    marginHorizontal: 16,
+  },
+  announcementText: {
+    color: '#b45309',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 8,
+    fontSize: 14,
+    color: '#1f2937',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    gap: 12,
+  },
+  clearButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+  },
+  clearButtonText: {
+    color: '#4b5563',
+    fontWeight: '500',
+  },
+  applyButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: '#2563eb',
+    borderRadius: 8,
+  },
+  applyButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
 });

@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -22,6 +23,24 @@ import DialogBox from "../../components/DialogBox";
 
 export default function MentorAskPage() {
   const navigation = useNavigation<any>();
+  const flatListRef = useRef<FlatList>(null);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
   const [userId, setUserId] = useState<string>("");
   const [questions, setQuestions] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<"unanswered" | "popular">("unanswered");
@@ -40,6 +59,21 @@ export default function MentorAskPage() {
   const [replyTextMap, setReplyTextMap] = useState<{ [key: string]: string }>({});
   const [submittingMap, setSubmittingMap] = useState<{ [key: string]: boolean }>({});
 
+  const [askConfig, setAskConfig] = useState<any>({
+    maxAnswerChars: null,
+  });
+
+  const fetchConfig = async () => {
+    try {
+      const res = await api.get(AskEndpoints.config);
+      if (res.status === 200) {
+        setAskConfig(res.data);
+      }
+    } catch (err) {
+      console.error("Error fetching Q&A config:", err);
+    }
+  };
+
   useEffect(() => {
     const getUserId = async () => {
       try {
@@ -53,6 +87,7 @@ export default function MentorAskPage() {
       }
     };
     getUserId();
+    fetchConfig();
   }, []);
 
   // Debounce search
@@ -108,6 +143,7 @@ export default function MentorAskPage() {
   const handleRefresh = () => {
     setPage(1);
     fetchQuestions(1, searchQuery, true);
+    fetchConfig();
   };
 
   const handleLoadMore = () => {
@@ -122,6 +158,15 @@ export default function MentorAskPage() {
   const handleSubmitReply = async (questionId: string) => {
     const text = replyTextMap[questionId];
     if (!text || !text.trim()) return;
+
+    if (askConfig.maxAnswerChars && text.length > askConfig.maxAnswerChars) {
+      setAlertData({
+        title: "Character Limit Exceeded",
+        message: `Your answer exceeds the character limit of ${askConfig.maxAnswerChars} characters.`,
+      });
+      setAlertVisible(true);
+      return;
+    }
 
     setSubmittingMap((prev) => ({ ...prev, [questionId]: true }));
     try {
@@ -180,7 +225,7 @@ export default function MentorAskPage() {
     return `${diffDays} days ago`;
   };
 
-  const renderQuestionItem = ({ item }: { item: any }) => {
+  const renderQuestionItem = ({ item, index }: { item: any; index: number }) => {
     const topAnswer = item.answers && item.answers.length > 0 ? item.answers[0] : null;
     const hasAlreadyAnswered = item.answers?.some((a: any) => a.mentorId === userId);
 
@@ -258,7 +303,24 @@ export default function MentorAskPage() {
               value={replyTextMap[item.id] || ""}
               onChangeText={(txt) => setReplyTextMap((prev) => ({ ...prev, [item.id]: txt }))}
               multiline
+              onFocus={() => {
+                setTimeout(() => {
+                  try {
+                    flatListRef.current?.scrollToIndex({
+                      index,
+                      animated: true,
+                      viewPosition: 0.3,
+                    });
+                  } catch (err) {
+                    console.log("Failed to scroll to index:", err);
+                  }
+                }, 150);
+              }}
             />
+            <Text style={[styles.charCountText, askConfig.maxAnswerChars && (replyTextMap[item.id] || "").length > askConfig.maxAnswerChars ? { color: "#ef4444" } : null]}>
+              Characters: {(replyTextMap[item.id] || "").length}
+              {askConfig.maxAnswerChars ? ` / ${askConfig.maxAnswerChars}` : ""}
+            </Text>
             <TouchableOpacity
               style={[
                 styles.replySubmitBtn,
@@ -288,10 +350,15 @@ export default function MentorAskPage() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Mentor Inbox</Text>
-      </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : (isKeyboardVisible ? 'height' : undefined)}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'android' ? 70 : 0}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Mentor Inbox</Text>
+        </View>
 
       {/* Tabs */}
       <View style={styles.tabsContainer}>
@@ -343,14 +410,13 @@ export default function MentorAskPage() {
           <ActivityIndicator size="large" color="#2563eb" />
         </View>
       ) : (
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={{ flex: 1 }}
-        >
+        <View style={{ flex: 1 }}>
           <FlatList
+            ref={flatListRef}
             data={questions}
-            renderItem={renderQuestionItem}
+            renderItem={({ item, index }) => renderQuestionItem({ item, index })}
             keyExtractor={(item) => item.id}
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
             refreshControl={
@@ -374,7 +440,7 @@ export default function MentorAskPage() {
               </View>
             }
           />
-        </KeyboardAvoidingView>
+        </View>
       )}
       <DialogBox
         visible={alertVisible}
@@ -382,6 +448,7 @@ export default function MentorAskPage() {
         message={alertData.message}
         onClose={() => setAlertVisible(false)}
       />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -627,5 +694,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6b7280",
     marginTop: 12,
+  },
+  charCountText: {
+    fontSize: 11,
+    color: "#6b7280",
+    marginBottom: 6,
+    textAlign: "right",
   },
 });

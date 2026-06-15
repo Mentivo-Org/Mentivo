@@ -40,7 +40,8 @@ export default function FavoriteMentorsPage() {
           iit: fav.iit_name || fav.iit || "IIT Graduate",
           branch: fav.branch || "",
           year: fav.year ? `Y${fav.year}` : "",
-          price: fav.price || 10,
+          price: fav.rate_per_min || 10,
+          originalPrice: fav.originalPrice || null,
           photoUrl: fav.user?.photo_url || fav.photo_url || null,
           isOnline: fav.isOnline || false,
           rating: fav.avg_rating || 0,
@@ -132,7 +133,7 @@ export default function FavoriteMentorsPage() {
             {...item}
             isFavorite={favoriteIds.includes(item.id)}
             onFavoritePress={() => handleToggleFavorite(item.id)}
-            onPress={() => navigation.navigate("MentorProfile", { mentor: item })}
+            onPress={() => navigation.navigate("MentorProfile", { mentor: { ...item, isFavorite: true } })}
           />
         )}
         contentContainerStyle={styles.listContent}

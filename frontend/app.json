@@ -2,7 +2,7 @@
   "expo": {
     "name": "Mentivo",
     "slug": "mentivo",
-    "version": "1.0.4",
+    "version": "1.0.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -54,7 +54,7 @@
         "FOREGROUND_SERVICE",
         "RECEIVE_BOOT_COMPLETED",
       ],
-      "versionCode": 10
+      "versionCode": 13
     },
     "web": {
       "favicon": "./assets/icon.png"

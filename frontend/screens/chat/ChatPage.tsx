@@ -21,7 +21,7 @@ import DialogBox from '../../components/DialogBox';
 import api from '../../services/api';
 
 const ChatPage = (props: any) => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const route = useRoute();
   const routeParams = route.params as any;
   const { partnerId, partnerName, sessionId, inCall, onClose } = { 
@@ -116,7 +116,12 @@ const ChatPage = (props: any) => {
   useEffect(() => {
     const showSubscription = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => setKeyboardVisible(true)
+      () => {
+        setKeyboardVisible(true);
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
     );
     const hideSubscription = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
@@ -222,7 +227,7 @@ const ChatPage = (props: any) => {
       console.error('Fetch History Error:', e);
       // Fallback to Agora local history if backend fails
       try {
-        const msgs = await ChatClient.getInstance().chatManager.fetchHistoryMessages(agoraPartnerId, { direction: 0, pageSize: 50 });
+        const msgs = await ChatClient.getInstance().chatManager.fetchHistoryMessages(agoraPartnerId, 0, { direction: 0, pageSize: 50 });
         const agoraHistory = msgs.list.map(m => {
           const normFrom = normalizeId(m.from);
           const isPartner = normFrom === normPartnerId;
@@ -298,7 +303,12 @@ const ChatPage = (props: any) => {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="white" />
-      <View style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : (isKeyboardVisible ? 'height' : undefined)}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'android' ? 70 : 0}
+      >
+        <View style={styles.container}>
         <Image
           source={require('../../app-assets/chat-bg.svg')}
           style={StyleSheet.absoluteFillObject}
@@ -331,6 +341,18 @@ const ChatPage = (props: any) => {
           </TouchableOpacity>
         )}
         {isStudent && (
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('ScheduleCall', { mentorName: partnerName, mentorId: partnerId })}
+            style={styles.scheduleButton}
+          >
+            <Image 
+              source={require('../../app-assets/clock.svg')}
+              style={{ width: 34, height: 34 }}
+              tintColor="white"
+            />
+          </TouchableOpacity>
+        )}
+        {isStudent && (
           <TouchableOpacity onPress={handleCallNow} style={styles.callButton} disabled={isInitiating}>
             <Image 
               source={require('../../app-assets/phone-icon.svg')}
@@ -359,11 +381,7 @@ const ChatPage = (props: any) => {
       )}
 
       {/* Messages */}
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoidingView}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
+      <View style={styles.keyboardAvoidingView}>
         <Image 
           source={require('../../app-assets/bg-pattern.svg')}
           style={styles.bgPattern}
@@ -402,7 +420,7 @@ const ChatPage = (props: any) => {
             bottomOffset={insets.bottom}
           />
         )}
-      </KeyboardAvoidingView>
+      </View>
 
       <DialogBox
         visible={alertVisible}
@@ -412,7 +430,8 @@ const ChatPage = (props: any) => {
         primaryButtonText="OK"
         onClose={() => setAlertVisible(false)}
       />
-      </View>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -454,8 +473,18 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   headerFavoriteButton: {
-    marginRight: 60,
+    marginRight: 96,
     padding: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scheduleButton: {
+    position: 'absolute',
+    right: 60,
+    top: 10,
+    width: 58,
+    height: 44,
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -463,7 +492,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
-    width: 60,
+    width: 48,
     height: 44,
     backgroundColor: 'transparent',
     justifyContent: 'center',

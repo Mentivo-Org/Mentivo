@@ -150,3 +150,18 @@ model AdminPayoutRequest {
 - **Image Upload:** Integrated `expo-image-picker` to select profile pictures from local library, performing uploads via FormData to `ProfilePictureEndpoints.uploadProfilePicture`.
 - **Navigation Integration:** Registered the screen in `RootNavigator.tsx` and hooked up the `Edit` button on the `StudentHomePage` sidebar to navigate to the new page. Implemented focus-based user reload on the home page to update details upon profile save.
 
+### 14. Play Store Compliance & Keyboard Handling (June 2026)
+
+#### Web & Mobile Payment Compliance
+- **In-App Payment Removal**: Removed `react-native-razorpay` checkout logic from the mobile application to prevent Google Play billing violations.
+- **Session Credits Terminology**: Renamed user-facing instances of "Wallet Balance" to "Session Credits" in `StudentHomePage.tsx`, `PaymentPage.tsx`, and the Next.js student homepage.
+- **External Web Redirection**: Converted the mobile `PaymentPage.tsx` into a read-only viewer displaying active session credits, prompting additions via an "Add Credits" button that opens the web checkout portal externally using `Linking.openURL`.
+- **Web Purchase Page**: Built Next.js checkout screen `/add-credits` incorporating secure token-based logins, credit packages selection, Razorpay Web SDK capture, and automated backend confirmations.
+- **Cross-Platform API Interceptor**: Adjusted the website client `api.ts` request header rules to ingest Authorization tokens and support session refreshes for redirected mobile clients.
+
+#### Keyboard Avoiding View Refinement
+- **Platform-Specific Behaviors**: Standardized screen inputs to rely on Android's `adjustResize` window mode (`behavior = undefined`) and iOS `'padding'` behaviors.
+- **Vertical Offsets**: Added structured `keyboardVerticalOffset = 90` across Q&A lists (`MentorAskPage.tsx`, `QuestionDetailScreen.tsx`) to prevent text input clipping.
+- **Auto-Scrolling chat bubbles**: Enabled the chat layout `ChatPage.tsx` to automatically scroll FlatLists to the final item inside the keyboard listener on-show callback.
+
+

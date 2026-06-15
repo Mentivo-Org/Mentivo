@@ -102,7 +102,7 @@ export default function StudentLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#00288e] text-white py-4 rounded-2xl font-bold hover:bg-[#001d66] transition-all transform active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full bg-[#0077CB] text-white py-4 rounded-2xl font-bold hover:bg-[#001d66] transition-all transform active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? <Loader2 className="animate-spin" size={20} /> : 'Login'}
           </button>
@@ -111,7 +111,7 @@ export default function StudentLoginPage() {
         <div className="mt-8 text-center text-slate-500">
           <p>
             Don&apos;t have an account?{' '}
-            <Link href="/signup" className="text-[#00288e] font-bold hover:underline">
+            <Link href="/signup" className="text-[#0077CB] font-bold hover:underline">
               Sign Up
             </Link>
           </p>

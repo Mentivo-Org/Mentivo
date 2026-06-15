@@ -54,29 +54,50 @@ export default function MentorHomePage() {
 
   // Check for Overlay permission (Display over other apps)
   const checkOverlayPermission = async () => {
-    // Note: Notifee doesn't have a direct "isOverlayGranted" boolean, 
-    // but it provides helpers to open the settings.
-    // For mentors, we want to proactively ask for this.
-    const powerManagement = await notifee.getPowerManagementInfo();
-    
-    // If background restrictions are active or we haven't prompted yet
-    const hasPrompted = await AsyncStorage.getItem('hasPromptedOverlay');
-    
-    if (!hasPrompted) {
+    try {
+      console.log('[Overlay Check] Starting overlay permission check...');
+      
+      // If we are not on Android, we do not need overlay permission
+      if (Platform.OS !== 'android') {
+        console.log('[Overlay Check] Skipped check: Platform is not Android');
+        return;
+      }
+
+      // Check if we already prompted the user
+      const hasPrompted = await AsyncStorage.getItem('hasPromptedOverlay');
+      console.log('[Overlay Check] hasPromptedOverlay from storage:', hasPrompted);
+      
+      if (!hasPrompted) {
+        // Safely check power management info if needed, but wrap it
+        try {
+          const powerManagement = await notifee.getPowerManagerInfo();
+          console.log('[Overlay Check] Power management info:', powerManagement);
+        } catch (pmError) {
+          console.warn('[Overlay Check] Error fetching power management info:', pmError);
+        }
+
+        console.log('[Overlay Check] Displaying "Enable Full-Screen Calls" dialog');
         setAlertData({
             title: "Enable Full-Screen Calls",
             message: "To receive incoming calls while using other apps or when your screen is locked, please enable 'Display over other apps' in your system settings.",
             primaryButtonText: "Open Settings",
             onPrimaryPress: async () => {
+                console.log('[Overlay Check] User clicked Open Settings');
                 await AsyncStorage.setItem('hasPromptedOverlay', 'true');
                 Linking.openSettings();
             },
             secondaryButtonText: "Maybe Later",
             onSecondaryPress: async () => {
+                console.log('[Overlay Check] User clicked Maybe Later');
                 await AsyncStorage.setItem('hasPromptedOverlay', 'true');
             }
         });
         setAlertVisible(true);
+      } else {
+        console.log('[Overlay Check] Prompt already shown previously');
+      }
+    } catch (err) {
+      console.error('[Overlay Check] Error in checkOverlayPermission:', err);
     }
   };
 
@@ -202,7 +223,7 @@ export default function MentorHomePage() {
                     >
                         <View style={styles.avatarWrapper}>
                             <Image 
-                                source={profile.user?.photo_url || require("../../app-assets/avatar-placeholder.svg")} 
+                                source={profile.user?.photo_url || require("../../app-assets/profile-circle.svg")} 
                                 style={styles.headerAvatar} 
                             />
                             <Image source={getLevelIcon(profile?.mentorlevel)} style={styles.verifiedBadge} />
@@ -231,9 +252,9 @@ export default function MentorHomePage() {
 
         {/* Earning Stats matching Node 306:184 */}
         <View style={styles.statsRow}>
-          <StatCard title="TODAY" amount={`₹${stats.today.earnings}`} subtitle={`${stats.today.count} calls`} />
-          <StatCard title="WEEK" amount={`₹${stats.week.earnings}`} subtitle={`${stats.week.count} calls`} />
-          <StatCard title="ALL TIME" amount={`₹${stats.allTime.earnings}`} subtitle={`${stats.allTime.count} calls`} />
+          <StatCard title="TODAY" amount={`${stats.today.earnings} Credits`} subtitle={`${stats.today.count} calls`} />
+          <StatCard title="WEEK" amount={`${stats.week.earnings} Credits`} subtitle={`${stats.week.count} calls`} />
+          <StatCard title="ALL TIME" amount={`${stats.allTime.earnings} Credits`} subtitle={`${stats.allTime.count} calls`} />
         </View>
 
         {/* Progress Card matching Node 306:194 */}
@@ -273,7 +294,7 @@ export default function MentorHomePage() {
             </View>
 
             <Text style={styles.progressHint}>
-                Complete {nextCond?.minCalls} calls and maintain {Number(nextCond?.minRating).toFixed(1)}+ rating to upgrade to {nextLevel} Mentor and charge up to ₹{levelRates[nextLevel]}/min
+                Complete {nextCond?.minCalls} calls and maintain {Number(nextCond?.minRating).toFixed(1)}+ rating to upgrade to {nextLevel} Mentor and charge up to {levelRates[nextLevel]} credits/min
             </Text>
           </View>
         )}
@@ -281,6 +302,9 @@ export default function MentorHomePage() {
         {/* History Section matching Node 373:1381 */}
         <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>History</Text>
+            <TouchableOpacity onPress={() => navigation.navigate("MentorMissedCalls")}>
+                <Text style={styles.missedCallsLink}>Missed Calls</Text>
+            </TouchableOpacity>
         </View>
         <View style={styles.historyContainer}>
             {history.length > 0 ? (
@@ -296,7 +320,7 @@ export default function MentorHomePage() {
                         <View style={styles.historyInfo}>
                             <View style={styles.historyTopRow}>
                                 <Text style={styles.studentName}>{session.student?.name || "Student"}</Text>
-                                <Text style={styles.earningText}>₹{session.mentorEarning || 0}</Text>
+                                <Text style={styles.earningText}>{session.mentorEarning || 0} Credits</Text>
                             </View>
                             <View style={styles.historyBottomRow}>
                                 <Text style={styles.durationText}>{Math.floor((session.durationSecs || 0) / 60)}m</Text>
@@ -331,7 +355,7 @@ export default function MentorHomePage() {
                 level="Standard" 
                 rate={10} 
                 requirements={getRequirements("Standard")} 
-                benefits={["Charge up to ₹10/min", "Better ranking in search"]}
+                benefits={["Charge up to 10 credits/min", "Better ranking in search"]}
                 active={profile.mentorlevel === 'Standard'} 
                 isExpanded={expandedLevel === 'Standard'}
                 onToggle={() => toggleLevel('Standard')}
@@ -340,7 +364,7 @@ export default function MentorHomePage() {
                 level="Signature" 
                 rate={15} 
                 requirements={getRequirements("Signature")} 
-                benefits={["Charge up to ₹15/min", "Featured in search results"]}
+                benefits={["Charge up to 15 credits/min", "Featured in search results"]}
                 active={profile.mentorlevel === 'Signature'} 
                 isExpanded={expandedLevel === 'Signature'}
                 onToggle={() => toggleLevel('Signature')}
@@ -476,7 +500,7 @@ function PlanCard({ level, rate, requirements, benefits, active, isExpanded, onT
                     </Text>
                     <Text style={[styles.planBannerChargeLabel, { color: textColor }]}>Charge up to</Text>
                     <Text style={[styles.planBannerChargeValue, { color: textColor }]}>
-                        ₹{rate}
+                        {rate} Credits
                         <Text style={[styles.planBannerChargeUnit, { color: textColor }]}>/min</Text>
                     </Text>
                 </View>
@@ -507,7 +531,7 @@ function PlanCard({ level, rate, requirements, benefits, active, isExpanded, onT
                                 </View>
                             )}
                             <Text style={styles.planDetailsLabel}>Charge</Text>
-                            <Text style={styles.planDetailsRate}>₹{rate}/min</Text>
+                            <Text style={styles.planDetailsRate}>{rate} credits/min</Text>
                         </View>
                         
                         <View style={styles.planSection}>
@@ -780,6 +804,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 36,
     marginTop: 32,
     marginBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  missedCallsLink: {
+    fontSize: 14,
+    color: '#dc2626',
+    fontWeight: '600',
   },
   sectionTitle: {
     fontSize: 16,

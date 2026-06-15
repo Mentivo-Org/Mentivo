@@ -23,11 +23,12 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "node dist/app.js",
-    "dev": "nodemon src/app.ts",
+    "start": "concurrently \"node dist/app.js\" \"node dist/v1/app.js\" \"node dist/v2/app.js\"",
+    "dev": "concurrently \"nodemon src/app.ts\" \"nodemon src/v1/app.ts\" \"nodemon src/v2/app.ts\"",
     "build": "tsc",
     "prisma:generate": "prisma generate",
-    "verify": "tsc --noEmit"
+    "verify": "tsc --noEmit",
+    "snapshot:v1": "node scripts/snapshot.js"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
@@ -36,11 +37,13 @@
     "@supabase/supabase-js": "^2.105.1",
     "agora-token": "^2.0.5",
     "axios": "^1.15.2",
+    "concurrently": "^10.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "firebase-admin": "^13.8.0",
+    "http-proxy-middleware": "^4.1.1",
     "ioredis": "^5.10.1",
     "jsonwebtoken": "^9.0.3",
     "mime-types": "^3.0.2",

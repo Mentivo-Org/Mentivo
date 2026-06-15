@@ -3,31 +3,43 @@ import {
   Text,
   View,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   Dimensions,
   ScrollView,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { useNavigation } from "@react-navigation/native";
-import RazorpayCheckout from "react-native-razorpay";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../../services/api";
-import { WalletEndpoints } from "../../constants/endpoint";
+import { WalletEndpoints, websiteUrl } from "../../constants/endpoint";
 import DialogBox from "../../components/DialogBox";
 
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
 export default function PaymentPage() {
   const navigation = useNavigation<any>();
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
 
   const [alertData, setAlertData] = useState({ title: "", message: "" });
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
+
+  const fetchBalance = async () => {
+    try {
+      const response = await api.get(WalletEndpoints.getBalance);
+      if (response.status === 200) {
+        setBalance(response.data.balance);
+      }
+    } catch (error) {
+      console.error("Failed to fetch session credits balance:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const loadUser = async () => {
@@ -37,80 +49,36 @@ export default function PaymentPage() {
       }
     };
     loadUser();
+    fetchBalance();
   }, []);
 
-  const handlePayment = async () => {
-    const amount = Number(paymentAmount);
-    if (!amount || amount < 10) {
-      setAlertData({ title: "Invalid Amount", message: "Minimum top-up amount is ₹10" });
-      setAlertVisible(true);
-      return;
-    }
-
-    setIsProcessing(true);
+  const handleAddCredits = async () => {
     try {
-      // 1. Create Top-up Order
-      const orderResponse = await api.post(WalletEndpoints.topup, { amount });
-      
-      if (orderResponse.status !== 200) {
-        throw new Error(orderResponse.data?.error || "Failed to create order");
+      const accessToken = await AsyncStorage.getItem("accessToken");
+      const refreshToken = await AsyncStorage.getItem("refreshToken");
+
+      if (!accessToken) {
+        setAlertData({ title: "Error", message: "Failed to authenticate session. Please log in again." });
+        setAlertVisible(true);
+        return;
       }
 
-      const { orderId, key, currency } = orderResponse.data;
-
-      // 2. Open Razorpay Checkout
-      const options = {
-        description: "Wallet Top-up",
-        image: "https://mentivo.in/logo.png", // Use actual logo URL
-        currency: currency,
-        key: key,
-        amount: amount * 100,
-        name: "Mentivo",
-        order_id: orderId,
-        prefill: {
-          email: user?.email || "",
-          contact: user?.phone || "",
-          name: user?.name || "",
-        },
-        theme: { color: "#2563eb" },
-      };
-
-      RazorpayCheckout.open(options)
-        .then(async (data: any) => {
-          // 3. Confirm Payment
-          const confirmResponse = await api.post(WalletEndpoints.confirm, {
-            orderId: orderId,
-            paymentId: data.razorpay_payment_id,
-            signature: data.razorpay_signature,
-          });
-
-          if (confirmResponse.status === 200) {
-            setAlertData({ 
-              title: "Success", 
-              message: `₹${amount} has been added to your wallet successfully.` 
-            });
-            setAlertVisible(true);
-            setPaymentAmount("");
-          } else {
-            throw new Error(confirmResponse.data?.error || "Payment confirmation failed");
-          }
-        })
-        .catch((error: any) => {
-          console.log("Razorpay Error:", error);
-          if (error.code !== 2) { // 2 is user cancel
-            setAlertData({ title: "Error",message:"Payment Failed" });
-            setAlertVisible(true);
-          }
-        })
-        .finally(() => {
-          setIsProcessing(false);
-        });
-
-    } catch (error: any) {
-      console.error("Payment Error:", error);
-      setAlertData({ title: "Error", message: error.message || "Something went wrong" });
+      // Construct redirection URL to Next.js website
+      const redirectUrl = `${websiteUrl}/add-credits?token=${encodeURIComponent(accessToken)}&refreshToken=${encodeURIComponent(refreshToken || "")}`;
+      
+      console.log("Redirecting user to buy credits:", redirectUrl);
+      
+      const supported = await Linking.canOpenURL(redirectUrl);
+      if (supported) {
+        await Linking.openURL(redirectUrl);
+      } else {
+        setAlertData({ title: "Error", message: "Unable to open default browser." });
+        setAlertVisible(true);
+      }
+    } catch (err) {
+      console.error("Redirection error:", err);
+      setAlertData({ title: "Error", message: "An unexpected error occurred." });
       setAlertVisible(true);
-      setIsProcessing(false);
     }
   };
 
@@ -120,60 +88,56 @@ export default function PaymentPage() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Image source={require("../../app-assets/arrow-back-up.svg")} style={styles.icon24} tintColor="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Payments</Text>
+        <Text style={styles.headerTitle}>Session Credits</Text>
         <View style={{ width: 24 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.card}>
-          <Text style={styles.amountLabel}>Add Money to Wallet</Text>
-          <View style={styles.amountInputContainer}>
-            <Text style={styles.currencySymbol}>₹</Text>
-            <TextInput
-              style={styles.amountInput}
-              placeholder="0"
-              placeholderTextColor="#ccc"
-              keyboardType="numeric"
-              value={paymentAmount}
-              onChangeText={setPaymentAmount}
-              autoFocus={true}
-              editable={!isProcessing}
-            />
+          <Text style={styles.amountLabel}>Current Credits</Text>
+          <View style={styles.balanceContainer}>
+            <Image source={require("../../app-assets/wallet-fill.svg")} style={styles.creditIcon} tintColor="#2563eb" />
+            <Text style={styles.balanceText}>
+              {loading ? (
+                <ActivityIndicator size="small" color="#2563eb" />
+              ) : (
+                `${balance !== null ? balance : 0} Credits`
+              )}
+            </Text>
           </View>
 
-          <View style={styles.quickAmountRow}>
-            {["100", "200", "500", "1000"].map((amount) => (
-              <TouchableOpacity
-                key={amount}
-                style={[styles.quickAmountChip, isProcessing && { opacity: 0.5 }]}
-                onPress={() => !isProcessing && setPaymentAmount(amount)}
-                disabled={isProcessing}
-              >
-                <Text style={styles.quickAmountText}>+₹{amount}</Text>
-              </TouchableOpacity>
-            ))}
+          <View style={styles.separator} />
+
+          <View style={styles.explanationSection}>
+            <Text style={styles.infoTitle}>How it works</Text>
+            <View style={styles.infoRow}>
+              <View style={styles.bullet} />
+              <Text style={styles.infoText}>1 Credit = ₹1.00 session value</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <View style={styles.bullet} />
+              <Text style={styles.infoText}>Credits are used to book and call IITian mentors</Text>
+            </View>
           </View>
 
           <TouchableOpacity 
-            style={[styles.addWalletButton, isProcessing && styles.buttonDisabled]} 
-            onPress={handlePayment}
-            disabled={isProcessing}
+            style={styles.addCreditsButton} 
+            onPress={handleAddCredits}
           >
-            {isProcessing ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.addWalletButtonText}>Add to wallet</Text>
-            )}
+            <Text style={styles.addCreditsButtonText}>Add Credits</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.infoSection}>
-          <Text style={styles.infoTitle}>Payment Methods</Text>
-          <Text style={styles.infoSubtitle}>Secure and encrypted transactions via Razorpay</Text>
+          <Text style={styles.noteTitle}>Important Notice</Text>
+          <Text style={styles.noteText}>
+            All billing transactions are handled externally. 
+            Tapping "Add Credits" will securely redirect you to our website to complete payment.
+          </Text>
           
           <View style={styles.securityBadge}>
             <Image source={require("../../app-assets/shield-icon.svg")} style={styles.shieldIcon} tintColor="#10b981" />
-            <Text style={styles.securityText}>100% Safe & Secure Payments</Text>
+            <Text style={styles.securityText}>100% Secure Web Checkout</Text>
           </View>
         </View>
       </ScrollView>
@@ -223,7 +187,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "white",
     borderRadius: 16,
-    padding: 20,
+    padding: 24,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -231,82 +195,92 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   amountLabel: {
-    fontSize: 14,
-    color: "#444653",
-    marginBottom: 20,
-    fontWeight: "600",
+    fontSize: 13,
+    color: "#6b7280",
+    fontWeight: "bold",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 8,
   },
-  amountInputContainer: {
+  balanceContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderBottomWidth: 2,
-    borderBottomColor: "#2563eb",
-    paddingBottom: 10,
+    marginBottom: 20,
+  },
+  creditIcon: {
+    width: 32,
+    height: 32,
+    marginRight: 12,
+  },
+  balanceText: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: "black",
+  },
+  separator: {
+    height: 1,
+    backgroundColor: "#f3f4f6",
+    marginVertical: 16,
+  },
+  explanationSection: {
     marginBottom: 24,
   },
-  currencySymbol: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "black",
-    marginRight: 8,
-  },
-  amountInput: {
-    flex: 1,
-    fontSize: 36,
-    fontWeight: "bold",
-    color: "black",
-  },
-  quickAmountRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 32,
-  },
-  quickAmountChip: {
-    backgroundColor: "#f0f4ff",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#dbeafe",
-  },
-  quickAmountText: {
-    color: "#2563eb",
+  infoTitle: {
     fontSize: 14,
     fontWeight: "bold",
+    color: "#374151",
+    marginBottom: 12,
   },
-  addWalletButton: {
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+    paddingLeft: 4,
+  },
+  bullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#2563eb",
+    marginRight: 10,
+  },
+  infoText: {
+    fontSize: 14,
+    color: "#4b5563",
+    fontWeight: "500",
+  },
+  addCreditsButton: {
     backgroundColor: "#2563eb",
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: "center",
     shadowColor: "#2563eb",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 6,
-    elevation: 8,
+    elevation: 4,
   },
-  buttonDisabled: {
-    backgroundColor: "#93c5fd",
-  },
-  addWalletButtonText: {
+  addCreditsButtonText: {
     color: "white",
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "bold",
   },
   infoSection: {
-    marginTop: 30,
+    marginTop: 24,
+    paddingHorizontal: 8,
     alignItems: "center",
   },
-  infoTitle: {
-    fontSize: 16,
+  noteTitle: {
+    fontSize: 13,
     fontWeight: "bold",
-    color: "black",
+    color: "#4b5563",
     marginBottom: 4,
   },
-  infoSubtitle: {
+  noteText: {
     fontSize: 12,
-    color: "#444653",
+    color: "#6b7280",
     textAlign: "center",
+    lineHeight: 18,
     marginBottom: 20,
   },
   securityBadge: {

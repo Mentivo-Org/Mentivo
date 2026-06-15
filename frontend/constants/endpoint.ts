@@ -1,10 +1,16 @@
 // export const baseUrl = 'http://192.168.29.18:3000/api';
 // export const baseUrl = 'https://dev.mentivo.in/api';
 export const baseUrl = 'https://app.mentivo.in/api';
-// export const baseUrl = 'https://mentivo-backend.onrender.com/api';
+
+export const websiteUrl = baseUrl.includes('localhost')
+  ? 'http://localhost:3001'
+  : baseUrl.includes('192.168.')
+    ? baseUrl.replace(':3000/api', ':3001')
+    : 'https://mentivo.in';
 
 export const AGORA_APP_ID = '1f1c2710de9a48bd88bc0470aa0204fc';
 export const AGORA_CHAT_APP_KEY = '61200019669#200025201'
+export const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.mentivo.in';
 
 export const LoginEndpoints = {
     whoAmI: `${baseUrl}/auth/whoami`,
@@ -49,6 +55,7 @@ export const WalletEndpoints = {
 
 export const CallEndpoints = {
     initiate: `${baseUrl}/calls/initiate`,
+    freeMatchmaking: `${baseUrl}/calls/free-matchmaking`,
     schedule: `${baseUrl}/calls/schedule`,
     getMentorSchedule: (id: string) => `${baseUrl}/calls/mentor/${id}/schedule`,
     getMentorSessions: `${baseUrl}/calls/mentor/sessions`,
