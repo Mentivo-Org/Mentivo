@@ -23,7 +23,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "concurrently \"node dist/app.js\" \"node dist/v1/app.js\" \"node dist/v2/app.js\"",
+    "start": "concurrently \"node src/app.js\" \"node src/v1/app.js\" \"node src/v2/app.js\"",
     "dev": "concurrently \"nodemon src/app.ts\" \"nodemon src/v1/app.ts\" \"nodemon src/v2/app.ts\"",
     "build": "tsc",
     "prisma:generate": "prisma generate",
