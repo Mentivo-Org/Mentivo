@@ -169,7 +169,7 @@ app.get('/api/debug-storage', async (req, res) => {
   const testBuffer = Buffer.from('hello');
   const { error: uploadError } = await supabaseAdmin.storage
     .from(supabaseBucketName || 'mentor-docs')
-    .upload('test/ping.txt', testBuffer, { upsert: true });
+    .upload('test/ping.pdf', testBuffer, { upsert: true });
 
   res.json({
     keyRole: keyPayload.role,
