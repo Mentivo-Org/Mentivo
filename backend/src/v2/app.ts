@@ -158,6 +158,28 @@ app.use('/api/config', configRouter);
 //Handle agora token generation
 app.use('/api/agora/token', agoraRouter);
 
+app.get('/api/debug-storage', async (req, res) => {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const keyPayload = JSON.parse(Buffer.from(key.split('.')[1], 'base64').toString());
+  const { data: buckets, error } = await supabaseAdmin.storage.listBuckets();
+
+  // Try a minimal upload
+  const testBuffer = Buffer.from('hello');
+  const { error: uploadError } = await supabaseAdmin.storage
+    .from(supabaseBucketName || 'mentor-docs')
+    .upload('test/ping.txt', testBuffer, { upsert: true });
+
+  res.json({
+    keyRole: keyPayload.role,
+    keyRef: keyPayload.ref,
+    urlRef: process.env.SUPABASE_URL?.split('//')[1]?.split('.')[0],
+    bucketNameEnvVar: process.env.SUPABASE_ID_CARD_BUCKET_NAME,
+    existingBuckets: buckets?.map(b => b.name),
+    listError: error?.message,
+    uploadError: uploadError?.message,
+  });
+});
+
 // Global Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err);
