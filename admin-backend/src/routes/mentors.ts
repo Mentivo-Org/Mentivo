@@ -211,14 +211,25 @@ router.post('/:id/promote-fellow', async (req, res) => {
   res.json(updatedMentor);
 });
 
-// General update for mentor (strips 'verified' fields)
+// General update for mentor (strips 'verified' and college fields)
 router.put('/:id', async (req, res) => {
     const { id } = req.params;
-    const { iit_name, branch, year, bio, expertise, rate_per_min } = req.body;
+    const { name, phone, branch, year, bio, expertise, rate_per_min } = req.body;
+    
+    if (name !== undefined || phone !== undefined) {
+        await prisma.user.update({
+            where: { id },
+            data: { 
+                ...(name !== undefined && { name }),
+                ...(phone !== undefined && { phone })
+            }
+        });
+    }
     
     const updatedMentor = await prisma.mentorProfile.update({
         where: { mentorId: id },
-        data: { iit_name, branch, year, bio, expertise, rate_per_min }
+        data: { branch, year, bio, expertise, rate_per_min },
+        include: { user: true }
     });
     
     res.json(updatedMentor);

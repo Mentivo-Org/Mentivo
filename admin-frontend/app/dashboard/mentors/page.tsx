@@ -18,6 +18,8 @@ export default function MentorsPage() {
   // Edit & Delete State
   const [editingMentor, setEditingMentor] = useState<any | null>(null);
   const [editForm, setEditForm] = useState({
+    name: "",
+    phone: "",
     iit_name: "",
     branch: "",
     year: "",
@@ -50,6 +52,8 @@ export default function MentorsPage() {
   const handleEditClick = (mentor: any) => {
     setEditingMentor(mentor);
     setEditForm({
+      name: mentor.user?.name || "",
+      phone: mentor.user?.phone || "",
       iit_name: mentor.iit_name || "",
       branch: mentor.branch || "",
       year: mentor.year !== null && mentor.year !== undefined ? mentor.year.toString() : "",
@@ -66,7 +70,8 @@ export default function MentorsPage() {
     setIsSaving(true);
     try {
       const payload = {
-        iit_name: editForm.iit_name,
+        name: editForm.name,
+        phone: editForm.phone,
         branch: editForm.branch,
         year: editForm.year ? parseInt(editForm.year) : null,
         bio: editForm.bio,
@@ -214,13 +219,33 @@ export default function MentorsPage() {
                 {/* Form Fields */}
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-secondary mb-1">IIT Name</label>
+                    <label className="block text-sm font-medium text-secondary mb-1">Full Name</label>
                     <input
                       type="text"
                       required
                       className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary text-text"
+                      value={editForm.name}
+                      onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-secondary mb-1">Phone Number</label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary text-text"
+                      value={editForm.phone}
+                      onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-secondary mb-1">College Name (Cannot be changed)</label>
+                    <input
+                      type="text"
+                      disabled
+                      className="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg outline-none cursor-not-allowed text-gray-500 font-medium"
                       value={editForm.iit_name}
-                      onChange={(e) => setEditForm({...editForm, iit_name: e.target.value})}
                     />
                   </div>
 
