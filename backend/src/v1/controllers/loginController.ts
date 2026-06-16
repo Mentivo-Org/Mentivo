@@ -43,6 +43,9 @@ export const whoAmI = async (req:Request, res: Response) => {
       where: { id: req.user.id },
       include: { mentorProfile: true }
     });
+    if (user?.mentorProfile && user.mentorProfile.verificationStatus !== 'VERIFIED') {
+      user.mentorProfile.mentorlevel = null;
+    }
     return res.status(200).json({ user });
   }
   return res.status(200).json({

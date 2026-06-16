@@ -41,6 +41,9 @@ export const initSocket = (httpServer: HttpServer) => {
     transports: [ 'polling', 'websocket'],
   });
 
+  io.sockets.setMaxListeners(0);
+  io.engine.setMaxListeners(0);
+
   const tag = '[Socket.io]';
 
   // ── Engine-level diagnostics (fires before auth, for every transport attempt) ──

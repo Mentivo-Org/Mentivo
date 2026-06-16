@@ -85,9 +85,13 @@ export default function MentorsPage() {
                   ₹{mentor.rate_per_min}
                 </td>
                 <td className="px-6 py-4">
-                  {mentor.verified ? (
+                  {mentor.verificationStatus === 'VERIFIED' ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-50 text-green-600 text-[10px] font-bold rounded uppercase border border-green-100">
                       <CheckCircle2 size={12} /> Verified
+                    </span>
+                  ) : mentor.verificationStatus === 'REJECTED' ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-50 text-red-600 text-[10px] font-bold rounded uppercase border border-red-100">
+                      <ShieldAlert size={12} /> Rejected
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold rounded uppercase border border-amber-100">
