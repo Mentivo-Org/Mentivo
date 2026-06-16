@@ -17,6 +17,19 @@ export function useSession() {
     const handleAuth = async () => {
       if (hasValidated.current) return;
       
+      if (isSignedIn) {
+        hasValidated.current = true;
+        setIsValidating(false);
+        return;
+      }
+
+      // Check URL query parameters directly without Next.js useSearchParams hook to avoid Suspense requirement in RootLayout
+      const hasTokenInUrl = typeof window !== 'undefined' && window.location.search.includes('token=');
+      if (hasTokenInUrl) {
+        setIsValidating(false);
+        return;
+      }
+
       hasValidated.current = true;
       setIsValidating(true);
       await validateSession();
@@ -24,7 +37,7 @@ export function useSession() {
     };
 
     handleAuth();
-  }, [validateSession]);
+  }, [validateSession, isSignedIn]);
 
   useEffect(() => {
     // List of paths that logged-in users should not be on

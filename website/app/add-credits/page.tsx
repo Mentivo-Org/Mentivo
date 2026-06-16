@@ -52,12 +52,15 @@ function AddCreditsContent() {
       setLoadingBalance(true);
       try {
         if (token) {
-          // If token is in URL, store it and validate it
-          localStorage.setItem('accessToken', token);
-          if (refresh) {
-            localStorage.setItem('refreshToken', refresh);
+          // Only save and validate if it is different from the currently stored token
+          const currentStoredToken = localStorage.getItem('accessToken');
+          if (currentStoredToken !== token) {
+            localStorage.setItem('accessToken', token);
+            if (refresh) {
+              localStorage.setItem('refreshToken', refresh);
+            }
+            await validateSession();
           }
-          await validateSession();
           // Clean URL parameters from browser history for security
           router.replace('/add-credits');
         } else if (!isSignedIn) {

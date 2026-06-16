@@ -85,6 +85,9 @@ api.interceptors.response.use(
           if (response.data?.accessToken) {
             localStorage.setItem('accessToken', response.data.accessToken);
             localStorage.setItem('refreshToken', response.data.refreshToken);
+          } else {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
           }
         } else {
           // Standard web cookie refresh - resolve URL dynamically to prevent localhost network error
