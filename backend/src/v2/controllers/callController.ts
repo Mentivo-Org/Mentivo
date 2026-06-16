@@ -741,7 +741,13 @@ export const freeMatchmaking = async (req: Request, res: Response) => {
   const studentId = req.user?.id;
   try {
     // 1. Verify eligibility (first call must be free)
-    const pastCalls = await prisma.callSession.count({ where: { student_id: studentId } });
+    // Only count calls that were actually answered/connected or are currently active
+    const pastCalls = await prisma.callSession.count({ 
+      where: { 
+        student_id: studentId,
+        status: { notIn: ['missed', 'rejected', 'failed'] }
+      } 
+    });
     if (pastCalls > 0) {
       return res.status(400).json({ error: 'You are only eligible for the first free call.' });
     }
