@@ -44,10 +44,10 @@ function AddCreditsContent() {
   ];
 
   // 1. Authenticate via token in query parameters (from app deep link)
-  useEffect(() => {
-    const token = searchParams.get('token');
-    const refresh = searchParams.get('refreshToken');
+  const token = searchParams.get('token');
+  const refresh = searchParams.get('refreshToken');
 
+  useEffect(() => {
     const initAuth = async () => {
       if (token) {
         localStorage.setItem('accessToken', token);
@@ -61,7 +61,7 @@ function AddCreditsContent() {
     };
 
     initAuth();
-  }, [searchParams, validateSession, router]);
+  }, [token, refresh, validateSession, router]);
 
   // 2. Fetch Wallet Balance once authenticated
   const fetchBalance = async () => {
