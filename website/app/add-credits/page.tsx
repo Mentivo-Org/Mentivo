@@ -43,25 +43,36 @@ function AddCreditsContent() {
     { amount: 1000, label: '1000 Credits', description: 'Long Term Prep' },
   ];
 
-  // 1. Authenticate via token in query parameters (from app deep link)
+  // 1. Initial authentication and balance fetching
   const token = searchParams.get('token');
   const refresh = searchParams.get('refreshToken');
 
   useEffect(() => {
-    const initAuth = async () => {
-      if (token) {
-        localStorage.setItem('accessToken', token);
-        if (refresh) {
-          localStorage.setItem('refreshToken', refresh);
+    const initAuthAndBalance = async () => {
+      setLoadingBalance(true);
+      try {
+        if (token) {
+          // If token is in URL, store it and validate it
+          localStorage.setItem('accessToken', token);
+          if (refresh) {
+            localStorage.setItem('refreshToken', refresh);
+          }
+          await validateSession();
+          // Clean URL parameters from browser history for security
+          router.replace('/add-credits');
+        } else if (!isSignedIn) {
+          // Otherwise, if not signed in, validate existing local session
+          await validateSession();
         }
-        await validateSession();
-        // Clean URL parameters from browser history for security
-        router.replace('/add-credits');
+      } catch (err) {
+        console.error('Init auth/balance failed:', err);
+      } finally {
+        setLoadingBalance(false);
       }
     };
 
-    initAuth();
-  }, [token, refresh, validateSession, router]);
+    initAuthAndBalance();
+  }, [token, refresh, isSignedIn, validateSession, router]);
 
   // 2. Fetch Wallet Balance once authenticated
   const fetchBalance = async () => {
@@ -78,13 +89,8 @@ function AddCreditsContent() {
   useEffect(() => {
     if (isSignedIn) {
       fetchBalance();
-    } else {
-      // If we don't have token in url and aren't signed in, validate local session
-      validateSession().then(() => {
-        setLoadingBalance(false);
-      });
     }
-  }, [isSignedIn, validateSession]);
+  }, [isSignedIn]);
 
   const handlePackSelect = (amount: number) => {
     setSelectedPack(amount);
