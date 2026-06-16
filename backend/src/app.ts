@@ -41,35 +41,36 @@ app.use(cors({
 // Route for fetching min versions on startup
 app.get('/api/config/version', getVersions);
 
-// Proxy interceptor to route to sub-apps based on x-api-version header
-app.use('/', (req, res, next) => {
-  const apiVersion = req.headers['x-api-version'];
-  
-  // Resolve target dynamically based on the header
-  const target = apiVersion === 'v2' 
-    ? `http://127.0.0.1:${process.env.PORT_V2 || 4001}` 
-    : `http://127.0.0.1:${process.env.PORT_V1 || 4000}`;
+// Initialize Static Proxy Instances Once
+const v1Target = `http://127.0.0.1:${process.env.PORT_V1 || 4000}`;
+const v2Target = `http://127.0.0.1:${process.env.PORT_V2 || 4001}`;
 
-  createProxyMiddleware({
-    target,
-    changeOrigin: true,
-    ws: true,
-  })(req, res, next);
+const v1Proxy = createProxyMiddleware({
+  target: v1Target,
+  changeOrigin: true,
+  ws: true,
 });
 
-// Proxy for socket.io requests
-app.use('/socket.io', (req, res, next) => {
+const v2Proxy = createProxyMiddleware({
+  target: v2Target,
+  changeOrigin: true,
+  ws: true,
+});
+
+// Unified Proxy Router for both standard HTTP requests and initial polling requests
+app.use((req, res, next) => {
+  // Skip gateway's own routes so they don't get proxied
+  if (req.path.startsWith('/api/config/version')) {
+    return next();
+  }
+
   const apiVersion = req.headers['x-api-version'] || req.query.version;
   
-  const target = apiVersion === 'v2' 
-    ? `http://127.0.0.1:${process.env.PORT_V2 || 4001}` 
-    : `http://127.0.0.1:${process.env.PORT_V1 || 4000}`;
-
-  createProxyMiddleware({
-    target,
-    changeOrigin: true,
-    ws: true,
-  })(req, res, next);
+  if (apiVersion === 'v2') {
+    v2Proxy(req, res, next);
+  } else {
+    v1Proxy(req, res, next);
+  }
 });
 
 // Global Error Handler for Gateway
@@ -79,6 +80,24 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Mentivo API Gateway Proxy running on port ${PORT}`);
+});
+
+// Correctly proxy WebSocket upgrade requests without leaking listeners
+server.on('upgrade', (req, socket, head) => {
+  let apiVersion = req.headers['x-api-version'];
+  if (!apiVersion) {
+    // Attempt to extract from query parameters for WebSocket handshakes
+    const url = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
+    apiVersion = url.searchParams.get('version') || undefined;
+  }
+
+  if (apiVersion === 'v2') {
+    // @ts-ignore
+    v2Proxy.upgrade(req, socket, head);
+  } else {
+    // @ts-ignore
+    v1Proxy.upgrade(req, socket, head);
+  }
 });
