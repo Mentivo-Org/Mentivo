@@ -24,7 +24,9 @@ export const emailValidator = async (email: string) => {
         const [name, domain] = email.split('@');
         // console.log(domain);
         // console.log(mailList[domain], typeof mailList[domain]);
-        const iitName =JSON.stringify(mailList[domain]!==undefined?('IIT ' + mailList[domain]):null);
+        const iitDomain = Object.keys(mailList).find(key=>email.endsWith(key));
+        const iitName = iitDomain ? JSON.stringify('IIT '+mailList[iitDomain]) : null;
+        // const iitName =JSON.stringify(mailList[domain]!==undefined?('IIT ' + mailList[domain]):null);
         return iitName;
     }
     catch (err) {
