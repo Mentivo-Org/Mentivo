@@ -49,6 +49,13 @@ function AddCreditsContent() {
 
   useEffect(() => {
     const initAuthAndBalance = async () => {
+      // If the URL physically contains 'token', but Next.js searchParams are not hydrated yet,
+      // wait until searchParams are populated to avoid executing validateSession with old/no tokens.
+      const physicalTokenPresent = typeof window !== 'undefined' && window.location.search.includes('token=');
+      if (physicalTokenPresent && !token) {
+        return;
+      }
+
       setLoadingBalance(true);
       try {
         if (token) {
