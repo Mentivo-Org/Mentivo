@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, Suspense, useRef } from 'react';
+import React, { useEffect, useState, Suspense, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CreditCard, Wallet, ArrowLeft, Loader2, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
 import api from '@/lib/api';
@@ -52,16 +52,18 @@ function AddCreditsContent() {
   const [validationFailed, setValidationFailed] = useState(false);
   const [isValidatingSession, setIsValidatingSession] = useState(false);
 
+  // Sync token search params with local state during render to avoid set-state-in-effect
+  if (token && localToken !== token) {
+    setLocalToken(token);
+  }
+  if (refresh && localRefresh !== refresh) {
+    setLocalRefresh(refresh);
+  }
+
   const validatingRef = useRef(false);
   const validatedTokenRef = useRef<string | null>(null);
 
-  // Sync token search params with local state immediately
-  useEffect(() => {
-    if (token) setLocalToken(token);
-    if (refresh) setLocalRefresh(refresh);
-  }, [token, refresh]);
-
-  const performValidation = async (tkn: string | null, refsh: string | null) => {
+  const performValidation = useCallback(async (tkn: string | null, refsh: string | null) => {
     if (validatingRef.current) return;
     validatingRef.current = true;
     setIsValidatingSession(true);
@@ -81,9 +83,12 @@ function AddCreditsContent() {
       const isNowSignedIn = useAuthStore.getState().isSignedIn;
       if (!isNowSignedIn && tkn) {
         setValidationFailed(true);
+      } else if (isNowSignedIn) {
+        // Strip the token and refreshToken from URL when verification succeeds
+        router.replace('/add-credits');
       }
-    } catch (err) {
-      console.error('Session validation failed');
+    } catch (err: any) {
+      console.error('Session validation failed:', err?.message || err);
       if (tkn) {
         setValidationFailed(true);
       }
@@ -92,12 +97,12 @@ function AddCreditsContent() {
       validatingRef.current = false;
       setLoadingBalance(false);
     }
-  };
+  }, [validateSession, router]);
 
-  const handleRetry = () => {
+  const handleRetry = useCallback(() => {
     validatedTokenRef.current = null;
     performValidation(localToken, localRefresh);
-  };
+  }, [performValidation, localToken, localRefresh]);
 
   useEffect(() => {
     const initAuthAndBalance = async () => {
@@ -114,11 +119,6 @@ function AddCreditsContent() {
       const activeRefresh = refresh || localRefresh;
 
       if (activeToken) {
-        // Clean URL parameters from browser history for security immediately
-        if (token || refresh) {
-          router.replace('/add-credits');
-        }
-
         if (!isSignedIn && validatedTokenRef.current !== activeToken) {
           await performValidation(activeToken, activeRefresh);
         } else {
@@ -132,10 +132,10 @@ function AddCreditsContent() {
     };
 
     initAuthAndBalance();
-  }, [token, refresh, localToken, localRefresh, isSignedIn, router]);
+  }, [token, refresh, localToken, localRefresh, isSignedIn, performValidation]);
 
   // 2. Fetch Wallet Balance once authenticated
-  const fetchBalance = async () => {
+  const fetchBalance = useCallback(async () => {
     try {
       const response = await api.get('/wallet/balance');
       setBalance(response.data.balance);
@@ -144,13 +144,13 @@ function AddCreditsContent() {
     } finally {
       setLoadingBalance(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (isSignedIn) {
       fetchBalance();
     }
-  }, [isSignedIn]);
+  }, [isSignedIn, fetchBalance]);
 
   const handlePackSelect = (amount: number) => {
     setSelectedPack(amount);
