@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, Suspense, useRef, useCallback } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CreditCard, Wallet, ArrowLeft, Loader2, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
 import api from '@/lib/api';
@@ -46,64 +46,8 @@ function AddCreditsContent() {
   // 1. Initial authentication and balance fetching
   const token = searchParams.get('token');
   const refresh = searchParams.get('refreshToken');
-
-  const [localToken, setLocalToken] = useState<string | null>(null);
-  const [localRefresh, setLocalRefresh] = useState<string | null>(null);
-  const [validationFailed, setValidationFailed] = useState(false);
-  const [isValidatingSession, setIsValidatingSession] = useState(false);
-
-  // Sync token search params with local state during render to avoid set-state-in-effect
-  if (token && localToken !== token) {
-    setLocalToken(token);
-  }
-  if (refresh && localRefresh !== refresh) {
-    setLocalRefresh(refresh);
-  }
-
-  const validatingRef = useRef(false);
-  const validatedTokenRef = useRef<string | null>(null);
-
-  const performValidation = useCallback(async (tkn: string | null, refsh: string | null) => {
-    if (validatingRef.current) return;
-    validatingRef.current = true;
-    setIsValidatingSession(true);
-    setValidationFailed(false);
-    setError('');
-
-    try {
-      if (tkn) {
-        localStorage.setItem('accessToken', tkn);
-        if (refsh) {
-          localStorage.setItem('refreshToken', refsh);
-        }
-        validatedTokenRef.current = tkn;
-      }
-      await validateSession();
-
-      const isNowSignedIn = useAuthStore.getState().isSignedIn;
-      if (!isNowSignedIn && tkn) {
-        setValidationFailed(true);
-      } else if (isNowSignedIn) {
-        // Strip the token and refreshToken from URL when verification succeeds
-        router.replace('/add-credits');
-      }
-    } catch (err: any) {
-      console.error('Session validation failed:', err?.message || err);
-      if (tkn) {
-        setValidationFailed(true);
-      }
-    } finally {
-      setIsValidatingSession(false);
-      validatingRef.current = false;
-      setLoadingBalance(false);
-    }
-  }, [validateSession, router]);
-
-  const handleRetry = useCallback(() => {
-    validatedTokenRef.current = null;
-    performValidation(localToken, localRefresh);
-  }, [performValidation, localToken, localRefresh]);
-
+  console.log("token:", token);
+  console.log("refresh token:", refresh);
   useEffect(() => {
     const initAuthAndBalance = async () => {
       // If the URL physically contains 'token', but Next.js searchParams are not hydrated yet,
@@ -114,28 +58,35 @@ function AddCreditsContent() {
       }
 
       setLoadingBalance(true);
-
-      const activeToken = token || localToken;
-      const activeRefresh = refresh || localRefresh;
-
-      if (activeToken) {
-        if (!isSignedIn && validatedTokenRef.current !== activeToken) {
-          await performValidation(activeToken, activeRefresh);
-        } else {
-          setLoadingBalance(false);
+      try {
+        if (token) {
+          // Only save and validate if it is different from the currently stored token
+          const currentStoredToken = localStorage.getItem('accessToken');
+          if (currentStoredToken !== token) {
+            localStorage.setItem('accessToken', token);
+            if (refresh) {
+              localStorage.setItem('refreshToken', refresh);
+            }
+            await validateSession();
+          }
+          // Clean URL parameters from browser history for security
+          router.replace('/add-credits');
+        } else if (!isSignedIn) {
+          // Otherwise, if not signed in, validate existing local session
+          await validateSession();
         }
-      } else if (!isSignedIn) {
-        await performValidation(null, null);
-      } else {
+      } catch (err) {
+        console.error('Init auth/balance failed:', err);
+      } finally {
         setLoadingBalance(false);
       }
     };
 
     initAuthAndBalance();
-  }, [token, refresh, localToken, localRefresh, isSignedIn, performValidation]);
+  }, [token, refresh, isSignedIn, validateSession, router]);
 
   // 2. Fetch Wallet Balance once authenticated
-  const fetchBalance = useCallback(async () => {
+  const fetchBalance = async () => {
     try {
       const response = await api.get('/wallet/balance');
       setBalance(response.data.balance);
@@ -144,13 +95,13 @@ function AddCreditsContent() {
     } finally {
       setLoadingBalance(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     if (isSignedIn) {
       fetchBalance();
     }
-  }, [isSignedIn, fetchBalance]);
+  }, [isSignedIn]);
 
   const handlePackSelect = (amount: number) => {
     setSelectedPack(amount);
@@ -241,42 +192,6 @@ function AddCreditsContent() {
       setProcessing(false);
     }
   };
-
-  if (validationFailed) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-64px)] px-6">
-        <div className="bg-white p-8 sm:p-12 rounded-[32px] border border-slate-200 shadow-xl shadow-blue-500/5 max-w-md w-full text-center">
-          <AlertTriangle className="text-red-500 mx-auto mb-4" size={48} />
-          <h1 className="text-2xl font-black text-[#0b1c30] mb-2 tracking-tight">Session Verification Failed</h1>
-          <p className="text-slate-500 mb-8 font-medium">
-            We could not verify your session. This link may have expired or a temporary connection error occurred.
-          </p>
-          <div className="space-y-4">
-            <button
-              onClick={handleRetry}
-              disabled={isValidatingSession}
-              className="w-full flex items-center justify-center gap-2 bg-[#0077CB] text-white py-4 rounded-2xl font-bold hover:bg-[#001d66] disabled:bg-blue-300 transition-all shadow-lg shadow-blue-500/20"
-            >
-              {isValidatingSession ? (
-                <>
-                  <Loader2 className="animate-spin" size={20} />
-                  Verifying...
-                </>
-              ) : (
-                'Try Again'
-              )}
-            </button>
-            <button
-              onClick={() => router.push('/login')}
-              className="w-full bg-slate-100 text-slate-700 py-4 rounded-2xl font-bold hover:bg-slate-200 transition-all"
-            >
-              Go to Login
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (loadingBalance && !isSignedIn) {
     return (
