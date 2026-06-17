@@ -130,7 +130,7 @@ const CompleteProfile = () => {
 
   const mentorComplete = async () => {
     console.log(formData);
-    if(!formData.year || !formData.branch || !formData.expertise || !formData.idCard || (formData.phone==='' && !phone)) {
+    if(!formData.year || !formData.branch || !formData.expertise || !formData.languages || !formData.idCard || (formData.phone==='' && !phone)) {
       setAlertData({title: 'Error', message: 'Please fill all the required fields and attach your ID card'});
       setAlertVisible(true);
       return;
@@ -290,7 +290,10 @@ const CompleteProfile = () => {
                   />
                 </View>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Current year</Text>
+                  <View style={styles.labelRow}>
+                    <Text style={styles.label}>Current year</Text>
+                    <Text style={styles.required}>* Required</Text>
+                  </View>
                   <TextInput 
                     style={styles.input} 
                     onChangeText={(text) => setFormData((prev) => ({...prev, year: text}))}
@@ -298,14 +301,20 @@ const CompleteProfile = () => {
                   />
                 </View>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Branch</Text>
+                  <View style={styles.labelRow}>
+                    <Text style={styles.label}>Branch</Text>
+                    <Text style={styles.required}>* Required</Text>
+                  </View>
                   <TextInput 
                     style={styles.input} 
                     onChangeText={(text) => setFormData((prev) => ({...prev, branch: text}))}
                   />
                 </View>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Expertise</Text>
+                  <View style={styles.labelRow}>
+                    <Text style={styles.label}>Expertise</Text>
+                    <Text style={styles.required}>* Required</Text>
+                  </View>
                   <TextInput 
                     style={styles.input} 
                     placeholder="Best in Organic Chemistry" 
@@ -314,7 +323,10 @@ const CompleteProfile = () => {
                   />
                 </View>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Languages Spoken</Text>
+                  <View style={styles.labelRow}>
+                    <Text style={styles.label}>Languages Spoken</Text>
+                    <Text style={styles.required}>* Required</Text>
+                  </View>
                   <TextInput 
                     style={styles.input} 
                     placeholder="e.g. English, Hindi" 
@@ -327,7 +339,10 @@ const CompleteProfile = () => {
 
             {!isMentor && (
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Current Grade</Text>
+                <View style={styles.labelRow}>
+                  <Text style={styles.label}>Current Grade</Text>
+                  <Text style={styles.required}>* Required</Text>
+                </View>
                 <TouchableOpacity 
                   style={styles.dropdownSelector} 
                   onPress={() => setGradeModalVisible(true)}

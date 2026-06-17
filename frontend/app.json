@@ -18,7 +18,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#ffffff",
+        "backgroundColor": "#ffffff"
       },
       "intentFilters": [
       {
@@ -52,9 +52,9 @@
         "USE_FULL_SCREEN_INTENT",
         "SYSTEM_ALERT_WINDOW",
         "FOREGROUND_SERVICE",
-        "RECEIVE_BOOT_COMPLETED",
+        "RECEIVE_BOOT_COMPLETED"
       ],
-      "versionCode": 13
+      "versionCode": 14
     },
     "web": {
       "favicon": "./assets/icon.png"
@@ -62,7 +62,8 @@
     "plugins": [
       "@react-native-google-signin/google-signin",
       "@react-native-firebase/app",
-      "@react-native-firebase/messaging"
+      "@react-native-firebase/messaging",
+      "expo-web-browser"
     ]
   }
 }

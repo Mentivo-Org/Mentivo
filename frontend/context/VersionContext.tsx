@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Linking } from 'react-native';
 import Constants from 'expo-constants';
-import axios from 'axios';
-import { baseUrl, playStoreUrl } from '../constants/endpoint';
+import * as WebBrowser from 'expo-web-browser';
+import { playStoreUrl, VersionEndpoint } from '../constants/endpoint';
 import api from '../services/api';
 import DialogBox from '../components/DialogBox';
 
@@ -28,7 +28,7 @@ export const VersionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     const checkVersion = async () => {
       try {
-        const { data } = await axios.get(`${baseUrl}/config/version`);
+        const { data } = await api.get(VersionEndpoint.check);
         const currentVersionStr = Constants.expoConfig?.version || '1.0.0';
         
         const current = parseVersion(currentVersionStr);
@@ -37,25 +37,26 @@ export const VersionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         let resolvedVersion = 'v1';
 
-        if (current < minV2) {
+        if (current < minV1) {
           // Force Update
           setDialogType('force');
           setDialogVisible(true);
           // Block initialization, don't set isReady=true
           return; 
-        } else if (current >= minV2 && current < minV1) {
+        } else if (current < minV2 && current >= minV1) {
           // Soft Update
-          resolvedVersion = 'v2';
+          resolvedVersion = 'v1';
           setDialogType('soft');
           setDialogVisible(true);
         } else {
           // Latest
-          resolvedVersion = 'v1';
+          resolvedVersion = 'v2';
         }
 
         // Set global api header
         api.defaults.headers.common['x-api-version'] = resolvedVersion;
         setApiVersion(resolvedVersion);
+        console.log("The version of the backend request sending is", resolvedVersion);
         setIsReady(true);
       } catch (error) {
         console.error('Failed to fetch app version config:', error);
@@ -70,7 +71,7 @@ export const VersionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   const handleUpdatePress = () => {
-    Linking.openURL(playStoreUrl).catch((err) => console.error("An error occurred", err));
+    WebBrowser.openBrowserAsync(playStoreUrl).catch((err) => console.error("An error occurred", err));
   };
 
   const handleLaterPress = () => {

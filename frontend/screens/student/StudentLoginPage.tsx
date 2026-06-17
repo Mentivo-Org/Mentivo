@@ -6,10 +6,12 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  Linking,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import * as WebBrowser from 'expo-web-browser';
 import api from '../../services/api';
 import { LoginEndpoints, PartnerEndpoints } from '../../constants/endpoint';
 import { useAuth } from '../../services/retrieveKeys';
@@ -40,6 +42,19 @@ const StudentLoginPage = () => {
 
   const route=useRoute<any>();
   const {referral_id} = route.params ?? {};
+
+  const openBrowser = async (url: string) => {
+    try {
+      await WebBrowser.openBrowserAsync(url);
+    } catch (err) {
+      console.warn("expo-web-browser failed, falling back to Linking.openURL:", err);
+      try {
+        await Linking.openURL(url);
+      } catch (linkErr) {
+        console.error("Failed to open URL with Linking fallback:", linkErr);
+      }
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !passwordRef.current) {
@@ -170,6 +185,17 @@ const StudentLoginPage = () => {
           <Image source={require('../../app-assets/google-icon.svg')} style={styles.socialIcon} />
           <Text style={styles.socialButtonText}>Sign in with Google</Text>
         </TouchableOpacity>
+
+        <View style={styles.googleDisclaimer}>
+          <Text style={styles.disclaimerText}>By continuing with Google, you agree to our </Text>
+          <TouchableOpacity onPress={() => openBrowser('https://www.mentivo.in/terms')}>
+            <Text style={[styles.disclaimerText, styles.disclaimerLink]}>Terms of Use</Text>
+          </TouchableOpacity>
+          <Text style={styles.disclaimerText}> and </Text>
+          <TouchableOpacity onPress={() => openBrowser('https://www.mentivo.in/privacy')}>
+            <Text style={[styles.disclaimerText, styles.disclaimerLink]}>Privacy Policy</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.dividerContainer}>
           <View style={styles.divider} />
@@ -314,6 +340,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#0077CB',
+  },
+  googleDisclaimer: {
+    marginTop: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  disclaimerText: {
+    fontSize: 12,
+    color: '#757684',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  disclaimerLink: {
+    textDecorationLine: 'underline',
+    color: '#006591',
+    fontWeight: '500',
   },
 });
 

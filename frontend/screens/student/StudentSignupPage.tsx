@@ -10,12 +10,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import * as Clipboard from 'expo-clipboard';
+import * as WebBrowser from 'expo-web-browser';
 import api from '../../services/api';
 import { LoginEndpoints, PartnerEndpoints } from '../../constants/endpoint';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -48,6 +50,19 @@ const StudentSignupPage = () => {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [referralCode, setReferralCode] = useState("");
+
+  const openBrowser = async (url: string) => {
+    try {
+      await WebBrowser.openBrowserAsync(url);
+    } catch (err) {
+      console.warn("expo-web-browser failed, falling back to Linking.openURL:", err);
+      try {
+        await Linking.openURL(url);
+      } catch (linkErr) {
+        console.error("Failed to open URL with Linking fallback:", linkErr);
+      }
+    }
+  };
 
   const [alertData, setAlertData] = useState<{
     title: string;
@@ -283,6 +298,17 @@ const StudentSignupPage = () => {
               <Text style={styles.socialButtonText}>Sign up with Google</Text>
             </TouchableOpacity>
 
+            <View style={styles.googleDisclaimer}>
+              <Text style={styles.disclaimerText}>By continuing with Google, you agree to our </Text>
+              <TouchableOpacity onPress={() => openBrowser('https://www.mentivo.in/terms')}>
+                <Text style={[styles.disclaimerText, styles.disclaimerLink]}>Terms of Use</Text>
+              </TouchableOpacity>
+              <Text style={styles.disclaimerText}> and </Text>
+              <TouchableOpacity onPress={() => openBrowser('https://www.mentivo.in/privacy')}>
+                <Text style={[styles.disclaimerText, styles.disclaimerLink]}>Privacy Policy</Text>
+              </TouchableOpacity>
+            </View>
+
             <View style={styles.dividerContainer}>
               <View style={styles.divider} />
               <Text style={styles.dividerText}>OR</Text>
@@ -371,11 +397,14 @@ const StudentSignupPage = () => {
           </View>
 
           <View style={styles.legalFooter}>
-            <Text style={styles.legalText}>
-              By clicking Create Account, you agree to our{' '}
-              <Text style={styles.underline}>Terms of Service</Text> and{' '}
-              <Text style={styles.underline}>Privacy Policy</Text>.
-            </Text>
+            <Text style={styles.legalText}>By clicking Create Account, you agree to our </Text>
+            <TouchableOpacity onPress={() => openBrowser('https://www.mentivo.in/terms')}>
+              <Text style={[styles.legalText, styles.underline]}>Terms of Use</Text>
+            </TouchableOpacity>
+            <Text style={styles.legalText}> and </Text>
+            <TouchableOpacity onPress={() => openBrowser('https://www.mentivo.in/privacy')}>
+              <Text style={[styles.legalText, styles.underline]}>Privacy Policy</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -570,15 +599,36 @@ const styles = StyleSheet.create({
   legalFooter: {
     marginTop: 24,
     paddingHorizontal: 10,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   legalText: {
     fontSize: 12,
     color: '#444653',
-    textAlign: 'center',
     lineHeight: 20,
   },
   underline: {
     textDecorationLine: 'underline',
+  },
+  googleDisclaimer: {
+    marginTop: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  disclaimerText: {
+    fontSize: 12,
+    color: '#757684',
+    lineHeight: 18,
+  },
+  disclaimerLink: {
+    textDecorationLine: 'underline',
+    color: '#006591',
+    fontWeight: '500',
   },
 });
 

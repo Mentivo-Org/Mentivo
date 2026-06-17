@@ -6,7 +6,7 @@ export const websiteUrl = baseUrl.includes('localhost')
   ? 'http://localhost:3001'
   : baseUrl.includes('192.168.')
     ? baseUrl.replace(':3000/api', ':3001')
-    : 'https://mentivo.in';
+    : 'https://www.mentivo.in';
 
 export const AGORA_APP_ID = '1f1c2710de9a48bd88bc0470aa0204fc';
 export const AGORA_CHAT_APP_KEY = '61200019669#200025201'
@@ -99,4 +99,8 @@ export const AskEndpoints = {
 
 export const PartnerEndpoints = {
     validate: `${baseUrl}/partners/validate`
+}
+
+export const VersionEndpoint = {
+    check: `${baseUrl}/config/version`
 }

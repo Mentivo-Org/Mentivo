@@ -208,7 +208,6 @@ const styles = StyleSheet.create({
   backIcon: {
     width: 24,
     height: 24,
-    transform: [{ rotate: '-90deg' }], // point down for minimization indicator
   },
   topInfo: {
     alignItems: 'center',

@@ -4,9 +4,9 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Linking,
   ActivityIndicator,
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../services/retrieveKeys';
 import api from '../../services/api';
@@ -57,7 +57,7 @@ const MentorVerificationPendingPage = () => {
 
   const handleDeleteAccount = () => {
     const supportUrl = `${websiteUrl}/support`;
-    Linking.openURL(supportUrl).catch((err) => {
+    WebBrowser.openBrowserAsync(supportUrl).catch((err) => {
       console.error('Failed to open link:', err);
       setAlertData({
         title: 'Error',

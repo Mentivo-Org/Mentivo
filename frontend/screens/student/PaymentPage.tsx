@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Linking,
 } from "react-native";
+import * as WebBrowser from "expo-web-browser";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { useNavigation } from "@react-navigation/native";
@@ -68,12 +69,11 @@ export default function PaymentPage() {
       
       console.log("Redirecting user to buy credits:", redirectUrl);
       
-      const supported = await Linking.canOpenURL(redirectUrl);
-      if (supported) {
+      try {
+        await WebBrowser.openBrowserAsync(redirectUrl);
+      } catch (browserErr) {
+        console.warn("expo-web-browser failed, falling back to Linking.openURL:", browserErr);
         await Linking.openURL(redirectUrl);
-      } else {
-        setAlertData({ title: "Error", message: "Unable to open default browser." });
-        setAlertVisible(true);
       }
     } catch (err) {
       console.error("Redirection error:", err);
