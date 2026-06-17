@@ -102,7 +102,7 @@ app.use((req, res, next) => {
 
   res.on('finish', () => {
     const duration = Date.now() - start;
-    console.log(`<<< ${method} ${url} | Status: ${res.statusCode} | ${duration}ms`);
+    console.log(`<<< V2 ${method} ${url} | Status: ${res.statusCode} | ${duration}ms`);
   });
 
   res.on('close', () => {
