@@ -1,7 +1,7 @@
 import React from 'react';
-import { Shield, Clock, UserCheck, FileText, Mail, Globe, Lock } from 'lucide-react';
+import { Shield, Clock, UserCheck, FileText, Mail, Globe, Lock, Info, CheckCircle, Smartphone, CreditCard, Sparkles, RefreshCw, AlertTriangle, MessageSquare } from 'lucide-react';
 
-export default function TermsAndConditions() {
+export default function TermsOfService() {
   return (
     <div className="min-h-screen bg-slate-50 py-16 px-6">
       <div className="max-w-7xl mx-auto">
@@ -14,7 +14,7 @@ export default function TermsAndConditions() {
                 <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center">
                   <FileText size={24} className="text-white" />
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-black tracking-tight uppercase">Terms & Conditions</h1>
+                <h1 className="text-3xl sm:text-4xl font-black tracking-tight uppercase">Terms of Service</h1>
               </div>
               <div className="flex flex-wrap gap-4 text-blue-100 text-sm font-medium">
                 <div className="flex items-center gap-2">
@@ -23,7 +23,7 @@ export default function TermsAndConditions() {
                 </div>
                 <div className="flex items-center gap-2">
                   <UserCheck size={16} />
-                  Last Updated: June 6, 2026
+                  Last Updated: June 18, 2026
                 </div>
               </div>
             </div>
@@ -34,73 +34,89 @@ export default function TermsAndConditions() {
             <section>
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
                 <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">1</span>
-                Acceptance of Terms
+                About These Terms
               </h2>
               <p>
-                By accessing or using the Mentivo platform, mobile application, or website (collectively, the &quot;Platform&quot;),
-                you agree to be bound by these Terms and Conditions (&quot;Terms&quot;). If you do not agree to these Terms,
-                please do not use the Platform.
+                These Terms of Service (&quot;ToS&quot;) govern your access to and use of Mentivo&apos;s services, including the Platform, voice call marketplace, wallet system, and any related features or tools (collectively, the &quot;Services&quot;). These ToS are separate from but complementary to Mentivo&apos;s Terms & Conditions and Privacy Policy.
               </p>
               <p className="mt-4">
-                These Terms constitute a legally binding agreement between you and Mentivo. By registering an account,
-                you confirm that you have read, understood, and accepted these Terms.
+                By using the Services, you agree to these ToS. If you are using Mentivo on behalf of an institution, you represent that you have authority to bind that institution to these ToS.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
                 <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">2</span>
-                Eligibility
+                Description of Services
               </h2>
-              <ul className="list-disc pl-6 space-y-2">
-                <li>You must be at least 13 years of age to use the Platform.</li>
-                <li>Users below 18 years of age require parental or guardian consent.</li>
-                <li>Mentors must be currently enrolled students at an IIT (Indian Institute of Technology) and must be at least 18 years of age.</li>
-                <li>By using the Platform, you represent and warrant that you meet these eligibility requirements.</li>
-              </ul>
+              <p className="mb-4">Mentivo provides the following core services:</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-5 border border-slate-200 rounded-2xl">
+                  <h3 className="font-bold text-slate-900 mb-2">Mentor Discovery</h3>
+                  <p className="text-sm">A searchable marketplace of verified IIT student mentors with profiles showing branch, expertise, ratings, and per-minute rates.</p>
+                </div>
+                <div className="p-5 border border-slate-200 rounded-2xl">
+                  <h3 className="font-bold text-slate-900 mb-2">Voice Call Sessions</h3>
+                  <p className="text-sm">Real-time, per-minute billed voice calls between students and mentors facilitated through the Platform.</p>
+                </div>
+                <div className="p-5 border border-slate-200 rounded-2xl">
+                  <h3 className="font-bold text-slate-900 mb-2">Mentivo Wallet</h3>
+                  <p className="text-sm">A prepaid digital wallet for students to fund sessions, and a payout system for mentors to receive earnings.</p>
+                </div>
+                <div className="p-5 border border-slate-200 rounded-2xl">
+                  <h3 className="font-bold text-slate-900 mb-2">Mentivo Pass (Subscription)</h3>
+                  <p className="text-sm">Optional subscription plans offering discounted call rates and priority access to mentors.</p>
+                </div>
+                <div className="p-5 border border-slate-200 rounded-2xl">
+                  <h3 className="font-bold text-slate-900 mb-2">Ask Feature</h3>
+                  <p className="text-sm">A text-based Q&A feature allowing students to submit short questions and receive mentor responses to drive session engagement.</p>
+                </div>
+                <div className="p-5 border border-slate-200 rounded-2xl">
+                  <h3 className="font-bold text-slate-900 mb-2">Ratings & Reviews</h3>
+                  <p className="text-sm">A feedback system allowing students to rate mentors after each session to maintain quality standards.</p>
+                </div>
+              </div>
             </section>
 
             <section>
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
                 <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">3</span>
-                Account Registration
+                Service Availability
               </h2>
               <ul className="list-disc pl-6 space-y-2">
-                <li>You must provide accurate, current, and complete information during registration.</li>
-                <li>You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account.</li>
-                <li>You agree to notify us immediately at <a href="mailto:support@mentivo.in" className="text-[#0077CB] hover:underline">support@mentivo.in</a> if you suspect any unauthorised use of your account.</li>
-                <li>Mentivo reserves the right to suspend or terminate accounts that contain false or misleading information.</li>
+                <li>Mentivo strives to maintain Platform availability 24/7 but does not guarantee uninterrupted access.</li>
+                <li>We may suspend Services temporarily for maintenance, upgrades, or emergency fixes, and will endeavour to notify users in advance where possible.</li>
+                <li>Mentivo is not liable for losses arising from Platform downtime or service interruptions beyond our reasonable control, including internet outages, third-party API failures, or force majeure events.</li>
               </ul>
             </section>
 
             <section>
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
                 <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">4</span>
-                The Mentivo Platform
+                User Accounts and Access
               </h2>
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-2">4.1 Nature of Services</h3>
-                  <p>
-                    Mentivo is a peer-to-peer marketplace that connects JEE (and other competitive exam) aspirants with
-                    verified IIT student mentors via per-minute voice calls. Mentivo acts solely as an intermediary platform
-                    and does not itself provide educational or coaching services.
-                  </p>
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">4.1 Account Types</h3>
+                  <p className="mb-2">The Platform supports two primary account types:</p>
+                  <ul className="list-disc pl-6 space-y-1">
+                    <li><strong className="text-slate-900">Student Account:</strong> For JEE and competitive exam aspirants seeking mentorship.</li>
+                    <li><strong className="text-slate-900">Mentor Account:</strong> For verified IIT students offering per-minute guidance sessions.</li>
+                  </ul>
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-2">4.2 No Guarantee of Outcomes</h3>
-                  <p>
-                    Mentivo does not guarantee any specific academic results, exam scores, or outcomes as a result of using
-                    the Platform. The quality and effectiveness of mentorship sessions depend entirely on the individual
-                    mentor and student.
-                  </p>
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">4.2 Account Security</h3>
+                  <ul className="list-disc pl-6 space-y-1">
+                    <li>You are solely responsible for all activity under your account.</li>
+                    <li>Do not share your login credentials with any third party.</li>
+                    <li>Mentivo will never ask for your password via email, SMS, or chat.</li>
+                    <li>Suspicious account activity must be reported to <a href="mailto:support@mentivo.in" className="text-[#0077CB] hover:underline">support@mentivo.in</a> immediately.</li>
+                  </ul>
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-2">4.3 Mentor Verification</h3>
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">4.3 Single Account Policy</h3>
                   <p>
-                    Mentivo verifies mentor credentials (IIT enrollment, identity) at the time of onboarding. However, we do not
-                    independently verify the accuracy of all information shared by mentors during sessions. Students are
-                    encouraged to exercise independent judgment.
+                    Each user may maintain only one active account per account type. Creating multiple accounts to circumvent bans, ratings, or platform policies is strictly prohibited.
                   </p>
                 </div>
               </div>
@@ -109,61 +125,30 @@ export default function TermsAndConditions() {
             <section>
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
                 <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">5</span>
-                Student Terms
-              </h2>
-              <ul className="list-disc pl-6 space-y-2">
-                <li>Students may browse mentor profiles and initiate voice call sessions on a per-minute basis.</li>
-                <li>Sessions are billed based on actual call duration at the rates displayed on the mentor&apos;s profile.</li>
-                <li>Students must maintain sufficient wallet balance before initiating a call. Calls will be automatically terminated if the balance falls to zero.</li>
-                <li>Students agree not to share personal contact details (phone number, social media handles, email) with mentors outside the Platform to circumvent the per-minute billing model.</li>
-                <li>Students must treat mentors with respect. Abusive, threatening, or inappropriate conduct will result in immediate account suspension.</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">6</span>
-                Mentor Terms
-              </h2>
-              <ul className="list-disc pl-6 space-y-2">
-                <li>Mentors must be currently enrolled IIT students and must provide accurate documentation for verification.</li>
-                <li>Mentors set their own per-minute rates within the range permitted by Mentivo.</li>
-                <li>Mentors agree to provide honest, good-faith guidance to students. Deliberately misleading or inaccurate advice is prohibited.</li>
-                <li>Mentors must maintain a professional standard of conduct during all sessions.</li>
-                <li>Mentors agree not to solicit direct payment from students outside the Platform.</li>
-                <li>Mentivo will disburse mentor earnings on a weekly/fortnightly basis, subject to the minimum payout threshold.</li>
-                <li>Mentivo reserves the right to delist a mentor for low ratings, repeated complaints, or policy violations.</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">7</span>
-                Payments and Billing
+                Voice Call Services
               </h2>
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-2">7.1 Student Payments</h3>
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">5.1 How Calls Work</h3>
                   <ul className="list-disc pl-6 space-y-1">
-                    <li>Students prepay into a Mentivo wallet via UPI, debit/credit card, or net banking through Razorpay.</li>
-                    <li>Per-minute charges are deducted in real time during a session.</li>
-                    <li>Unused wallet balance is refundable upon written request, subject to a processing fee.</li>
+                    <li>Students initiate calls by selecting a mentor and tapping the &quot;Call Now&quot; button.</li>
+                    <li>Billing starts from the moment the call is connected and stops when either party ends the call.</li>
+                    <li>The per-minute rate applicable to a session is the rate displayed on the mentor&apos;s profile at the time the call is initiated.</li>
                   </ul>
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-2">7.2 Mentor Payouts</h3>
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">5.2 Call Quality</h3>
                   <ul className="list-disc pl-6 space-y-1">
-                    <li>Mentivo retains a platform commission on each session (commission rate displayed in the mentor dashboard).</li>
-                    <li>Net earnings are transferred to the mentor&apos;s registered bank account or UPI ID.</li>
-                    <li>Mentivo is not responsible for delays caused by banking intermediaries.</li>
+                    <li>Mentivo facilitates the technical connection but is not responsible for call quality issues arising from the user&apos;s internet connection, device, or telecom network.</li>
+                    <li>In case of a call drop due to a verified Platform-side error, the affected duration may be credited to the student&apos;s wallet upon review.</li>
                   </ul>
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-2">7.3 Refunds</h3>
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">5.3 Session Conduct</h3>
                   <ul className="list-disc pl-6 space-y-1">
-                    <li>Refunds for sessions will be considered only in cases of proven technical failure on Mentivo&apos;s end (e.g., call drop due to platform error).</li>
-                    <li>Dissatisfaction with session quality does not automatically entitle a student to a refund. Students are encouraged to review mentor profiles and ratings before initiating a session.</li>
-                    <li>Refund requests must be submitted within 48 hours of the session at <a href="mailto:support@mentivo.in" className="text-[#0077CB] hover:underline">support@mentivo.in</a>.</li>
+                    <li>Both students and mentors must conduct themselves professionally and respectfully during sessions.</li>
+                    <li>Recording of sessions by either party without explicit mutual consent is prohibited.</li>
+                    <li>Mentivo reserves the right to monitor aggregate session metadata (not content) for quality assurance and fraud prevention.</li>
                   </ul>
                 </div>
               </div>
@@ -171,109 +156,156 @@ export default function TermsAndConditions() {
 
             <section>
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">8</span>
-                Prohibited Conduct
+                <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">6</span>
+                Mentivo Wallet
               </h2>
-              <p className="mb-4">All users agree not to:</p>
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">6.1 Wallet Top-Up</h3>
+                  <ul className="list-disc pl-6 space-y-1">
+                    <li>Students can add funds to their Mentivo Wallet using UPI, debit/credit card, or net banking via Razorpay.</li>
+                    <li>Wallet funds are non-transferable between accounts.</li>
+                    <li>Top-up amounts are subject to minimum and maximum limits as displayed in the app.</li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">6.2 Wallet Deductions</h3>
+                  <ul className="list-disc pl-6 space-y-1">
+                    <li>Funds are deducted in real time during a voice call session based on the applicable per-minute rate.</li>
+                    <li>If wallet balance reaches zero mid-call, the session will be automatically terminated.</li>
+                    <li>Any applicable taxes or platform fees will be displayed at the time of transaction.</li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">6.3 Wallet Refunds and Withdrawals</h3>
+                  <ul className="list-disc pl-6 space-y-1">
+                    <li>Unused wallet balance may be refunded to the original payment method upon written request to <a href="mailto:support@mentivo.in" className="text-[#0077CB] hover:underline">support@mentivo.in</a>, subject to a processing fee and verification.</li>
+                    <li>Refund requests must be submitted within 90 days of the top-up transaction.</li>
+                    <li>Wallets inactive for more than 12 consecutive months may be subject to dormancy review.</li>
+                  </ul>
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">7</span>
+                Mentivo Pass (Subscription Plans)
+              </h2>
               <ul className="list-disc pl-6 space-y-2">
-                <li>Use the Platform for any unlawful purpose.</li>
-                <li>Share, distribute, or reproduce session content without explicit consent.</li>
-                <li>Attempt to circumvent the Platform&apos;s billing system by taking mentor-student interactions off-platform.</li>
-                <li>Harass, abuse, or threaten other users.</li>
-                <li>Upload or share false, defamatory, or misleading information.</li>
-                <li>Attempt to hack, reverse-engineer, or disrupt the Platform&apos;s technical infrastructure.</li>
-                <li>Use automated bots, scrapers, or scripts to access the Platform.</li>
-                <li>Impersonate any person or entity.</li>
+                <li>Mentivo offers optional subscription plans (&quot;Mentivo Pass&quot;) providing benefits such as discounted call rates, bonus wallet credits, and priority mentor access.</li>
+                <li>Subscription fees are charged in advance and are non-refundable once the billing cycle has commenced.</li>
+                <li>Mentivo Pass benefits are non-transferable and apply only to the subscribed account.</li>
+                <li>Mentivo reserves the right to modify subscription plan features or pricing with 7 days&apos; prior notice.</li>
+                <li>Subscriptions auto-renew unless cancelled before the renewal date through the Platform&apos;s subscription settings.</li>
               </ul>
-              <p className="mt-4">
-                Violation of any of the above may result in immediate account termination and, where applicable, legal action.
-              </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">8</span>
+                Mentor Payout Services
+              </h2>
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">8.1 Earnings</h3>
+                  <p className="mb-2">
+                    Mentors earn a percentage of each session&apos;s billed amount after Mentivo&apos;s platform commission is deducted. The current commission structure is displayed in the Mentor Dashboard.
+                  </p>
+                  <p>
+                    Earnings are credited to the mentor&apos;s Mentivo Earnings Ledger after each completed session.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">8.2 Payout Processing</h3>
+                  <ul className="list-disc pl-6 space-y-1">
+                    <li>Payouts are processed on a weekly or fortnightly cycle to the mentor&apos;s registered bank account or UPI ID.</li>
+                    <li>A minimum payout threshold must be met before a withdrawal is processed.</li>
+                    <li>Mentivo is not responsible for delays caused by bank processing times or incorrect payout details provided by the mentor.</li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">8.3 Payout Disputes</h3>
+                  <p className="mb-2">
+                    Mentors must raise payout discrepancies within 7 days of the payout date by emailing <a href="mailto:support@mentivo.in" className="text-[#0077CB] hover:underline">support@mentivo.in</a> with relevant session details.
+                  </p>
+                  <p>
+                    Unresolved disputes will be escalated to the Grievance Officer.
+                  </p>
+                </div>
+              </div>
             </section>
 
             <section>
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
                 <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">9</span>
-                Intellectual Property
+                Third-Party Services
               </h2>
               <ul className="list-disc pl-6 space-y-2">
-                <li>All content on the Platform, including but not limited to the Mentivo brand, logo, design, software, and text, is the intellectual property of Mentivo and is protected under applicable Indian and international laws.</li>
-                <li>Users retain ownership of content they upload (such as profile information) but grant Mentivo a non-exclusive, royalty-free licence to use such content for operating and improving the Platform.</li>
-                <li>You may not copy, reproduce, distribute, or create derivative works from Mentivo&apos;s content without prior written permission.</li>
+                <li>The Platform integrates with third-party services including Razorpay (payments), cloud hosting providers, and communication APIs.</li>
+                <li>Mentivo is not responsible for the terms, policies, or failures of these third-party providers.</li>
+                <li>Your use of third-party services through the Platform may be subject to those providers&apos; own terms of service.</li>
               </ul>
             </section>
 
             <section>
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
                 <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">10</span>
-                Limitation of Liability
+                Content Standards
               </h2>
-              <p className="mb-4">To the fullest extent permitted by applicable law:</p>
+              <p className="mb-4">All content uploaded or shared on the Platform (profile information, reviews, Ask Feature responses) must:</p>
               <ul className="list-disc pl-6 space-y-2">
-                <li>Mentivo is not liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Platform.</li>
-                <li>Mentivo&apos;s total liability to any user for any claim arising out of or related to these Terms shall not exceed the total amount paid by that user to Mentivo in the 3 months preceding the claim.</li>
-                <li>Mentivo is not responsible for the conduct, statements, or actions of mentors or students on the Platform.</li>
+                <li>Be accurate and not misleading.</li>
+                <li>Not infringe any third-party intellectual property rights.</li>
+                <li>Not be abusive, defamatory, obscene, or harmful.</li>
+                <li>Not contain spam, promotional content, or external contact details intended to circumvent the Platform.</li>
               </ul>
+              <p className="mt-4">
+                Mentivo reserves the right to remove any content that violates these standards without prior notice.
+              </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
                 <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">11</span>
-                Disclaimers
+                Feedback and Reviews
               </h2>
               <ul className="list-disc pl-6 space-y-2">
-                <li>The Platform is provided on an &quot;as is&quot; and &quot;as available&quot; basis without warranties of any kind, express or implied.</li>
-                <li>Mentivo does not warrant that the Platform will be uninterrupted, error-free, or free of viruses or harmful components.</li>
-                <li>Mentivo does not endorse any mentor&apos;s views, advice, or recommendations.</li>
+                <li>Students may rate mentors and leave written reviews after each session.</li>
+                <li>Reviews must be honest, based on actual session experience, and comply with Content Standards (Section 10).</li>
+                <li>Mentivo reserves the right to remove reviews that are fraudulent, abusive, or in violation of these ToS.</li>
+                <li>Mentors may not solicit, incentivise, or coerce students into leaving positive reviews.</li>
               </ul>
             </section>
 
             <section>
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
                 <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">12</span>
-                Indemnification
+                Suspension and Termination of Services
               </h2>
-              <p>
-                You agree to indemnify, defend, and hold harmless Mentivo, its founders, employees, and partners from
-                and against any claims, liabilities, damages, losses, or expenses (including legal fees) arising out of or
-                related to your use of the Platform, your violation of these Terms, or your violation of any third-party rights.
+              <p className="mb-4">Mentivo reserves the right to suspend or permanently terminate access to Services for:</p>
+              <ul className="list-disc pl-6 space-y-2">
+                <li>Violation of these ToS, Terms & Conditions, or Privacy Policy.</li>
+                <li>Fraudulent activity, including wallet manipulation or fake session generation.</li>
+                <li>Repeated low-quality sessions or sustained negative feedback (for mentors).</li>
+                <li>Any conduct deemed harmful to the Platform, its users, or Mentivo&apos;s reputation.</li>
+              </ul>
+              <p className="mt-4">
+                Upon termination, any unused wallet balance will be refunded subject to fraud verification. Mentor earnings already in the ledger will be paid out after a 30-day hold period for dispute resolution.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
                 <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">13</span>
-                Termination
+                Modifications to Services
               </h2>
               <ul className="list-disc pl-6 space-y-2">
-                <li>Mentivo may suspend or terminate your account at any time, with or without notice, for violation of these Terms or for any conduct that Mentivo determines, in its sole discretion, to be harmful to other users or the Platform.</li>
-                <li>You may terminate your account at any time by contacting <a href="mailto:support@mentivo.in" className="text-[#0077CB] hover:underline">support@mentivo.in</a>. Upon termination, your right to use the Platform ceases immediately.</li>
-                <li>Provisions of these Terms that by their nature should survive termination (including Sections 9, 10, 11, 12) shall survive.</li>
+                <li>Mentivo reserves the right to modify, add, or discontinue any feature or service at any time.</li>
+                <li>Change pricing, commission rates, or subscription terms with 7 days&apos; prior notice.</li>
+                <li>Update these ToS at any time, with notice provided via email or in-app notification.</li>
+                <li>Continued use of the Services after any modification constitutes your acceptance of the updated ToS.</li>
               </ul>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">14</span>
-                Governing Law and Dispute Resolution
-              </h2>
-              <ul className="list-disc pl-6 space-y-2">
-                <li>These Terms shall be governed by and construed in accordance with the laws of India.</li>
-                <li>Any disputes arising out of or relating to these Terms or the Platform shall first be attempted to be resolved through good-faith negotiation.</li>
-                <li>If unresolved within 30 days, disputes shall be submitted to binding arbitration in accordance with the Arbitration and Conciliation Act, 1996, with the seat of arbitration in Guwahati, Assam, India.</li>
-                <li>The language of arbitration shall be English.</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-black text-[#0b1c30] mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 bg-blue-50 text-[#0077CB] rounded-lg flex items-center justify-center text-sm font-bold">15</span>
-                Changes to These Terms
-              </h2>
-              <p>
-                Mentivo reserves the right to modify these Terms at any time. We will notify you of material changes via
-                email or a notice on the Platform at least 7 days before the changes take effect. Your continued use of the
-                Platform after the effective date constitutes your acceptance of the revised Terms.
-              </p>
             </section>
 
             <section className="bg-slate-50 p-8 rounded-[32px] border border-slate-200">
@@ -341,7 +373,7 @@ export default function TermsAndConditions() {
                 </div>
               </div>
               <p className="text-xs text-slate-400 mt-6 text-center">
-                These Terms are written in plain language. If you have any questions about what they mean, please write to us before using the Platform.
+                These Terms of Service are designed to ensure a safe, fair, and transparent experience for every student and mentor on the Mentivo platform.
               </p>
             </section>
           </div>

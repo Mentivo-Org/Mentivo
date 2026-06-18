@@ -111,7 +111,7 @@ api.interceptors.response.use(
         console.error('Refresh token failed:', refreshError);
         if (typeof window !== 'undefined') {
           // Prevent infinite redirect loop if already on a guest path
-          const guestPaths = ['/', '/login', '/signup', '/verify-otp'];
+          const guestPaths = ['/', '/login', '/signup', '/verify-otp', '/privacy', '/about', '/support', '/terms', '/faq', '/disclaimer'];
           if (!guestPaths.includes(window.location.pathname)) {
             window.location.href = '/login';
           }

@@ -12,12 +12,22 @@ export function useSession() {
   const [isHydrated, setIsHydrated] = useState(false);
   const [isValidating, setIsValidating] = useState(true);
 
+  // Public pages that never need session validation
+  const publicPaths = ['/', '/login', '/signup', '/verify-otp', '/privacy', '/about', '/support', '/terms', '/faq', '/disclaimer'];
+
   useEffect(() => {
     setIsHydrated(true);
     const handleAuth = async () => {
       if (hasValidated.current) return;
       
       if (isSignedIn) {
+        hasValidated.current = true;
+        setIsValidating(false);
+        return;
+      }
+
+      // Skip session validation entirely on public pages
+      if (publicPaths.includes(pathname)) {
         hasValidated.current = true;
         setIsValidating(false);
         return;
@@ -37,7 +47,7 @@ export function useSession() {
     };
 
     handleAuth();
-  }, [validateSession, isSignedIn]);
+  }, [validateSession, isSignedIn, pathname]);
 
   useEffect(() => {
     // List of paths that logged-in users should not be on

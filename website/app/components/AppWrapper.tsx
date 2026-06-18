@@ -16,20 +16,22 @@ export default function AppWrapper({
 }) {
   const { isReady } = useSession();
   const pathname = usePathname();
+  const cleanPath = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
+  const isPrivacyPage = cleanPath === "/privacy";
+  const isAboutPage = cleanPath === "/about";
+  const isSupportPage = cleanPath === "/support";
+  const isTermsPage = cleanPath === "/terms";
+  const isFAQPage = cleanPath === "/faq";
+  const isDisclaimerPage = cleanPath === "/disclaimer";
+  const isStaticPublicPage = isPrivacyPage || isAboutPage || isSupportPage || isTermsPage || isFAQPage || isDisclaimerPage;
 
-  // If we're on the privacy, about, or support page, we don't treat it as maintenance mode
-  // so that Navbar and Footer are visible.
-  const isPrivacyPage = pathname === "/privacy";
-  const isAboutPage = pathname === "/about";
-  const isSupportPage = pathname === "/support";
-  const isTermsPage = pathname === "/terms";
-  const isMaintenanceMode = initialMaintenanceMode && !isPrivacyPage && !isAboutPage && !isSupportPage && !isTermsPage;
+  const isMaintenanceMode = initialMaintenanceMode && !isStaticPublicPage;
 
   // If we're not ready (still hydrating or validating session), render nothing.
   // This prevents the "white flash" by not rendering the initial layout 
   // until we know exactly what should be on the screen.
-  // In Maintenance Mode, or on static pages like Privacy/About/Support/Terms, we show the page immediately.
-  if (!isReady && !isMaintenanceMode && !isPrivacyPage && !isAboutPage && !isSupportPage && !isTermsPage) {
+  // In Maintenance Mode, or on static pages like Privacy/About/Support/Terms/FAQ/Disclaimer, we show the page immediately.
+  if (!isReady && !isMaintenanceMode && !isStaticPublicPage) {
     return null;
   }
 
