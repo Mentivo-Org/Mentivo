@@ -29,7 +29,7 @@ const RoleSelection = () => {
       <View style={styles.content}>
         <TouchableOpacity 
           style={styles.studentButton}
-          onPress={() => navigation.navigate('StudentSignUp')}
+          onPress={() => navigation.navigate('StudentLogin')}
         >
           <Text style={styles.studentButtonText}>As Student</Text>
           <Image 
@@ -41,7 +41,7 @@ const RoleSelection = () => {
 
         <TouchableOpacity 
           style={styles.mentorButton}
-          onPress={() => navigation.navigate('MentorSignUp')}
+          onPress={() => navigation.navigate('MentorLogin')}
         >
           <Text style={styles.mentorButtonText}>As Mentor</Text>
           <Image 
