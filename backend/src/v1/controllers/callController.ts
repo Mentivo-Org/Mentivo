@@ -749,6 +749,7 @@ export const freeMatchmaking = async (req: Request, res: Response) => {
       } 
     });
     if (pastCalls > 0) {
+      console.log("Past calls", pastCalls);
       return res.status(400).json({ error: 'You are only eligible for the first free call.' });
     }
 
@@ -774,7 +775,7 @@ export const freeMatchmaking = async (req: Request, res: Response) => {
       return callsA - callsB;
     });
 
-    const mentor = availableMentors[0];
+    const mentor = availableMentors[Math.random()*availableMentors.length];
     const matchedMentorId = mentor.id;
 
     if (!mentor.mentorProfile || !mentor.mentorProfile.isOnline) {
