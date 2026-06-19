@@ -774,8 +774,9 @@ export const freeMatchmaking = async (req: Request, res: Response) => {
       const callsB = b.mentorProfile?.total_calls || 0;
       return callsA - callsB;
     });
-
-    const mentor = availableMentors[Math.random()*availableMentors.length];
+    const index = Math.floor(Math.random()*availableMentors.length);
+    console.log(index);
+    const mentor = availableMentors[index];
     console.log("Matched with ",mentor);
     const matchedMentorId = mentor.mentorProfile?.mentorId;
 
