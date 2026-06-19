@@ -1,0 +1,53 @@
+import React from "react";
+import Svg, { G, Circle, Path, Defs, ClipPath, Rect } from "react-native-svg";
+
+interface ProfileIconProps {
+  color: string;
+  size?: number;
+}
+
+export default function ProfileIcon({ color, size = 26 }: ProfileIconProps) {
+  return (
+    <Svg 
+      width={size} 
+      height={size} 
+      viewBox="0 0 64 64" 
+      fill="none"
+    >
+      <G clipPath="url(#clip0_0_10)">
+        {/* We keep the white background circle clean and unaffected by the tint color */}
+        <Circle cx="32" cy="32" r="32" transform="matrix(1 0 0 -1 0 64)" fill="none"/>
+        
+        {/* We dynamically apply the color prop to the strokes */}
+        <Path 
+          opacity={0.4} 
+          d="M32.3219 34.08C32.1352 34.0533 31.8952 34.0533 31.6819 34.08C26.9885 33.92 23.2552 30.08 23.2552 25.3599C23.2552 20.5333 27.1485 16.6133 32.0019 16.6133C36.8285 16.6133 40.7485 20.5333 40.7485 25.3599C40.7219 30.08 37.0152 33.92 32.3219 34.08Z" 
+          stroke={color} 
+          strokeWidth="1.5" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        />
+        <Path 
+          opacity={0.34} 
+          d="M49.9728 51.6803C45.2261 56.0269 38.9328 58.6669 31.9995 58.6669C25.0661 58.6669 18.7727 56.0269 14.0261 51.6803C14.2927 49.1736 15.8927 46.7203 18.7461 44.8003C26.0527 39.9469 37.9995 39.9469 45.2528 44.8003C48.1061 46.7203 49.7061 49.1736 49.9728 51.6803Z" 
+          stroke={color} 
+          strokeWidth="1.5" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        />
+        <Path 
+          d="M32 58.6667C46.7275 58.6667 58.6667 46.7275 58.6667 32C58.6667 17.2724 46.7275 5.33333 32 5.33333C17.2724 5.33333 5.33333 17.2724 5.33333 32C5.33333 46.7275 17.2724 58.6667 32 58.6667Z" 
+          stroke={color} 
+          strokeWidth="1.5" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        />
+      </G>
+      <Defs>
+        <ClipPath id="clip0_0_10">
+          <Rect width="64" height="64" fill="white"/>
+        </ClipPath>
+      </Defs>
+    </Svg>
+  );
+}

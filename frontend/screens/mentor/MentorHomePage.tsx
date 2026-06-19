@@ -210,43 +210,50 @@ export default function MentorHomePage() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header matching Node 377:2591 */}
-        <View style={styles.header}>
-            <View style={styles.headerBackground}>
-                <Image source={require("../../app-assets/bg-pattern-inverted.svg")} style={styles.headerBgPattern} />
-            </View>
-            <View style={styles.headerContent}>
-                <View style={styles.headerTopRow}>
-                    <TouchableOpacity 
-                        style={styles.profileSummary} 
-                        onPress={() => navigation.navigate("MentorProfilePage")}
-                    >
-                        <View style={styles.avatarWrapper}>
-                            <Image 
-                                source={profile.user?.photo_url || require("../../app-assets/profile-circle.svg")} 
-                                style={styles.headerAvatar} 
-                            />
-                            <Image source={getLevelIcon(profile?.mentorlevel)} style={styles.verifiedBadge} />
-                        </View>
-                        <View style={styles.nameContainer}>
-                            <Text style={styles.greetingText}>Hi {profile.user?.name?.split(" ")[0] || "Mentor"}</Text>
-                            <Text style={styles.collegeText}>{profile.iit_name}</Text>
-                        </View>
-                        {/* <Image source={require("../../app-assets/edit-icon.svg")} style={styles.editIcon} tintColor="white" /> */}
-                    </TouchableOpacity>
+        {/* Header matching Node 539:209 */}
+        <View style={styles.headerCard}>
+            <Image 
+                source={require("../../app-assets/header-bg-curve.svg")} 
+                style={[StyleSheet.absoluteFillObject, { transform: [{ rotate: '180deg' }] }]}
+                contentFit="fill"
+            />
 
-                    <View style={styles.onlineToggleContainer}>
-                        <Text style={[styles.onlineStatusText, { color: isOnline ? '#25D366' : '#FF0000' }]}>
-                            {isOnline ? 'Online' : 'Offline'}
-                        </Text>
-                        {/* <Switch
-                            trackColor={{ false: "#767577", true: "#25d366" }}
-                            thumbColor={"#f4f3f4"}
-                            onValueChange={toggleOnlineStatus}
-                            value={isOnline}
-                        /> */}
+            <Image 
+                source={require("../../app-assets/verified-check-badge.svg")} 
+                style={styles.headerVerifiedBadge} 
+            />
+
+            <View style={styles.headerContentRow}>
+                <TouchableOpacity 
+                    style={styles.headerProfileSection} 
+                    onPress={() => navigation.navigate("MentorProfilePage")}
+                    activeOpacity={0.8}
+                >
+                    <Image source={getLevelIcon(profile?.mentorlevel)} style={styles.headerLevelIcon} />
+                    <View style={styles.headerNameCol}>
+                        <Text style={styles.headerGreetingText}>Hi {profile.user?.name?.split(" ")[0] || "Mentor"}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Text style={styles.headerCollegeText}>{profile.iit_name || "IIT Student"}</Text>
+                            <Image 
+                                source={require("../../app-assets/edit-pencil-white.svg")} 
+                                style={styles.headerEditIcon} 
+                            />
+                        </View>
                     </View>
-                </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={styles.headerToggleWrapper} 
+                    onPress={() => toggleOnlineStatus(!isOnline)}
+                    activeOpacity={0.7}
+                >
+                    <View style={[styles.headerSwitchTrack, isOnline && styles.headerSwitchTrackOnline]}>
+                        <View style={[styles.headerSwitchThumb, isOnline && styles.headerSwitchThumbOnline]} />
+                    </View>
+                    <Text style={styles.headerToggleText}>
+                        {isOnline ? 'ONLINE' : 'OFFLINE'}
+                    </Text>
+                </TouchableOpacity>
             </View>
         </View>
 
@@ -419,7 +426,7 @@ function StatCard({ title, amount, subtitle }: any) {
 
 function PlanCard({ level, rate, requirements, benefits, active, isExpanded, onToggle }: any) {
     const getPlanBorderColor = (lvl: string) => {
-        if (lvl === 'Verified') return '#0077c8';
+        if (lvl === 'Verified') return '#e0e0e0';
         if (lvl === 'Standard') return '#0077c8';
         if (lvl === 'Signature') return '#3b4b6b';
         if (lvl === 'Fellow') return '#0a192f';
@@ -427,19 +434,11 @@ function PlanCard({ level, rate, requirements, benefits, active, isExpanded, onT
     }
 
     const getPlanBgColor = (lvl: string) => {
-        if (lvl === 'Verified') return 'white';
+        if (lvl === 'Verified') return '#edf5ff';
         if (lvl === 'Standard') return '#0077c8';
         if (lvl === 'Signature') return '#3b4b6b';
         if (lvl === 'Fellow') return '#0a192f';
-        return 'white';
-    }
-
-    const getPlanLeftBgColor = (lvl: string) => {
-        if (lvl === 'Verified') return '#edf5ff';
-        if (lvl === 'Standard') return 'white';
-        if (lvl === 'Signature') return 'white';
-        if (lvl === 'Fellow') return '#fbf8e7';
-        return 'white';
+        return '#0077c8';
     }
 
     const getPlanTextColor = (lvl: string) => {
@@ -448,8 +447,8 @@ function PlanCard({ level, rate, requirements, benefits, active, isExpanded, onT
     }
 
     const getLevelDisplayName = (lvl: string) => {
-        if (lvl === 'Signature') return 'PREMIUM';
-        if (lvl === 'Fellow') return 'ELITE';
+        if (lvl === 'Signature') return 'SIGNATURE';
+        if (lvl === 'Fellow') return 'FELLOW';
         return lvl.toUpperCase();
     }
 
@@ -485,12 +484,31 @@ function PlanCard({ level, rate, requirements, benefits, active, isExpanded, onT
                 activeOpacity={0.8}
                 onPress={onToggle}
                 style={[styles.planBanner, { 
-                    backgroundColor: getPlanBgColor(level), 
-                    borderWidth: 1.5, 
+                    backgroundColor: 'white', 
+                    borderWidth: 0.5, 
                     borderColor: getPlanBorderColor(level) 
                 }]}
             >
-                <View style={[styles.planBannerLeft, { backgroundColor: getPlanLeftBgColor(level) }]}>
+                <Image 
+                    source={require("../../app-assets/plan-card-bg.svg")} 
+                    style={[
+                        {
+                            position: 'absolute',
+                            top: 6,
+                            bottom: 6,
+                            left: 0,
+                            right: 0,
+                        },
+                        { 
+                            transform: [{ scaleY: -1 }],
+                            tintColor: getPlanBgColor(level),
+                            marginLeft: -20
+                        }
+                    ]} 
+                    contentFit="fill"
+                />
+
+                <View style={styles.planBannerLeft}>
                     <Image source={getLevelIcon(level)} style={styles.planBannerIcon} />
                 </View>
                 
@@ -500,7 +518,7 @@ function PlanCard({ level, rate, requirements, benefits, active, isExpanded, onT
                     </Text>
                     <Text style={[styles.planBannerChargeLabel, { color: textColor }]}>Charge up to</Text>
                     <Text style={[styles.planBannerChargeValue, { color: textColor }]}>
-                        {rate} Credits
+                        ₹{rate}
                         <Text style={[styles.planBannerChargeUnit, { color: textColor }]}>/min</Text>
                     </Text>
                 </View>
@@ -531,7 +549,7 @@ function PlanCard({ level, rate, requirements, benefits, active, isExpanded, onT
                                 </View>
                             )}
                             <Text style={styles.planDetailsLabel}>Charge</Text>
-                            <Text style={styles.planDetailsRate}>{rate} credits/min</Text>
+                            <Text style={styles.planDetailsRate}>₹{rate}/min</Text>
                         </View>
                         
                         <View style={styles.planSection}>
@@ -581,70 +599,97 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
-  header: {
-    height: 140,
+  headerCard: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    height: 72,
+    borderRadius: 9,
     position: 'relative',
+    overflow: 'hidden',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 3,
+    backgroundColor: 'white',
   },
-  headerBackground: {
+  headerVerifiedBadge: {
     position: 'absolute',
     top: 0,
     left: 0,
-    right: 0,
-    height: 100,
-    backgroundColor: '#2563eb',
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    overflow: 'hidden',
+    width: 16,
+    height: 16,
+    zIndex: 10,
   },
-  headerBgPattern: {
-    width: '100%',
-    height: '100%',
-    opacity: 0.2,
-  },
-  headerContent: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  headerTopRow: {
+  headerContentRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    height: '100%',
+    paddingLeft: 20,
+    paddingRight: 16,
+    justifyContent: 'space-between',
   },
-  profileSummary: {
+  headerProfileSection: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
-  onlineToggleContainer: {
+  headerLevelIcon: {
+    width: 28,
+    height: 32,
+    marginRight: 10,
+  },
+  headerNameCol: {
+    justifyContent: 'center',
+  },
+  headerGreetingText: {
+    color: 'white',
+    fontSize: 15,
+    fontWeight: 'bold',
+    lineHeight: 18,
+  },
+  headerCollegeText: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 11,
+    lineHeight: 14,
+  },
+  headerEditIcon: {
+    width: 8,
+    height: 8,
+    tintColor: 'white',
+  },
+  headerToggleWrapper: {
     flexDirection: 'row',
+    marginTop: -15,
+    marginRight: 10,
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 40,
   },
-  onlineStatusText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  avatarWrapper: {
-    position: 'relative',
-  },
-  headerAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: 'white',
-  },
-  verifiedBadge: {
-    position: 'absolute',
-    top: -4,
-    left: -4,
-    width: 16,
+  headerSwitchTrack: {
+    width: 28,
     height: 16,
+    borderRadius: 8,
+    backgroundColor: '#FF0000',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  headerSwitchTrackOnline: {
+    backgroundColor: '#25D366',
+  },
+  headerSwitchThumb: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'white',
+  },
+  headerSwitchThumbOnline: {
+    alignSelf: 'flex-end',
+  },
+  headerToggleText: {
+    fontSize: 12,
+    color: '#444653',
+    fontWeight: '500',
+    width: 55,
   },
   nameContainer: {
     marginLeft: 12,
@@ -692,7 +737,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 16,
-    marginTop: -30,
+    marginTop: 20,
     paddingHorizontal: 20,
   },
   statCard: {
@@ -886,8 +931,8 @@ const styles = StyleSheet.create({
   },
   planBanner: {
     flexDirection: 'row',
-    height: 70,
-    borderRadius: 8,
+    height: 90,
+    borderRadius: 15,
     overflow: 'hidden',
     elevation: 4,
     shadowColor: "#000",
@@ -896,29 +941,33 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   planBannerLeft: {
-    width: 70,
-    height: 70,
+    width: 50,
+    height: 60,
     justifyContent: 'center',
     alignItems: 'center',
   },
   planBannerIcon: {
-    width: 32,
-    height: 32,
+    marginTop: 20,
+    marginRight: '-170%',
+    width: 35,
+    height: 40,
   },
   planBannerMiddle: {
     flex: 1,
+    flexDirection: 'column',
     justifyContent: 'center',
-    paddingLeft: 12,
+    paddingLeft: '20%',
   },
   planBannerLevel: {
     color: 'white',
     fontSize: 16,
     fontWeight: '300',
-    marginBottom: 2,
+    marginBottom: -5,
   },
   planBannerChargeLabel: {
     color: 'white',
     fontSize: 11,
+    marginBottom: -5
   },
   planBannerChargeValue: {
     color: 'white',

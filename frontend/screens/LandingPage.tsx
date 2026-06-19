@@ -6,12 +6,14 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  Linking,
 } from 'react-native';
 import { Image } from 'expo-image';
+import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { PartnerEndpoints } from '../constants/endpoint';
+import { PartnerEndpoints, websiteUrl } from '../constants/endpoint';
 import api from '../services/api';
 import { useLoading } from '../context/LoadingContext';
 import DialogBox from '../components/DialogBox';
@@ -25,6 +27,28 @@ const LandingPage = () => {
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertData, setAlertData] = useState({ title: '', message: '' });
   const [onCloseCallback, setOnCloseCallback] = useState<(() => void) | null>(null);
+
+  const handleLinkPress = async (link: string) => {
+    try {
+      const linkSuffix = link.split(" ",1)[0].toLowerCase();
+
+      // Construct redirection URL to Next.js website
+      const redirectUrl = `${websiteUrl}/${linkSuffix}`;
+      
+      console.log(`Redirecting user to ${linkSuffix} :`, redirectUrl);
+      
+      try {
+        await WebBrowser.openBrowserAsync(redirectUrl);
+      } catch (browserErr) {
+        console.warn("expo-web-browser failed, falling back to Linking.openURL:", browserErr);
+        await Linking.openURL(redirectUrl);
+      }
+    } catch (err) {
+      console.error("Redirection error:", err);
+      setAlertData({ title: "Error", message: "An unexpected error occurred." });
+      setAlertVisible(true);
+    }
+  }
 
   useEffect(() => {
     const validateReferral = async () => {
@@ -78,9 +102,9 @@ const LandingPage = () => {
             <Text style={styles.logoText}>entivo</Text>
           </View>
           <View style={styles.navLinks}>
-            <Text style={styles.navText}>MENTORS</Text>
-            <Text style={styles.navText}>REVIEW</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('StudentLogin')}>
+            {/* <Text style={styles.navText}>MENTORS</Text>
+            <Text style={styles.navText}>REVIEW</Text> */}
+            <TouchableOpacity onPress={() => navigation.navigate('RoleSelection')}>
               <Text style={styles.navText}>LOGIN</Text>
             </TouchableOpacity>
           </View>
@@ -248,14 +272,18 @@ const LandingPage = () => {
           <View style={styles.footerLinksContainer}>
             <View style={styles.footerColumn}>
               <Text style={styles.footerColumnTitle}>Quick Links</Text>
-              {['About Us', 'Our Services', 'FAQ', 'Our Pricing'].map((link) => (
-                <Text key={link} style={styles.footerLink}>{link}</Text>
+              {['About Us', 'FAQ'].map((link) => (
+                <TouchableOpacity key={link} onPress={()=>handleLinkPress(link)}>
+                  <Text key={link} style={styles.footerLink}>{link}</Text>
+                </TouchableOpacity>
               ))}
             </View>
             <View style={styles.footerColumn}>
               <Text style={styles.footerColumnTitle}>Information</Text>
-              {['Contact Us', 'Privacy Policy', 'Terms of Services', 'Disclaimer'].map((link) => (
-                <Text key={link} style={styles.footerLink}>{link}</Text>
+              {['Privacy Policy', 'Terms of Services', 'Disclaimer'].map((link) => (
+                <TouchableOpacity key={link} onPress={()=>handleLinkPress(link)}>
+                  <Text key={link} style={styles.footerLink}>{link}</Text>
+                </TouchableOpacity>
               ))}
             </View>
           </View>
@@ -335,8 +363,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   navText: {
-    fontSize: 12,
+    fontSize: 14,
     marginLeft: 16,
+    marginRight: 20,
     color: 'black',
     fontWeight: '500',
   },
@@ -528,7 +557,8 @@ const styles = StyleSheet.create({
   networkSection: {
     backgroundColor: '#1a365d',
     margin: 16,
-    padding: 24,
+    padding: 10,
+    // height: 350,
     borderRadius: 8,
     position: 'relative',
     overflow: 'hidden',
@@ -536,7 +566,7 @@ const styles = StyleSheet.create({
   networkHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 15,
   },
   networkLogo: {
     width: 20,
@@ -577,7 +607,7 @@ const styles = StyleSheet.create({
   networkInfo: {
     flex: 1,
     marginLeft: 40,
-    marginTop: 10,
+    // marginTop: 10,
   },
   networkInfoTitle: {
     color: 'white',
@@ -607,7 +637,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingVertical: 10,
     borderRadius: 50,
-    marginTop: 32,
+    marginTop: -10,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

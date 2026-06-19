@@ -140,6 +140,7 @@ export default function StudentProfilePage() {
         const updatedUser = { ...userData, photo_url: newPhotoUrl };
         setUserData(updatedUser);
         await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
+        await AsyncStorage.setItem("photo_url", newPhotoUrl);
         setAlertData({ title: 'Success', message: 'Profile picture updated successfully' });
         setAlertVisible(true);
         fetchData(true);

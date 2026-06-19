@@ -26,9 +26,11 @@ import RatingScreen from "./student/RatingScreen";
 import StudentHomePage from "./student/StudentHomePage";
 import FavoriteMentorsPage from "./student/FavoriteMentorsPage";
 import StudentProfilePage from "./student/StudentProfilePage";
+import StudentProfileWrapper from "./student/ProfileWrapper";
 import YourSession from "./student/YourSession";
 import MentorProfile from "./student/MentorProfile";
 import MentorProfilePage from "./mentor/MentorProfilePage";
+import MentorProfileWrapper from "./mentor/ProfileWrapper";
 import MentorAskPage from "./mentor/MentorAskPage";
 import ScheduleCall from "./student/ScheduleCall";
 import PaymentPage from "./student/PaymentPage";
@@ -77,6 +79,7 @@ import { socketManager } from "../services/socketManager";
 
 import { agoraChatService } from "../services/chat/agoraChatClient";
 import { chatSessionManager } from "../services/chat/chatSessionManager";
+import ProfileIcon from "../components/ProfileIcon";
 
 const INCOMING_CALL_CHANNEL = "incoming_calls";
 const ONGOING_CALL_CHANNEL = "ongoing_calls";
@@ -97,7 +100,7 @@ interface ProfileInfoParams {
 const AnimatedIonicons = Animated.createAnimatedComponent(Ionicons);
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
-function TabItem({ route, isFocused, onPress }: any) {
+function TabItem({ route, isFocused, onPress, role, userPhotoUrl }: any) {
   const animatedValue = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
 
   useEffect(() => {
@@ -124,13 +127,22 @@ function TabItem({ route, isFocused, onPress }: any) {
     outputRange: ["#ffffff", "#2563eb"],
   });
 
+  // 1. Determine which icon asset or component to use
   let icon;
+  let IsProfileSvg = false;
+
   if (route.name === "Home") {
     icon = require("../app-assets/mentoring-icon.svg");
   } else if (route.name === "Chat") {
     icon = require("../app-assets/chat-round.svg");
   } else if (route.name === "Ask") {
-    icon = require("../app-assets/chat-round.svg");
+    if (role === "mentor") {
+      icon = require("../app-assets/mentor-ask.svg");
+    } else {
+      icon = require("../app-assets/chat-round.svg");
+    }
+  } else if (route.name === "Profile") {
+    IsProfileSvg = true;
   }
 
   return (
@@ -160,20 +172,41 @@ function TabItem({ route, isFocused, onPress }: any) {
             tabStyles.iconContainer,
             {
               backgroundColor: iconContainerBackground,
-              // Shadow animation is tricky with native driver false on some platforms,
-              // but we can control elevation/opacity if needed.
               elevation: isFocused ? 4 : 0,
               shadowOpacity: isFocused ? 0.25 : 0,
             },
           ]}
         >
-          {route.name === "Ask" ? (
+          {/* 2. Handle the Profile route rendering cleanly */}
+          {route.name === "Profile" ? (
+            userPhotoUrl ? (
+              // If user has uploaded a photo, render the image inside the tab circle
+              <AnimatedImage
+                source={{ uri: userPhotoUrl }}
+                style={[
+                  tabStyles.icon,
+                  tabStyles.profileImage,
+                  { 
+                    borderRadius: 20,
+                    borderWidth: isFocused ? 2 : 0,
+                    borderColor: "#2563eb" 
+                  }
+                ]}
+                contentFit="cover"
+              />
+            ) : (
+              // Fallback to our custom SVG component if no photo is uploaded
+              <ProfileIcon color={isFocused ? "#2563eb" : "#ffffff"} size={26} />
+            )
+          ) : route.name === "Ask" && role !== "mentor" ? (
+            // Handle non-mentor Ask route (Ionicons)
             <AnimatedIonicons
               name={isFocused ? "add-circle" : "add-circle-outline"}
               size={26}
               style={{ color: iconColor }}
             />
           ) : (
+            // Handle all other standard SVG file assets via AnimatedImage
             <AnimatedImage
               source={icon}
               style={tabStyles.icon}
@@ -186,16 +219,17 @@ function TabItem({ route, isFocused, onPress }: any) {
   );
 }
 
-const PILL_WIDTH = 280;
+const PILL_WIDTH = 340;
 const ITEM_WIDTH = 60;
 const PADDING = 20;
 const USABLE_WIDTH = PILL_WIDTH - 2 * PADDING;
-const GAP = (USABLE_WIDTH - 3 * ITEM_WIDTH) / 4;
+const GAP = (USABLE_WIDTH - 4 * ITEM_WIDTH) / 5;
 
 const TAB_CENTERS = [
   PADDING + GAP + ITEM_WIDTH / 2,
   PADDING + 2 * GAP + 1.5 * ITEM_WIDTH,
   PADDING + 3 * GAP + 2.5 * ITEM_WIDTH,
+  PADDING + 4 * GAP + 3.5 * ITEM_WIDTH,
 ];
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -203,6 +237,28 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const [circleX, setCircleX] = React.useState(TAB_CENTERS[state.index]);
   const cutoutX = React.useRef(new Animated.Value(TAB_CENTERS[state.index])).current;
+  const [role, setRole] = React.useState<string | null>(null);
+  const [userPhotoUrl, setUserPhotoUrl] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const userStr = await AsyncStorage.getItem("user");
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          setRole(user.role || null);
+          setUserPhotoUrl(user.photo_url || null);
+        }
+        const storedRole = await AsyncStorage.getItem("role");
+        if (storedRole && !role) {
+          setRole(storedRole);
+        }
+      } catch (err) {
+        console.error("Failed to load user data for tab bar:", err);
+      }
+    };
+    loadUserData();
+  }, []);
 
   React.useEffect(() => {
     const listenerId = cutoutX.addListener(({ value }) => setCircleX(value));
@@ -250,6 +306,8 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
               route={route}
               isFocused={isFocused}
               onPress={onPress}
+              role={role}
+              userPhotoUrl={userPhotoUrl}
             />
           );
         })}
@@ -280,6 +338,8 @@ function AuthenticatedTabs() {
         <Tab.Screen name="Ask" component={StudentAskPage} />
       )}
       {role === "mentor" && <Tab.Screen name="Ask" component={MentorAskPage} />}
+      {role === "student" && <Tab.Screen name="Profile" component={StudentProfileWrapper} />}
+      {role === "mentor" && <Tab.Screen name="Profile" component={MentorProfileWrapper} />}
     </Tab.Navigator>
   );
 }
@@ -870,7 +930,7 @@ const tabStyles = StyleSheet.create({
   pill: {
     flexDirection: "row",
     backgroundColor: "transparent",
-    width: 280,
+    width: 340,
     paddingHorizontal: 20,
     height: 60,
     justifyContent: "space-evenly",
@@ -878,7 +938,7 @@ const tabStyles = StyleSheet.create({
   },
   pillBackgroundContainer: {
     position: "absolute",
-    width: 280,
+    width: 340,
     height: 60,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -919,5 +979,10 @@ const tabStyles = StyleSheet.create({
   icon: {
     width: 26,
     height: 26,
+  },
+  profileImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
 });

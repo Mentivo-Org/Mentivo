@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 56,
     height: 56,
-    borderRadius: 8,
+    borderRadius: 28,
     backgroundColor: '#e2e8f0',
   },
   verifiedIcon: {

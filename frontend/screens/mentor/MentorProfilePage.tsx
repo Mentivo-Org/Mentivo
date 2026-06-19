@@ -68,9 +68,6 @@ export default function MentorProfilePage() {
   const [tempUpi, setTempUpi] = useState("");
   const [savingUpi, setSavingUpi] = useState(false);
 
-  // Online Status
-  const [isOnline, setIsOnline] = useState(false);
-
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertData, setAlertData] = useState({ title: '', message: '' });
 
@@ -81,7 +78,6 @@ export default function MentorProfilePage() {
         const parsedData = JSON.parse(cachedStats);
         setMentorData(parsedData.profile);
         setTempUpi(parsedData.profile.upiId || "");
-        setIsOnline(parsedData.profile.isOnline || false);
         setLoading(false);
       }
     } catch (err) {
@@ -97,7 +93,6 @@ export default function MentorProfilePage() {
         const newData = response.data;
         setMentorData(newData.profile);
         setTempUpi(newData.profile.upiId || "");
-        setIsOnline(newData.profile.isOnline || false);
         await AsyncStorage.setItem("stats", JSON.stringify(newData));
       }
     } catch (error) {
@@ -105,23 +100,6 @@ export default function MentorProfilePage() {
     } finally {
       setLoading(false);
       setRefreshing(false);
-    }
-  };
-
-  const toggleOnlineStatus = async () => {
-    const nextValue = !isOnline;
-    try {
-      setIsOnline(nextValue);
-      const response = await api.post(MentorEndpoints.setStatus, { isOnline: nextValue });
-      if (response.status !== 200) {
-        // Rollback
-        setIsOnline(!nextValue);
-        setAlertData({ title: "Error", message: "Failed to update online status" });
-        setAlertVisible(true);
-      }
-    } catch (err) {
-      setIsOnline(!nextValue);
-      console.error("Error toggling online status:", err);
     }
   };
 
@@ -176,7 +154,15 @@ export default function MentorProfilePage() {
         },
       });
 
-      if (response.status === 200) {
+      if (response.status === 200 && response.data?.photo_url) {
+        const newPhotoUrl = response.data.photo_url;
+        const updatedMentorData = {
+          ...mentorData,
+          user: { ...mentorData.user, photo_url: newPhotoUrl }
+        };
+        setMentorData(updatedMentorData);
+        await AsyncStorage.setItem("stats", JSON.stringify({ ...mentorData, profile: updatedMentorData }));
+        await AsyncStorage.setItem("photo_url", newPhotoUrl);
         setAlertData({ title: 'Success', message: 'Profile picture updated successfully' });
         setAlertVisible(true);
         fetchData(true);
@@ -308,20 +294,6 @@ export default function MentorProfilePage() {
         profilePic={profilePic}
         onClose={() => setIsViewerVisible(false)}
       />
-
-      {/* Availability Toggle matching Node 408:9 */}
-      <TouchableOpacity 
-        style={styles.onlineToggle} 
-        onPress={toggleOnlineStatus}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.switchTrack, isOnline && styles.switchTrackOnline]}>
-          <View style={[styles.switchThumb, isOnline && styles.switchThumbOnline]} />
-        </View>
-        <Text style={styles.toggleText}>
-          {isOnline ? 'ONLINE' : 'OFFLINE'}
-        </Text>
-      </TouchableOpacity>
 
       <DialogBox
         visible={alertVisible}
@@ -729,37 +701,5 @@ const styles = StyleSheet.create({
   closeIcon: {
     width: 24,
     height: 24,
-  },
-  onlineToggle: {
-    position: 'absolute',
-    right: 24,
-    bottom: 40,
-    alignItems: 'center',
-    gap: 4,
-  },
-  switchTrack: {
-    width: 28,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#FF0000',
-    justifyContent: 'center',
-    paddingHorizontal: 2,
-  },
-  switchTrackOnline: {
-    backgroundColor: '#25D366',
-  },
-  switchThumb: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: 'white',
-  },
-  switchThumbOnline: {
-    alignSelf: 'flex-end',
-  },
-  toggleText: {
-    fontSize: 12,
-    color: '#7e7e7e',
-    fontWeight: '400',
   },
 });
