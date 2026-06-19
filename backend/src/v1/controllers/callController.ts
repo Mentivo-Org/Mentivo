@@ -748,8 +748,8 @@ export const freeMatchmaking = async (req: Request, res: Response) => {
         status: { notIn: ['missed', 'rejected', 'failed', 'cancelled'] }
       } 
     });
+    console.log("Past calls", pastCalls);
     if (pastCalls > 0) {
-      console.log("Past calls", pastCalls);
       return res.status(400).json({ error: 'You are only eligible for the first free call.' });
     }
 
