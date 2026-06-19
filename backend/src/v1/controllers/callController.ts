@@ -776,17 +776,18 @@ export const freeMatchmaking = async (req: Request, res: Response) => {
     });
 
     const mentor = availableMentors[Math.random()*availableMentors.length];
-    const matchedMentorId = mentor.id;
+    console.log("Matched with ",mentor);
+    const matchedMentorId = mentor.mentorProfile?.mentorId;
 
     if (!mentor.mentorProfile || !mentor.mentorProfile.isOnline) {
       return res.status(404).json({ error: 'Matched mentor went offline. Please try again.' });
     }
 
     // 3. Lock matched mentor
-    await lockToBusy(matchedMentorId);
+    await lockToBusy(matchedMentorId as string);
 
     // 4. Create free call session
-    const channelName = generateChannelName(studentId as string, matchedMentorId);
+    const channelName = generateChannelName(studentId as string, matchedMentorId as string);
     if (!channelName) {
       return res.status(500).json({ error: 'Failed to generate channel ID' });
     }
@@ -796,7 +797,7 @@ export const freeMatchmaking = async (req: Request, res: Response) => {
     const session = await prisma.callSession.create({
       data: {
         student_id: studentId as string,
-        mentor_id: matchedMentorId,
+        mentor_id: matchedMentorId as string,
         agoraChannelId: channelName,
         status: 'calling',
         is_free: true,
@@ -805,10 +806,10 @@ export const freeMatchmaking = async (req: Request, res: Response) => {
     });
 
     const studentToken = generateToken(channelName, studentId as string);
-    const mentorToken = generateToken(channelName, matchedMentorId);
+    const mentorToken = generateToken(channelName, matchedMentorId as string);
 
     const agoraConvId = `${studentId}_${matchedMentorId}`;
-    const chatSession = await chatSessionService.getOrCreateSession(studentId as string, matchedMentorId, agoraConvId);
+    const chatSession = await chatSessionService.getOrCreateSession(studentId as string, matchedMentorId as string, agoraConvId);
 
     const mentorFcmToken = await prisma.fCMToken.findFirst({
       where: { userId: matchedMentorId },
@@ -826,7 +827,7 @@ export const freeMatchmaking = async (req: Request, res: Response) => {
       });
     }
 
-    scheduleMissedCallTimeout(session.id, studentId as string, matchedMentorId);
+    scheduleMissedCallTimeout(session.id, studentId as string, matchedMentorId as string);
 
     res.json({
       sessionId: session.id,
