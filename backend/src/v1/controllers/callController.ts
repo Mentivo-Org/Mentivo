@@ -745,7 +745,7 @@ export const freeMatchmaking = async (req: Request, res: Response) => {
     const pastCalls = await prisma.callSession.count({ 
       where: { 
         student_id: studentId,
-        status: { notIn: ['missed', 'rejected', 'failed'] }
+        status: { notIn: ['missed', 'rejected', 'failed', 'cancelled'] }
       } 
     });
     if (pastCalls > 0) {
