@@ -65,7 +65,7 @@ export const initiateCall = async (req: Request, res: Response) => {
 
     // 2. Validate student wallet balance (min ₹10)
     const wallet = await prisma.wallet.findUnique({ where: { userId: studentId } });
-    if (!wallet || Number(wallet.balance) < 50) {
+    if (!wallet || Number(wallet.balance) < 10) {
       return res.status(402).json({ error: 'Insufficient wallet balance (Minimum ₹10)' });
     }
 
