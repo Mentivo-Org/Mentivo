@@ -81,7 +81,7 @@ export const VersionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   if (!isReady && dialogType !== 'force') {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color="#0077CB" />
       </View>
     );
   }

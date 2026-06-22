@@ -144,7 +144,7 @@ const ChatListPage = () => {
         <View style={styles.itemTextContainer}>
           <View style={styles.itemRow}>
             <Text style={styles.itemName}>{partner.name}</Text>
-            <Text style={[styles.timeText, { color: hasUnread ? '#2563eb' : '#444653' }]}>
+            <Text style={[styles.timeText, { color: hasUnread ? '#0077CB' : '#444653' }]}>
               {timeAgo}
             </Text>
           </View>
@@ -216,7 +216,7 @@ const ChatListPage = () => {
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color="#0077CB" />
         </View>
       ) : filteredFavorites.length === 0 && filteredSessions.length === 0 ? (
         <View style={styles.emptyScreenContainer}>
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   unreadBadge: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     borderRadius: 8,
     width: 16,
     height: 16,
@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   findMentorButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,

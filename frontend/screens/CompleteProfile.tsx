@@ -130,7 +130,9 @@ const CompleteProfile = () => {
 
   const mentorComplete = async () => {
     console.log(formData);
-    if(!formData.year || !formData.branch || !formData.expertise || !formData.languages || !formData.idCard || (formData.phone==='' && !phone)) {
+    const hasPhone = phone || formData.phone;
+    if(!formData.college || !formData.year || !formData.branch || !formData.expertise || !formData.languages || !formData.idCard || !hasPhone ||
+       formData.college.trim() === '' || String(formData.year).trim() === '' || formData.branch.trim() === '' || formData.expertise.trim() === '' || formData.languages.trim() === '' || String(hasPhone).trim() === '') {
       setAlertData({title: 'Error', message: 'Please fill all the required fields and attach your ID card'});
       setAlertVisible(true);
       return;
@@ -182,7 +184,7 @@ const CompleteProfile = () => {
 
   const studentComplete = async () => {
     
-    if(formData.grade==='' || formData.phone==='') {
+    if(!formData.grade || !formData.phone || formData.grade.trim() === '' || formData.phone.trim() === '') {
       setAlertData({title: 'Error', message: 'Please fill all the required fields'});
       setAlertVisible(true);
       return;
@@ -438,13 +440,22 @@ const CompleteProfile = () => {
       </Modal>
       <DialogBox 
         visible={alertVisible} 
-        onClose={alertData.onClose || (() => setAlertVisible(false))} 
+        onClose={() => {
+          setAlertVisible(false);
+          if (alertData.onClose) alertData.onClose();
+        }} 
         title={alertData.title} 
         message={alertData.message}
         primaryButtonText={alertData.primaryButtonText}
-        onPrimaryPress={alertData.onPrimaryPress}
+        onPrimaryPress={() => {
+          setAlertVisible(false);
+          if (alertData.onPrimaryPress) alertData.onPrimaryPress();
+        }}
         secondaryButtonText={alertData.secondaryButtonText}
-        onSecondaryPress={alertData.onSecondaryPress}
+        onSecondaryPress={() => {
+          setAlertVisible(false);
+          if (alertData.onSecondaryPress) alertData.onSecondaryPress();
+        }}
       />
     </SafeAreaView>
   );
@@ -486,7 +497,7 @@ const styles = StyleSheet.create({
   },
   startFreshText: {
     fontSize: 14,
-    color: '#2563eb',
+    color: '#0077CB',
     fontWeight: '600',
   },
   logo: {
@@ -595,7 +606,7 @@ const styles = StyleSheet.create({
     color: '#6b7280',
   },
   submitButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -683,7 +694,7 @@ const styles = StyleSheet.create({
   modalOptionSelected: {
     backgroundColor: '#eff6ff',
     borderWidth: 1,
-    borderColor: '#2563eb',
+    borderColor: '#0077CB',
   },
   modalOptionText: {
     fontSize: 16,
@@ -691,14 +702,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   modalOptionTextSelected: {
-    color: '#2563eb',
+    color: '#0077CB',
     fontWeight: '600',
   },
   selectedDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
   },
 });
 

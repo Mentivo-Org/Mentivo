@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   signInButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',

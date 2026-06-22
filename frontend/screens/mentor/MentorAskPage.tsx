@@ -251,7 +251,7 @@ export default function MentorAskPage() {
             <View style={styles.answerCard}>
               <View style={styles.answerHeader}>
                 <View style={styles.avatarPlaceholderSmall}>
-                  <Ionicons name="school" size={12} color="#2563eb" />
+                  <Ionicons name="school" size={12} color="#0077CB" />
                 </View>
                 <Text style={styles.mentorName}>
                   {topAnswer.mentor?.name || "Verified Mentor"} (
@@ -287,7 +287,7 @@ export default function MentorAskPage() {
                 <Text style={styles.moreRepliesText}>
                   Show {item.answers.length - 1} more answers
                 </Text>
-                <Ionicons name="chevron-forward" size={14} color="#2563eb" />
+                <Ionicons name="chevron-forward" size={14} color="#0077CB" />
               </TouchableOpacity>
             )}
           </View>
@@ -407,7 +407,7 @@ export default function MentorAskPage() {
       {/* List */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color="#0077CB" />
         </View>
       ) : (
         <View style={{ flex: 1 }}>
@@ -423,14 +423,14 @@ export default function MentorAskPage() {
               <RefreshControl
                 refreshing={isRefreshing}
                 onRefresh={handleRefresh}
-                colors={["#2563eb"]}
+                colors={["#0077CB"]}
               />
             }
             onEndReached={handleLoadMore}
             onEndReachedThreshold={0.5}
             ListFooterComponent={
               isMoreLoading ? (
-                <ActivityIndicator size="small" color="#2563eb" style={{ marginVertical: 16 }} />
+                <ActivityIndicator size="small" color="#0077CB" style={{ marginVertical: 16 }} />
               ) : null
             }
             ListEmptyComponent={
@@ -599,7 +599,7 @@ const styles = StyleSheet.create({
   mentorName: {
     fontSize: 12,
     fontWeight: "bold",
-    color: "#2563eb",
+    color: "#0077CB",
   },
   answerText: {
     fontSize: 13,
@@ -630,7 +630,7 @@ const styles = StyleSheet.create({
   },
   moreRepliesText: {
     fontSize: 12,
-    color: "#2563eb",
+    color: "#0077CB",
     fontWeight: "600",
     marginRight: 4,
   },
@@ -653,7 +653,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   replySubmitBtn: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#0077CB",
     borderRadius: 6,
     paddingVertical: 8,
     alignItems: "center",

@@ -40,9 +40,6 @@ export default function StudentProfilePage() {
   const [tempName, setTempName] = useState("");
   const [savingName, setSavingName] = useState(false);
 
-  const [isEditingPhone, setIsEditingPhone] = useState(false);
-  const [tempPhone, setTempPhone] = useState("");
-  const [savingPhone, setSavingPhone] = useState(false);
 
   const [isEditingGrade, setIsEditingGrade] = useState(false);
   const [tempGrade, setTempGrade] = useState("");
@@ -55,7 +52,6 @@ export default function StudentProfilePage() {
         const parsedUser = JSON.parse(cachedUser);
         setUserData(parsedUser);
         setTempName(parsedUser.name || "");
-        setTempPhone(parsedUser.phone || "");
         setTempGrade(parsedUser.grade || "");
         setLoading(false);
       }
@@ -72,7 +68,6 @@ export default function StudentProfilePage() {
         const user = response.data.user;
         setUserData(user);
         setTempName(user.name || "");
-        setTempPhone(user.phone || "");
         setTempGrade(user.grade || "");
         await AsyncStorage.setItem("user", JSON.stringify(user));
       }
@@ -154,7 +149,7 @@ export default function StudentProfilePage() {
     }
   };
 
-  const handleUpdateProfile = async (field: 'name' | 'phone' | 'grade', val: string, setSaving: (v: boolean) => void, setIsEditing: (v: boolean) => void) => {
+  const handleUpdateProfile = async (field: 'name' | 'grade', val: string, setSaving: (v: boolean) => void, setIsEditing: (v: boolean) => void) => {
     setSaving(true);
     try {
       const body: any = {};
@@ -181,7 +176,7 @@ export default function StudentProfilePage() {
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color="#0077CB" />
       </SafeAreaView>
     );
   }
@@ -265,7 +260,7 @@ export default function StudentProfilePage() {
                   <Text style={styles.cancelText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => handleUpdateProfile('name', tempName, setSavingName, setIsEditingName)} disabled={savingName} style={styles.saveBtn}>
-                  {savingName ? <ActivityIndicator size="small" color="#2563eb" /> : <Text style={styles.saveText}>Save</Text>}
+                  {savingName ? <ActivityIndicator size="small" color="#0077CB" /> : <Text style={styles.saveText}>Save</Text>}
                 </TouchableOpacity>
               </View>
             </View>
@@ -279,37 +274,10 @@ export default function StudentProfilePage() {
 
         {/* Details Section */}
         <View style={styles.detailsContainer}>
-          {/* Phone Row */}
+          {/* Phone Row (Read-only for security reasons) */}
           <View style={styles.detailRow}>
-            <View style={styles.detailLabelRow}>
-              <Text style={styles.detailLabel}>Phone</Text>
-              {!isEditingPhone && (
-                <TouchableOpacity onPress={() => setIsEditingPhone(true)}>
-                  <Text style={styles.editLink}>Edit</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            {isEditingPhone ? (
-              <View style={styles.editInputContainer}>
-                <TextInput
-                  style={styles.detailInput}
-                  value={tempPhone}
-                  onChangeText={setTempPhone}
-                  placeholder="Enter phone number"
-                  keyboardType="phone-pad"
-                />
-                <View style={styles.editActions}>
-                  <TouchableOpacity onPress={() => { setIsEditingPhone(false); setTempPhone(userData.phone || ""); }} style={styles.cancelBtn}>
-                    <Text style={styles.cancelText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleUpdateProfile('phone', tempPhone, setSavingPhone, setIsEditingPhone)} disabled={savingPhone} style={styles.saveBtn}>
-                    {savingPhone ? <ActivityIndicator size="small" color="#2563eb" /> : <Text style={styles.saveText}>Save</Text>}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              <Text style={styles.detailValue}>{userData.phone || "Not provided"}</Text>
-            )}
+            <Text style={styles.detailLabel}>Phone</Text>
+            <Text style={styles.detailValue}>{userData.phone || "Not provided"}</Text>
           </View>
 
           {/* Email Row (Read-only for security / Firebase sync reasons) */}
@@ -341,7 +309,7 @@ export default function StudentProfilePage() {
                     <Text style={styles.cancelText}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleUpdateProfile('grade', tempGrade, setSavingGrade, setIsEditingGrade)} disabled={savingGrade} style={styles.saveBtn}>
-                    {savingGrade ? <ActivityIndicator size="small" color="#2563eb" /> : <Text style={styles.saveText}>Save</Text>}
+                    {savingGrade ? <ActivityIndicator size="small" color="#0077CB" /> : <Text style={styles.saveText}>Save</Text>}
                   </TouchableOpacity>
                 </View>
               </View>
@@ -463,7 +431,7 @@ const styles = StyleSheet.create({
     width: 168,
     height: 168,
     borderRadius: 84,
-    backgroundColor: '#2563eb', 
+    backgroundColor: '#0077CB', 
     padding: 2,
     justifyContent: 'center',
     alignItems: 'center',
@@ -484,7 +452,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 10,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -524,7 +492,7 @@ const styles = StyleSheet.create({
   },
   nameInput: {
     borderBottomWidth: 1,
-    borderBottomColor: '#2563eb',
+    borderBottomColor: '#0077CB',
     fontSize: 18,
     color: '#444653',
     paddingVertical: 4,
@@ -557,7 +525,7 @@ const styles = StyleSheet.create({
   },
   detailInput: {
     borderBottomWidth: 1,
-    borderBottomColor: '#2563eb',
+    borderBottomColor: '#0077CB',
     fontSize: 16,
     color: '#444653',
     paddingVertical: 4,
@@ -567,7 +535,7 @@ const styles = StyleSheet.create({
   },
   editLink: {
     fontSize: 12,
-    color: '#2563eb',
+    color: '#0077CB',
     fontWeight: 'bold',
   },
   editActions: {
@@ -588,7 +556,7 @@ const styles = StyleSheet.create({
   },
   saveText: {
     fontSize: 12,
-    color: '#2563eb',
+    color: '#0077CB',
     fontWeight: 'bold',
   },
   errorText: {
@@ -597,7 +565,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   backBtnFallback: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,

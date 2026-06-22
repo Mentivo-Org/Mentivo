@@ -17,7 +17,7 @@ import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
 import api from '../../services/api';
 import { LoginEndpoints } from '../../constants/endpoint';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import Ionicons from '@react-native-vector-icons/ionicons';
 import { useLoading } from '../../context/LoadingContext';
 import DialogBox from '../../components/DialogBox';
 import {isEmail} from 'validator'
@@ -222,7 +222,7 @@ const MentorSignupPage = () => {
                   <Ionicons
                     name={showPassword ? "eye" : "eye-off"}
                     size={20}
-                    color="#2563eb"
+                    color="#0077CB"
                   />
                 </TouchableOpacity>
               </View>
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
     color: '#444653',
   },
   createButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     borderRadius: 8,
     paddingVertical: 15,
     alignItems: 'center',
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   signInText: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#2563eb',
+    color: '#0077CB',
   },
   legalFooter: {
     marginTop: 24,

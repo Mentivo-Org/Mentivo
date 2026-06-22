@@ -7,7 +7,7 @@ import { socketManager } from '../services/socketManager';
 import { CallEndpoints } from '../constants/endpoint';
 import { requestMicrophonePermission } from '../services/permissions';
 import { chatSessionManager } from '../services/chat/chatSessionManager';
-import notifee, { AndroidImportance } from '@notifee/react-native';
+import notifee, { AndroidImportance, AndroidForegroundServiceType } from '@notifee/react-native';
 import { navigate } from '../services/navigation';
 
 export type CallStatus = 'connecting' | 'calling' | 'ringing' | 'active' | 'ended';
@@ -66,13 +66,14 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isSpeakerOn, setIsSpeakerOn] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [isFreeCall, setIsFreeCall] = useState<boolean>(false);
 
   const callStatusRef = useRef<CallStatus | null>(null);
   const durationRef = useRef<number>(0);
   const isEndingCallRef = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
-  const stateRef = useRef({ callId, role, callerName, mentorPhoto });
+  const stateRef = useRef({ callId, role, callerName, mentorPhoto, isFreeCall });
 
   // Sync refs to avoid stale closures in event listeners
   useEffect(() => {
@@ -84,8 +85,8 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [duration]);
 
   useEffect(() => {
-    stateRef.current = { callId, role, callerName, mentorPhoto };
-  }, [callId, role, callerName, mentorPhoto]);
+    stateRef.current = { callId, role, callerName, mentorPhoto, isFreeCall };
+  }, [callId, role, callerName, mentorPhoto, isFreeCall]);
 
   // ----- Timer helpers -----
   const startTimer = () => {
@@ -175,6 +176,8 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
           android: {
             channelId: ONGOING_CALL_CHANNEL,
             ongoing: true,
+            asForegroundService: true,
+            foregroundServiceTypes: [(AndroidForegroundServiceType as any).MICROPHONE],
             onlyAlertOnce: true,
             pressAction: { id: 'default', launchActivity: 'default' },
             actions: [
@@ -260,6 +263,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (isEndingCallRef.current) return;
 
         const currentCallStatus = statusRes.data.status;
+        setIsFreeCall(!!statusRes.data.is_free);
         if (!['calling', 'ringing', 'active'].includes(currentCallStatus)) {
           console.warn('Call is no longer active in status check');
           await endCallSession(false);
@@ -331,6 +335,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     stopTimer();
     stopHeartbeat();
     leaveChannel();
+    DeviceEventEmitter.emit('stop_foreground_service');
 
     const activeCallId = stateRef.current.callId;
     const activeRole = stateRef.current.role;
@@ -377,6 +382,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsSpeakerOn(false);
     setIsMinimized(false);
     setIsConnected(false);
+    setIsFreeCall(false);
 
     // Navigate accordingly
     if (activeCallId) {
@@ -387,7 +393,14 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
           mentorPhoto: activePhoto || undefined,
         });
       } else {
-        navigate('Main', { screen: 'Home' });
+        if (activeRole === 'caller' && remoteStatus === 'missed' && stateRef.current.isFreeCall) {
+          navigate('Main', {
+            screen: 'Home',
+            params: { showMissedFreeCallAlert: true }
+          });
+        } else {
+          navigate('Main', { screen: 'Home' });
+        }
       }
     }
   };

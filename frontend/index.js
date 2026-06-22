@@ -152,6 +152,18 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
   }
 });
 
+// Register Notifee Foreground Service
+notifee.registerForegroundService((notification) => {
+  return new Promise((resolve) => {
+    console.log('[Notifee Foreground Service] Service registered and active');
+    const stopSub = DeviceEventEmitter.addListener('stop_foreground_service', () => {
+      console.log('[Notifee Foreground Service] Stopping service');
+      stopSub.remove();
+      resolve();
+    });
+  });
+});
+
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);
 // It also ensures that whether you load the app in Expo Go or in a native build,
 // the environment is set up appropriately

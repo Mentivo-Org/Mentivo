@@ -127,7 +127,7 @@ export default function StudentCallsPage() {
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={["#2563eb"]} />
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={["#0077CB"]} />
         }
       >
         <View style={styles.section}>
@@ -144,7 +144,7 @@ export default function StudentCallsPage() {
           ) : (
             <View style={styles.emptyContainerSmall}>
               {isLoadingFavorites ? (
-                <ActivityIndicator size="small" color="#2563eb" />
+                <ActivityIndicator size="small" color="#0077CB" />
               ) : (
                 <Text style={styles.emptyTextSmall}>No favourite mentors yet.</Text>
               )}
@@ -292,11 +292,11 @@ const styles = StyleSheet.create({
   },
   recentDay: {
     fontSize: 12,
-    color: "#2563eb",
+    color: "#0077CB",
     marginBottom: 4,
   },
   unreadBadge: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#0077CB",
     width: 12,
     height: 12,
     borderRadius: 6,

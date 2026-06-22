@@ -2,7 +2,7 @@
   "expo": {
     "name": "Mentivo",
     "slug": "mentivo",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/icon.png",
       "resizeMode": "cover",
-      "backgroundColor": "#2563EB"
+      "backgroundColor": "#0077CB"
     },
     "ios": {
       "supportsTablet": true
@@ -52,9 +52,10 @@
         "USE_FULL_SCREEN_INTENT",
         "SYSTEM_ALERT_WINDOW",
         "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_MICROPHONE",
         "RECEIVE_BOOT_COMPLETED"
       ],
-      "versionCode": 15
+      "versionCode": 16
     },
     "web": {
       "favicon": "./assets/icon.png"

@@ -20,8 +20,8 @@ const statusIcons: Record<string, any> = {
 const statusColors: Record<string, string> = {
   sending: '#9CA3AF',
   sent: '#6B7280',
-  delivered: '#2563eb',
-  read: '#2563eb',
+  delivered: '#0077CB',
+  read: '#0077CB',
   blocked: '#FF3B30',
   failed: '#FF3B30',
 };

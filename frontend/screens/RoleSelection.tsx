@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   studentButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

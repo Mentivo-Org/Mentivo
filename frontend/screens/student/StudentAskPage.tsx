@@ -20,19 +20,27 @@ import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import api from "../../services/api";
-import { AskEndpoints } from "../../constants/endpoint";
+import { AskEndpoints, CallEndpoints, WalletEndpoints } from "../../constants/endpoint";
 import DialogBox from "../../components/DialogBox";
+import { useLoading } from "../../context/LoadingContext";
 
 const { width } = Dimensions.get("window");
 
 export default function StudentAskPage() {
   const navigation = useNavigation<any>();
+  const { showLoading, hideLoading } = useLoading();
   const [userId, setUserId] = useState<string>("");
   const [questions, setQuestions] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
   const [alertVisible, setAlertVisible] = useState(false);
-  const [alertData, setAlertData] = useState({ title: '', message: '' });
+  const [alertData, setAlertData] = useState<{
+    title: string;
+    message: string;
+    secondaryButtonText?: string;
+    onSecondaryPress?: () => void;
+    onPrimaryPress?: () => void;
+  }>({ title: '', message: '' });
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -101,6 +109,58 @@ export default function StudentAskPage() {
       }
     } catch (err) {
       console.error("Error fetching Q&A config:", err);
+    }
+  };
+
+  const handleInitiateCall = async (mentor: any) => {
+    if (!mentor) return;
+    showLoading("Initiating call...");
+    try {
+      const balanceResponse = await api.get(WalletEndpoints.getBalance);
+      const balance = balanceResponse.data?.balance ?? 0;
+      
+      if (balance < 10) {
+        hideLoading();
+        setAlertData({
+          title: "Insufficient Balance",
+          message: "Please add money to your wallet to start the call.",
+          secondaryButtonText: "Add Funds",
+          onSecondaryPress: () => {
+            navigation.navigate("Payment");
+          }
+        });
+        setAlertVisible(true);
+        return;
+      }
+
+      const response = await api.post(CallEndpoints.initiate, { mentorId: mentor.id || mentor.mentorId });
+      if (response.status === 200) {
+        const { sessionId, channelName, studentToken, maxDurationSeconds, mentorPhoto, chatSessionId } = response.data;
+        
+        navigation.navigate('InCall', {
+          callId: sessionId,
+          channelName,
+          callerName: mentor.name || mentor.mentor?.name || "Mentor",
+          role: 'caller',
+          initialToken: studentToken,
+          maxDuration: maxDurationSeconds,
+          mentorPhoto: mentorPhoto || mentor.photoUrl || mentor.mentor?.photoUrl,
+          chatSessionId
+        });
+      }
+    } catch (error: any) {
+      console.error('Failed to initiate call:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to connect. Please try again.';
+      const isInsufficient = errorMsg.toLowerCase().includes("insufficient");
+      setAlertData({ 
+        title: 'Call Error', 
+        message: errorMsg,
+        secondaryButtonText: isInsufficient ? "Add Funds" : undefined,
+        onSecondaryPress: isInsufficient ? () => navigation.navigate("Payment") : undefined
+      });
+      setAlertVisible(true);
+    } finally {
+      hideLoading();
     }
   };
 
@@ -272,10 +332,10 @@ export default function StudentAskPage() {
             <View style={styles.answerCard}>
               <View style={styles.answerHeader}>
                 <View style={styles.avatarPlaceholderSmall}>
-                  <Ionicons name="school" size={12} color="#2563eb" />
+                  <Ionicons name="school" size={12} color="#0077CB" />
                 </View>
                 <TouchableOpacity
-                  onPress={() => navigation.navigate("MentorProfile", { mentorId: topAnswer.mentorId })}
+                  onPress={() => navigation.navigate("MentorProfile", { mentorId: topAnswer.mentor?.id || topAnswer.mentorId })}
                 >
                   <Text style={styles.mentorName}>
                     {topAnswer.mentor?.name || "Verified Mentor"} (
@@ -285,22 +345,32 @@ export default function StudentAskPage() {
               </View>
               <Text style={styles.answerText}>{topAnswer.text}</Text>
 
-              {/* Vote Actions */}
-              <View style={styles.voteContainer}>
-                <TouchableOpacity
-                  onPress={() => handleVote(topAnswer.id, "UP")}
-                  style={styles.voteButton}
-                >
-                  <Ionicons name="arrow-up-circle-outline" size={20} color="#6b7280" />
-                  <Text style={styles.voteCount}>{topAnswer.upvotes}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleVote(topAnswer.id, "DOWN")}
-                  style={styles.voteButton}
-                >
-                  <Ionicons name="arrow-down-circle-outline" size={20} color="#6b7280" />
-                  <Text style={styles.voteCount}>{topAnswer.downvotes}</Text>
-                </TouchableOpacity>
+              {/* Vote & Call Row */}
+              <View style={styles.voteAndCallRow}>
+                <View style={styles.voteContainer}>
+                  <TouchableOpacity
+                    onPress={() => handleVote(topAnswer.id, "UP")}
+                    style={styles.voteButton}
+                  >
+                    <Ionicons name="arrow-up-circle-outline" size={20} color="#6b7280" />
+                    <Text style={styles.voteCount}>{topAnswer.upvotes}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleVote(topAnswer.id, "DOWN")}
+                    style={styles.voteButton}
+                  >
+                    <Ionicons name="arrow-down-circle-outline" size={20} color="#6b7280" />
+                    <Text style={styles.voteCount}>{topAnswer.downvotes}</Text>
+                  </TouchableOpacity>
+                </View>
+                {topAnswer.mentor && (
+                  <TouchableOpacity
+                    onPress={() => handleInitiateCall(topAnswer.mentor)}
+                    style={styles.talkButton}
+                  >
+                    <Text style={styles.talkButtonText}>Talk to {topAnswer.mentor.name.split(' ')[0]}</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
 
@@ -312,7 +382,7 @@ export default function StudentAskPage() {
                 <Text style={styles.moreRepliesText}>
                   Show {item.answers.length - 1} more answers
                 </Text>
-                <Ionicons name="chevron-forward" size={14} color="#2563eb" />
+                <Ionicons name="chevron-forward" size={14} color="#0077CB" />
               </TouchableOpacity>
             )}
           </View>
@@ -360,7 +430,7 @@ export default function StudentAskPage() {
       {/* List */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color="#0077CB" />
         </View>
       ) : (
         <FlatList
@@ -373,14 +443,14 @@ export default function StudentAskPage() {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
-              colors={["#2563eb"]}
+              colors={["#0077CB"]}
             />
           }
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
           ListFooterComponent={
             isMoreLoading ? (
-              <ActivityIndicator size="small" color="#2563eb" style={{ marginVertical: 16 }} />
+              <ActivityIndicator size="small" color="#0077CB" style={{ marginVertical: 16 }} />
             ) : null
           }
           ListEmptyComponent={
@@ -450,6 +520,15 @@ export default function StudentAskPage() {
         visible={alertVisible}
         title={alertData.title}
         message={alertData.message}
+        secondaryButtonText={alertData.secondaryButtonText}
+        onSecondaryPress={() => {
+          setAlertVisible(false);
+          alertData.onSecondaryPress?.();
+        }}
+        onPrimaryPress={() => {
+          setAlertVisible(false);
+          alertData.onPrimaryPress?.();
+        }}
         onClose={() => setAlertVisible(false)}
       />
     </SafeAreaView>
@@ -479,7 +558,7 @@ const styles = StyleSheet.create({
   askButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#2563eb",
+    backgroundColor: "#0077CB",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
@@ -601,7 +680,7 @@ const styles = StyleSheet.create({
   mentorName: {
     fontSize: 12,
     fontWeight: "bold",
-    color: "#2563eb",
+    color: "#0077CB",
   },
   answerText: {
     fontSize: 13,
@@ -632,7 +711,7 @@ const styles = StyleSheet.create({
   },
   moreRepliesText: {
     fontSize: 12,
-    color: "#2563eb",
+    color: "#0077CB",
     fontWeight: "600",
     marginRight: 4,
   },
@@ -710,7 +789,7 @@ const styles = StyleSheet.create({
     color: "#6b7280",
   },
   submitButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#0077CB",
     borderRadius: 24,
     height: 48,
     alignItems: "center",
@@ -723,5 +802,22 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 15,
     fontWeight: "bold",
+  },
+  voteAndCallRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  talkButton: {
+    backgroundColor: "#0077CB",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  talkButtonText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "600",
   },
 });

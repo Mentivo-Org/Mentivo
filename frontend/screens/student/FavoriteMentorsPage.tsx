@@ -139,7 +139,7 @@ export default function FavoriteMentorsPage() {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={["#2563eb"]} />
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={["#0077CB"]} />
         }
         ListEmptyComponent={
           !isLoading ? (
@@ -147,7 +147,7 @@ export default function FavoriteMentorsPage() {
               <Text style={styles.emptyText}>No favorite mentors found</Text>
             </View>
           ) : (
-            <ActivityIndicator size="large" color="#2563eb" style={{ marginTop: 40 }} />
+            <ActivityIndicator size="large" color="#0077CB" style={{ marginTop: 40 }} />
           )
         }
       />

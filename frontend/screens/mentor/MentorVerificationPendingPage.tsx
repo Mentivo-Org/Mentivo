@@ -84,7 +84,7 @@ const MentorVerificationPendingPage = () => {
           </Text>
 
           {loading ? (
-            <ActivityIndicator size="large" color="#2563eb" style={styles.loader} />
+            <ActivityIndicator size="large" color="#0077CB" style={styles.loader} />
           ) : (
             <View style={styles.buttonContainer}>
               {!isRejected && (
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   primaryButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',

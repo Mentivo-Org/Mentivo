@@ -302,7 +302,7 @@ const ChatPage = (props: any) => {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor="white" />
+      <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : (isKeyboardVisible ? 'height' : undefined)}
         style={{ flex: 1 }}
@@ -340,7 +340,7 @@ const ChatPage = (props: any) => {
             />
           </TouchableOpacity>
         )}
-        {isStudent && (
+        {isStudent && !inCall && (
           <TouchableOpacity 
             onPress={() => navigation.navigate('ScheduleCall', { mentorName: partnerName, mentorId: partnerId })}
             style={styles.scheduleButton}
@@ -352,12 +352,12 @@ const ChatPage = (props: any) => {
             />
           </TouchableOpacity>
         )}
-        {isStudent && (
+        {isStudent && !inCall && (
           <TouchableOpacity onPress={handleCallNow} style={styles.callButton} disabled={isInitiating}>
             <Image 
               source={require('../../app-assets/phone-icon.svg')}
               style={{ width: 24, height: 24 }}
-              tintColor="#2563eb"
+              tintColor="#0077CB"
             />
           </TouchableOpacity>
         )}
@@ -416,7 +416,13 @@ const ChatPage = (props: any) => {
         
         {!isKeyboardVisible && isStudent && (
           <QuickReplies 
-            onReply={(text) => handleSend(text)} 
+            onReply={(text) => {
+              if (text === 'Schedule') {
+                navigation.navigate('ScheduleCall', { mentorName: partnerName, mentorId: partnerId });
+              } else {
+                handleSend(text);
+              }
+            }} 
             bottomOffset={insets.bottom}
           />
         )}

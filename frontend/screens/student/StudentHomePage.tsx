@@ -14,17 +14,20 @@ import {
   TouchableWithoutFeedback,
   ActivityIndicator,
   RefreshControl,
+  Platform,
+  Keyboard,
+  KeyboardAvoidingView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useNavigation, useScrollToTop } from "@react-navigation/native";
+import { useNavigation, useRoute, useScrollToTop } from "@react-navigation/native";
 import MentorCard from "../../components/MentorCard";
 import { useAuth } from "../../services/retrieveKeys";
 import { useLoading } from "../../context/LoadingContext";
 import DialogBox from "../../components/DialogBox";
 import api from "../../services/api";
-import { WalletEndpoints, MentorEndpoints, LoginEndpoints, CallEndpoints } from "../../constants/endpoint";
+import { WalletEndpoints, MentorEndpoints, LoginEndpoints, CallEndpoints, ConfigEndpoint } from "../../constants/endpoint";
 
 const { width, height } = Dimensions.get("window");
 
@@ -32,12 +35,18 @@ export default function StudentHomePage() {
   const { handleLogout } = useAuth();
   const { showLoading, hideLoading } = useLoading();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const [user, setUser] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("All");
+  const [selectedLevel, setSelectedLevel] = useState("All");
   const [sortBy, setSortBy] = useState("rating");
   const [selectedLanguage, setSelectedLanguage] = useState("");
+  const [tempSelectedLevel, setTempSelectedLevel] = useState("All");
+  const [tempSortBy, setTempSortBy] = useState("rating");
+  const [tempLanguage, setTempLanguage] = useState("");
   const [isSortModalVisible, setIsSortModalVisible] = useState(false);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
   const slideAnim = useRef(new Animated.Value(-width * 0.7)).current;
@@ -45,7 +54,14 @@ export default function StudentHomePage() {
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   useScrollToTop(flatListRef);
 
-  const [alertData, setAlertData] = useState({title: '', message: ''});
+  const [alertData, setAlertData] = useState<{
+    title: string;
+    message: string;
+    primaryButtonText?: string;
+    secondaryButtonText?: string;
+    onPrimaryPress?: () => void;
+    onSecondaryPress?: () => void;
+  }>({title: '', message: ''});
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
 
   // Pagination states
@@ -111,7 +127,7 @@ export default function StudentHomePage() {
   const fetchSettingsAndEligibility = async () => {
     try {
       const [settingsRes, sessionsRes] = await Promise.all([
-        api.get("/config/settings"),
+        api.get(ConfigEndpoint.settings),
         api.get(CallEndpoints.getStudentSessions)
       ]);
       if (settingsRes.status === 200) {
@@ -131,7 +147,11 @@ export default function StudentHomePage() {
     if (walletBalance < 10) {
       setAlertData({
         title: "Insufficient Balance",
-        message: "Please add money to your wallet to start the call."
+        message: "Please add money to your wallet to start the call.",
+        secondaryButtonText: "Add Funds",
+        onSecondaryPress: () => {
+          navigation.navigate("Payment");
+        }
       });
       setAlertVisible(true);
       return;
@@ -157,7 +177,13 @@ export default function StudentHomePage() {
     } catch (error: any) {
       console.error('Failed to initiate scheduled call:', error);
       const errorMsg = error.response?.data?.error || 'Failed to connect. Please try again.';
-      setAlertData({ title: 'Call Error', message: errorMsg });
+      const isInsufficient = errorMsg.toLowerCase().includes("insufficient");
+      setAlertData({ 
+        title: 'Call Error', 
+        message: errorMsg,
+        secondaryButtonText: isInsufficient ? "Add Funds" : undefined,
+        onSecondaryPress: isInsufficient ? () => navigation.navigate("Payment") : undefined
+      });
       setAlertVisible(true);
     } finally {
       hideLoading();
@@ -168,7 +194,11 @@ export default function StudentHomePage() {
     if (walletBalance < 10) {
       setAlertData({
         title: "Insufficient Balance",
-        message: "Please add money to your wallet to start the call."
+        message: "Please add money to your wallet to start the call.",
+        secondaryButtonText: "Add Funds",
+        onSecondaryPress: () => {
+          navigation.navigate("Payment");
+        }
       });
       setAlertVisible(true);
       return;
@@ -194,7 +224,13 @@ export default function StudentHomePage() {
     } catch (error: any) {
       console.error('Failed to initiate call:', error);
       const errorMsg = error.response?.data?.error || 'Failed to connect. Please try again.';
-      setAlertData({ title: 'Call Error', message: errorMsg });
+      const isInsufficient = errorMsg.toLowerCase().includes("insufficient");
+      setAlertData({ 
+        title: 'Call Error', 
+        message: errorMsg,
+        secondaryButtonText: isInsufficient ? "Add Funds" : undefined,
+        onSecondaryPress: isInsufficient ? () => navigation.navigate("Payment") : undefined
+      });
       setAlertVisible(true);
     } finally {
       hideLoading();
@@ -238,6 +274,27 @@ export default function StudentHomePage() {
     }
     return () => clearInterval(interval);
   }, [upcomingCall]);
+
+  useEffect(() => {
+    if (route.params?.showMissedFreeCallAlert) {
+      setAlertData({
+        title: "Mentor Didn't Answer",
+        message: "The mentor did not answer your free call. Would you like to try matchmaking again?",
+        primaryButtonText: "TRY AGAIN",
+        secondaryButtonText: "LATER",
+        onPrimaryPress: () => {
+          setAlertVisible(false);
+          navigation.setParams({ showMissedFreeCallAlert: undefined });
+          handleFreeMatchmaking();
+        },
+        onSecondaryPress: () => {
+          setAlertVisible(false);
+          navigation.setParams({ showMissedFreeCallAlert: undefined });
+        }
+      });
+      setAlertVisible(true);
+    }
+  }, [route.params?.showMissedFreeCallAlert]);
 
   const syncFavorites = async () => {
     try {
@@ -369,7 +426,7 @@ export default function StudentHomePage() {
     setIsLoading(true);
     const currentOffset = reset ? 0 : offset;
     const isOnlineOnly = selectedFilter === "Online";
-    const levelParam = selectedFilter !== "All" && selectedFilter !== "Online" ? selectedFilter : "All";
+    const levelParam = selectedLevel;
 
     try {
       const response = await api.get(`${MentorEndpoints.getMentorsPaginated}?offset=${currentOffset}&limit=${LIMIT}&onlineOnly=${isOnlineOnly}&sortBy=${sortBy}&level=${levelParam}&language=${encodeURIComponent(selectedLanguage)}`);
@@ -455,8 +512,24 @@ export default function StudentHomePage() {
   }, [navigation]);
 
   useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
     fetchMentors(true);
-  }, [selectedFilter, sortBy, selectedLanguage]);
+  }, [selectedFilter, selectedLevel, sortBy, selectedLanguage]);
 
   const toggleSidebar = () => {
     if (isSidebarVisible) {
@@ -477,7 +550,14 @@ export default function StudentHomePage() {
   };
 
   const handleLogoutClick = async () => {
-    setAlertData({title: "Confirmation", message: "Are you sure you want to logout ?"});
+    setAlertData({
+      title: "Confirmation",
+      message: "Are you sure you want to logout ?",
+      primaryButtonText: "YES",
+      secondaryButtonText: "CANCEL",
+      onPrimaryPress: handleLogoutButtonYes,
+      onSecondaryPress: () => setAlertVisible(false)
+    });
     setAlertVisible(true);
   }
 
@@ -486,7 +566,7 @@ export default function StudentHomePage() {
     handleLogout();
   }
 
-  const filters = ["All", "Online", "Standard", "Signature", "Fellow"];
+  const filters = ["All", "Online"];
 
   const sortOptions = [
     { label: "Rating (High to Low)", value: "rating" },
@@ -583,15 +663,17 @@ export default function StudentHomePage() {
     if (!isLoading) return <View style={{ height: 100 }} />; // Padding for tab bar when not loading
     return (
       <View style={styles.loadingFooter}>
-        <ActivityIndicator size="small" color="#2563eb" />
+        <ActivityIndicator size="small" color="#0077CB" />
       </View>
     );
   };
 
+  const isFilterApplied = selectedLanguage !== "" || selectedLevel !== "All" || sortBy !== "rating";
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header & Search */}
-      <View style={styles.header}>
+       <View style={styles.header}>
         <TouchableOpacity onPress={toggleSidebar}>
           <Image source={require("../../app-assets/sidebar-toggle.svg")} style={[styles.icon24, {marginTop: '50%'}]} />
         </TouchableOpacity>
@@ -599,14 +681,25 @@ export default function StudentHomePage() {
           <Image source={require("../../app-assets/search-icon.svg")} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Explore mentor by IIT name"
+            placeholder="Search mentor by IIT name"
             placeholderTextColor="#444653"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
         </View>
-        <TouchableOpacity onPress={() => setIsSortModalVisible(true)}>
-          <Image source={require("../../app-assets/filter-icon.svg")} style={styles.icon24} />
+        <TouchableOpacity style={styles.walletHeaderButton} onPress={() => navigation.navigate("Payment")}>
+          <Image source={require("../../app-assets/wallet-fill.svg")} style={styles.walletHeaderIcon} tintColor="#0077CB" />
+          <Text style={styles.walletHeaderBalance}>₹{walletBalance}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.filterHeaderButton} onPress={() => {
+          setTempSortBy(sortBy);
+          setTempSelectedLevel(selectedLevel);
+          setTempLanguage(selectedLanguage);
+          setIsSortModalVisible(true);
+        }}>
+          <Image source={require("../../app-assets/filter-icon.svg")} style={styles.filterHeaderIcon} tintColor="#444653" />
+          <Text style={styles.filterHeaderLabel}>Filter</Text>
+          {isFilterApplied && <View style={styles.filterBadge} />}
         </TouchableOpacity>
       </View>
 
@@ -634,7 +727,7 @@ export default function StudentHomePage() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={["#2563eb"]} />
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={["#0077CB"]} />
         }
         ListEmptyComponent={
           !isLoading ? (
@@ -645,72 +738,111 @@ export default function StudentHomePage() {
         }
       />
 
-      {/* Sort Modal */}
       <Modal
         visible={isSortModalVisible}
         transparent
         animationType="fade"
         onRequestClose={() => setIsSortModalVisible(false)}
       >
-        <TouchableWithoutFeedback onPress={() => setIsSortModalVisible(false)}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback onPress={() => {}}>
-              <View style={styles.sortModalContent}>
-                <Text style={styles.modalTitle}>Sort By</Text>
-                {sortOptions.map((option) => (
-                  <TouchableOpacity
-                    key={option.value}
-                    style={styles.sortOption}
-                    onPress={() => {
-                      setSortBy(option.value);
-                    }}
-                  >
-                    <Text style={[
-                      styles.sortOptionText,
-                      sortBy === option.value && styles.sortOptionTextActive
-                    ]}>
-                      {option.label}
-                    </Text>
-                    {sortBy === option.value && (
-                      <View style={styles.selectedDot} />
-                    )}
-                  </TouchableOpacity>
-                ))}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : (isKeyboardVisible ? 'padding' : undefined)}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === 'android' ? 0 : 0}
+        >
+          <TouchableWithoutFeedback onPress={() => setIsSortModalVisible(false)}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <View style={styles.sortModalContent}>
+                  <Text style={styles.modalTitle}>Sort By</Text>
+                  {sortOptions.map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={styles.sortOption}
+                      onPress={() => {
+                        setTempSortBy(option.value);
+                      }}
+                    >
+                      <Text style={[
+                        styles.sortOptionText,
+                        tempSortBy === option.value && styles.sortOptionTextActive
+                      ]}>
+                        {option.label}
+                      </Text>
+                      {tempSortBy === option.value && (
+                        <View style={styles.selectedDot} />
+                      )}
+                    </TouchableOpacity>
+                  ))}
 
-                <Text style={[styles.modalTitle, { marginTop: 20, marginBottom: 10 }]}>Language</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="e.g. English, Hindi"
-                  placeholderTextColor="#757684"
-                  value={selectedLanguage}
-                  onChangeText={setSelectedLanguage}
-                />
+                  <Text style={[styles.modalTitle, { marginTop: 20, marginBottom: 10 }]}>Mentor Level</Text>
+                  <View style={styles.levelContainer}>
+                    {["All", "Standard", "Signature", "Fellow"].map((lvl) => (
+                      <TouchableOpacity
+                        key={lvl}
+                        style={[
+                          styles.levelOption,
+                          tempSelectedLevel === lvl && styles.levelOptionActive
+                        ]}
+                        onPress={() => setTempSelectedLevel(lvl)}
+                      >
+                        <Text style={[
+                          styles.levelOptionText,
+                          tempSelectedLevel === lvl && styles.levelOptionTextActive
+                        ]}>
+                          {lvl}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
 
-                <View style={styles.modalActions}>
-                  <TouchableOpacity 
-                    style={styles.clearButton} 
-                    onPress={() => {
-                      setSelectedLanguage("");
-                      setIsSortModalVisible(false);
-                    }}
-                  >
-                    <Text style={styles.clearButtonText}>Clear</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.applyButton} 
-                    onPress={() => setIsSortModalVisible(false)}
-                  >
-                    <Text style={styles.applyButtonText}>Apply</Text>
-                  </TouchableOpacity>
+                  <Text style={[styles.modalTitle, { marginTop: 20, marginBottom: 10 }]}>Language</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="e.g. English, Hindi"
+                    placeholderTextColor="#757684"
+                    value={tempLanguage}
+                    onChangeText={setTempLanguage}
+                  />
+
+                  <View style={styles.modalActions}>
+                    <TouchableOpacity 
+                      style={styles.clearButton} 
+                      onPress={() => {
+                        setTempLanguage("");
+                        setTempSelectedLevel("All");
+                        setSelectedLanguage("");
+                        setSelectedLevel("All");
+                        setIsSortModalVisible(false);
+                      }}
+                    >
+                      <Text style={styles.clearButtonText}>Clear</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.applyButton} 
+                      onPress={() => {
+                        setSelectedLanguage(tempLanguage);
+                        setSelectedLevel(tempSelectedLevel);
+                        setSortBy(tempSortBy);
+                        setIsSortModalVisible(false);
+                      }}
+                    >
+                      <Text style={styles.applyButtonText}>Apply</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Sidebar Overlay */}
-      {isSidebarVisible && (
+      <Modal
+        visible={isSidebarVisible}
+        transparent={true}
+        animationType="none"
+        onRequestClose={toggleSidebar}
+      >
         <View style={styles.sidebarOverlay}>
           <TouchableWithoutFeedback onPress={toggleSidebar}>
             <View style={styles.overlayBackground} />
@@ -730,11 +862,11 @@ export default function StudentHomePage() {
                 <Text style={styles.sidebarUserName}>{user?.name || "Raju Rastogi"}</Text>
                 <Text style={styles.sidebarUserRole}>JEE 2027 Aspirant</Text>
                 <TouchableOpacity 
-                  style={styles.editButton}
-                  onPress={() => {
-                    toggleSidebar();
-                    navigation.navigate("StudentProfilePage");
-                  }}
+                   style={styles.editButton}
+                   onPress={() => {
+                     toggleSidebar();
+                     navigation.navigate("StudentProfilePage");
+                   }}
                 >
                   <Image source={require("../../app-assets/edit-icon.svg")} style={styles.editIcon} />
                   <Text style={styles.editText}>Edit</Text>
@@ -754,7 +886,7 @@ export default function StudentHomePage() {
               </TouchableOpacity>
               {/* <View style={styles.sidebarStatCard}> */}
                 <TouchableOpacity onPress={() => { toggleSidebar(); navigation.navigate("FavoriteMentors"); }} style={styles.sidebarStatCard}>
-                <Image source={require("../../app-assets/heart-icon.svg")} style={styles.sidebarStatIcon} tintColor="#2563eb" />
+                <Image source={require("../../app-assets/heart-icon.svg")} style={styles.sidebarStatIcon} tintColor="#0077CB" />
                 <View>
                   <Text style={styles.statLabel}>My</Text>
                   <Text style={styles.statSubLabel}>Favourite</Text>
@@ -776,16 +908,33 @@ export default function StudentHomePage() {
             </View>
           </Animated.View>
         </View>
-      )}
+      </Modal>
       <DialogBox
        title={alertData.title}
        message={alertData.message} 
        visible={alertVisible} 
-       onClose={() => setAlertVisible(false)} 
-       primaryButtonText="YES" 
-       secondaryButtonText="CANCEL" 
-       onPrimaryPress={handleLogoutButtonYes} 
-       onSecondaryPress={() => setAlertVisible(false)}
+       onClose={() => {
+         setAlertVisible(false);
+         if (alertData.onSecondaryPress) {
+           alertData.onSecondaryPress();
+         } else if (alertData.onPrimaryPress) {
+           alertData.onPrimaryPress();
+         }
+       }} 
+       primaryButtonText={alertData.primaryButtonText || "OK"} 
+       secondaryButtonText={alertData.secondaryButtonText} 
+       onPrimaryPress={() => {
+         setAlertVisible(false);
+         if (alertData.onPrimaryPress) {
+           alertData.onPrimaryPress();
+         }
+       }} 
+       onSecondaryPress={() => {
+         setAlertVisible(false);
+         if (alertData.onSecondaryPress) {
+           alertData.onSecondaryPress();
+         }
+       }}
       />
     </SafeAreaView>
   );
@@ -802,6 +951,58 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
+  },
+  walletHeaderButton: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    padding: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
+    minWidth: 50,
+    backgroundColor: 'white',
+  },
+  walletHeaderIcon: {
+    width: 18,
+    height: 18,
+    marginBottom: 2,
+  },
+  walletHeaderBalance: {
+    fontSize: 9,
+    color: '#0077CB',
+    fontWeight: 'bold',
+  },
+  filterHeaderButton: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    padding: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
+    minWidth: 50,
+    backgroundColor: 'white',
+    position: 'relative',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EF4444',
+  },
+  filterHeaderIcon: {
+    width: 18,
+    height: 18,
+    marginBottom: 2,
+  },
+  filterHeaderLabel: {
+    fontSize: 9,
+    color: '#444653',
+    fontWeight: 'bold',
   },
   icon24: {
     width: 24,
@@ -919,7 +1120,7 @@ const styles = StyleSheet.create({
     marginTop: -4,
   },
   mentorSyncButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#0077CB",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -964,7 +1165,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   filterChipActive: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#0077CB",
   },
   filterText: {
     fontSize: 12,
@@ -1187,14 +1388,41 @@ const styles = StyleSheet.create({
     color: '#444653',
   },
   sortOptionTextActive: {
-    color: '#2563eb',
+    color: '#0077CB',
     fontWeight: 'bold',
   },
   selectedDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
+  },
+  levelContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 10,
+    marginTop: 5,
+  },
+  levelOption: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'white',
+  },
+  levelOptionActive: {
+    borderColor: '#0077CB',
+    backgroundColor: '#e6f2fa',
+  },
+  levelOptionText: {
+    fontSize: 12,
+    color: '#444653',
+  },
+  levelOptionTextActive: {
+    color: '#0077CB',
+    fontWeight: 'bold',
   },
   promoBanner: {
     backgroundColor: '#eff6ff',
@@ -1288,7 +1516,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     borderRadius: 8,
   },
   applyButtonText: {

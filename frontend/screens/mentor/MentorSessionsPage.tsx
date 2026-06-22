@@ -89,7 +89,7 @@ export default function MentorSessionsPage() {
 
       {loading && sessions.length === 0 ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color="#0077CB" />
         </View>
       ) : (
         <FlatList
@@ -101,7 +101,7 @@ export default function MentorSessionsPage() {
           onEndReachedThreshold={0.5}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListEmptyComponent={<Text style={styles.emptyText}>No sessions found</Text>}
-          ListFooterComponent={hasMore ? <ActivityIndicator style={{ marginVertical: 20 }} color="#2563eb" /> : null}
+          ListFooterComponent={hasMore ? <ActivityIndicator style={{ marginVertical: 20 }} color="#0077CB" /> : null}
         />
       )}
     </SafeAreaView>
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 12,
-    color: '#2563eb',
+    color: '#0077CB',
   },
   emptyText: {
     textAlign: 'center',

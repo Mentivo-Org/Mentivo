@@ -17,11 +17,13 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../../services/api";
-import { AskEndpoints } from "../../constants/endpoint";
+import { AskEndpoints, CallEndpoints, WalletEndpoints } from "../../constants/endpoint";
 import DialogBox from "../../components/DialogBox";
+import { useLoading } from "../../context/LoadingContext";
 
 export default function QuestionDetailScreen() {
   const navigation = useNavigation<any>();
+  const { showLoading, hideLoading } = useLoading();
   const route = useRoute<any>();
   const { questionId } = route.params;
 
@@ -31,7 +33,13 @@ export default function QuestionDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [alertVisible, setAlertVisible] = useState(false);
-  const [alertData, setAlertData] = useState({ title: '', message: '' });
+  const [alertData, setAlertData] = useState<{
+    title: string;
+    message: string;
+    secondaryButtonText?: string;
+    onSecondaryPress?: () => void;
+    onPrimaryPress?: () => void;
+  }>({ title: '', message: '' });
 
   // Mentor answering states
   const [answerText, setAnswerText] = useState("");
@@ -127,6 +135,58 @@ export default function QuestionDetailScreen() {
     }
   };
 
+  const handleInitiateCall = async (mentor: any) => {
+    if (!mentor) return;
+    showLoading("Initiating call...");
+    try {
+      const balanceResponse = await api.get(WalletEndpoints.getBalance);
+      const balance = balanceResponse.data?.balance ?? 0;
+      
+      if (balance < 10) {
+        hideLoading();
+        setAlertData({
+          title: "Insufficient Balance",
+          message: "Please add money to your wallet to start the call.",
+          secondaryButtonText: "Add Funds",
+          onSecondaryPress: () => {
+            navigation.navigate("Payment");
+          }
+        });
+        setAlertVisible(true);
+        return;
+      }
+
+      const response = await api.post(CallEndpoints.initiate, { mentorId: mentor.id || mentor.mentorId });
+      if (response.status === 200) {
+        const { sessionId, channelName, studentToken, maxDurationSeconds, mentorPhoto, chatSessionId } = response.data;
+        
+        navigation.navigate('InCall', {
+          callId: sessionId,
+          channelName,
+          callerName: mentor.name || mentor.mentor?.name || "Mentor",
+          role: 'caller',
+          initialToken: studentToken,
+          maxDuration: maxDurationSeconds,
+          mentorPhoto: mentorPhoto || mentor.photoUrl || mentor.mentor?.photoUrl,
+          chatSessionId
+        });
+      }
+    } catch (error: any) {
+      console.error('Failed to initiate call:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to connect. Please try again.';
+      const isInsufficient = errorMsg.toLowerCase().includes("insufficient");
+      setAlertData({ 
+        title: 'Call Error', 
+        message: errorMsg,
+        secondaryButtonText: isInsufficient ? "Add Funds" : undefined,
+        onSecondaryPress: isInsufficient ? () => navigation.navigate("Payment") : undefined
+      });
+      setAlertVisible(true);
+    } finally {
+      hideLoading();
+    }
+  };
+
   const getRelativeDay = (dateStr: string) => {
     const date = new Date(dateStr);
     const now = new Date();
@@ -140,7 +200,7 @@ export default function QuestionDetailScreen() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color="#0077CB" />
       </View>
     );
   }
@@ -205,10 +265,10 @@ export default function QuestionDetailScreen() {
               <View style={styles.answerCard}>
                 <View style={styles.answerHeader}>
                   <View style={styles.avatarPlaceholderSmall}>
-                    <Ionicons name="school" size={12} color="#2563eb" />
+                    <Ionicons name="school" size={12} color="#0077CB" />
                   </View>
                   <TouchableOpacity
-                    onPress={() => navigation.navigate("MentorProfile", { mentorId: item.mentorId })}
+                    onPress={() => navigation.navigate("MentorProfile", { mentorId: item.mentor?.id || item.mentorId })}
                   >
                     <Text style={styles.mentorName}>
                       {item.mentor?.name || "Verified Mentor"} (
@@ -220,22 +280,32 @@ export default function QuestionDetailScreen() {
 
                 <Text style={styles.answerText}>{item.text}</Text>
 
-                {/* Vote Buttons */}
-                <View style={styles.voteContainer}>
-                  <TouchableOpacity
-                    onPress={() => handleVote(item.id, "UP")}
-                    style={styles.voteButton}
-                  >
-                    <Ionicons name="arrow-up-circle-outline" size={20} color="#6b7280" />
-                    <Text style={styles.voteCount}>{item.upvotes}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleVote(item.id, "DOWN")}
-                    style={styles.voteButton}
-                  >
-                    <Ionicons name="arrow-down-circle-outline" size={20} color="#6b7280" />
-                    <Text style={styles.voteCount}>{item.downvotes}</Text>
-                  </TouchableOpacity>
+                {/* Vote & Call Row */}
+                <View style={styles.voteAndCallRow}>
+                  <View style={styles.voteContainer}>
+                    <TouchableOpacity
+                      onPress={() => handleVote(item.id, "UP")}
+                      style={styles.voteButton}
+                    >
+                      <Ionicons name="arrow-up-circle-outline" size={20} color="#6b7280" />
+                      <Text style={styles.voteCount}>{item.upvotes}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleVote(item.id, "DOWN")}
+                      style={styles.voteButton}
+                    >
+                      <Ionicons name="arrow-down-circle-outline" size={20} color="#6b7280" />
+                      <Text style={styles.voteCount}>{item.downvotes}</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {userRole !== 'mentor' && item.mentor && (
+                    <TouchableOpacity
+                      onPress={() => handleInitiateCall(item.mentor)}
+                      style={styles.talkButton}
+                    >
+                      <Text style={styles.talkButtonText}>Talk to {item.mentor.name.split(' ')[0]}</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             )}
@@ -276,6 +346,15 @@ export default function QuestionDetailScreen() {
         visible={alertVisible}
         title={alertData.title}
         message={alertData.message}
+        secondaryButtonText={alertData.secondaryButtonText}
+        onSecondaryPress={() => {
+          setAlertVisible(false);
+          alertData.onSecondaryPress?.();
+        }}
+        onPrimaryPress={() => {
+          setAlertVisible(false);
+          alertData.onPrimaryPress?.();
+        }}
         onClose={() => setAlertVisible(false)}
       />
       </KeyboardAvoidingView>
@@ -324,7 +403,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   backBtn: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#0077CB",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
@@ -410,7 +489,7 @@ const styles = StyleSheet.create({
   mentorName: {
     fontSize: 12,
     fontWeight: "bold",
-    color: "#2563eb",
+    color: "#0077CB",
   },
   dayTextSmall: {
     fontSize: 10,
@@ -471,11 +550,28 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#2563eb",
+    backgroundColor: "#0077CB",
     alignItems: "center",
     justifyContent: "center",
   },
   sendButtonDisabled: {
     backgroundColor: "#9ca3af",
+  },
+  voteAndCallRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  talkButton: {
+    backgroundColor: "#0077CB",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  talkButtonText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "600",
   },
 });

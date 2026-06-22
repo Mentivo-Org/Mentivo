@@ -64,6 +64,7 @@ import {
   AppState,
   DeviceEventEmitter,
   Dimensions,
+  Text,
 } from "react-native";
 import Svg, { Rect, Circle, Defs, Mask } from "react-native-svg";
 import notifee, { EventType, AndroidImportance } from "@notifee/react-native";
@@ -114,7 +115,7 @@ function TabItem({ route, isFocused, onPress, role, userPhotoUrl }: any) {
 
   const translateY = animatedValue.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, -28],
+    outputRange: [-8, -30],
   });
 
   const iconContainerBackground = animatedValue.interpolate({
@@ -124,7 +125,7 @@ function TabItem({ route, isFocused, onPress, role, userPhotoUrl }: any) {
 
   const iconColor = animatedValue.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#ffffff", "#2563eb"],
+    outputRange: ["#ffffff", "#0077CB"],
   });
 
   // 1. Determine which icon asset or component to use
@@ -136,13 +137,20 @@ function TabItem({ route, isFocused, onPress, role, userPhotoUrl }: any) {
   } else if (route.name === "Chat") {
     icon = require("../app-assets/chat-round.svg");
   } else if (route.name === "Ask") {
-    if (role === "mentor") {
-      icon = require("../app-assets/mentor-ask.svg");
-    } else {
-      icon = require("../app-assets/chat-round.svg");
-    }
+    icon = require("../app-assets/mentor-ask.svg");
   } else if (route.name === "Profile") {
     IsProfileSvg = true;
+  }
+
+  let title = "";
+  if (route.name === "Home") {
+    title = "Home";
+  } else if (route.name === "Chat") {
+    title = "Messages";
+  } else if (route.name === "Ask") {
+    title = role === "mentor" ? "Guide" : "Ask";
+  } else if (route.name === "Profile") {
+    title = "Profile";
   }
 
   return (
@@ -189,37 +197,34 @@ function TabItem({ route, isFocused, onPress, role, userPhotoUrl }: any) {
                   { 
                     borderRadius: 20,
                     borderWidth: isFocused ? 2 : 0,
-                    borderColor: "#2563eb" 
+                    borderColor: "#0077CB" 
                   }
                 ]}
                 contentFit="cover"
               />
             ) : (
               // Fallback to our custom SVG component if no photo is uploaded
-              <ProfileIcon color={isFocused ? "#2563eb" : "#ffffff"} size={26} />
+              <ProfileIcon color={isFocused ? "#0077CB" : "#ffffff"} size={26} />
             )
-          ) : route.name === "Ask" && role !== "mentor" ? (
-            // Handle non-mentor Ask route (Ionicons)
-            <AnimatedIonicons
-              name={isFocused ? "add-circle" : "add-circle-outline"}
-              size={26}
-              style={{ color: iconColor }}
-            />
           ) : (
             // Handle all other standard SVG file assets via AnimatedImage
             <AnimatedImage
               source={icon}
               style={tabStyles.icon}
-              tintColor={isFocused ? "#2563eb" : "#ffffff"}
+              tintColor={isFocused ? "#0077CB" : "#ffffff"}
             />
           )}
         </Animated.View>
       </Animated.View>
+      <Text style={[tabStyles.tabTitle, { color: isFocused ? "#ffffff" : "rgba(255,255,255,0.6)", fontWeight: isFocused ? "bold" : "normal" }]}>
+        {title}
+      </Text>
     </TouchableOpacity>
   );
 }
 
-const PILL_WIDTH = 340;
+const PILL_WIDTH_PERCENT = 0.8;
+const PILL_WIDTH = Dimensions.get("window").width * PILL_WIDTH_PERCENT;
 const ITEM_WIDTH = 60;
 const PADDING = 20;
 const USABLE_WIDTH = PILL_WIDTH - 2 * PADDING;
@@ -281,7 +286,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
               <AnimatedCircle cx={cutoutX} cy={2} r={28} fill="black" />
             </Mask>
           </Defs>
-          <Rect width={PILL_WIDTH} height={60} rx={30} ry={30} fill="#2563eb" mask="url(#pillMask)" />
+          <Rect width={PILL_WIDTH} height={60} rx={30} ry={30} fill="#0077CB" mask="url(#pillMask)" />
         </Svg>
       </View>
       <View style={tabStyles.pill}>
@@ -790,11 +795,25 @@ export default function RootNavigator() {
           setInitialScreen("Landing");
         }
       } catch (err) {
-        setAlertData({
-          title: "Error in fetching user profile information",
-          message: err as string,
-        });
-        setAlertVisible(true);
+        console.warn("Failed to fetch user profile on cold start (using cached session):", err);
+        const userJson = await AsyncStorage.getItem("user");
+        if (userJson) {
+          try {
+            const user = JSON.parse(userJson);
+            if (user.role === "mentor") {
+              await prefetchMentorStats();
+            }
+            if (user.profile_completed === false) {
+              await setupUncompletedProfile(user);
+            } else {
+              await setupCompletedProfile(user);
+            }
+            return;
+          } catch (parseErr) {
+            console.error("Failed to parse cached user:", parseErr);
+          }
+        }
+
         await AsyncStorage.multiRemove([
           "accessToken",
           "refreshToken",
@@ -930,7 +949,7 @@ const tabStyles = StyleSheet.create({
   pill: {
     flexDirection: "row",
     backgroundColor: "transparent",
-    width: 340,
+    width: PILL_WIDTH,
     paddingHorizontal: 20,
     height: 60,
     justifyContent: "space-evenly",
@@ -938,13 +957,20 @@ const tabStyles = StyleSheet.create({
   },
   pillBackgroundContainer: {
     position: "absolute",
-    width: 340,
+    width: PILL_WIDTH,
     height: 60,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 8,
+  },
+  tabTitle: {
+    fontSize: 10,
+    position: 'absolute',
+    bottom: 4,
+    width: 60,
+    textAlign: 'center',
   },
   tabItem: {
     alignItems: "center",
@@ -981,8 +1007,8 @@ const tabStyles = StyleSheet.create({
     height: 26,
   },
   profileImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
   },
 });

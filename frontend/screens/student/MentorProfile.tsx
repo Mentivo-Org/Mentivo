@@ -27,7 +27,7 @@ export default function MentorProfile() {
   const [isFavorite, setIsFavorite] = useState(passedMentor.isFavorite || false);
   const [isInitiating, setIsInitiating] = useState(false);
 
-  const mentor = {
+  const [mentor, setMentor] = useState({
     id: passedMentor.id || route.params?.mentorId,
     name: passedMentor.name || 'Unknown Mentor',
     iit: passedMentor.iit || 'Unknown IIT',
@@ -40,9 +40,44 @@ export default function MentorProfile() {
     originalPrice: passedMentor.originalPrice || null,
     isOnline: passedMentor.isOnline || false,
     bio: passedMentor.bio || 'Available for mentoring sessions.',
-    photoUrl: passedMentor.photoUrl || passedMentor.photo_url,
-    mentorlevel: passedMentor.mentorlevel,
-  };
+    photoUrl: passedMentor.photoUrl || passedMentor.photo_url || null,
+    mentorlevel: passedMentor.mentorlevel || null,
+  });
+
+  useEffect(() => {
+    const fetchMentorDetails = async () => {
+      if (mentor.id && (!mentor.name || mentor.name === 'Unknown Mentor')) {
+        try {
+          showLoading('Loading profile...');
+          const res = await api.get(`${MentorEndpoints.getMentorById}${mentor.id}`);
+          if (res.status === 200 && res.data) {
+            const data = res.data;
+            setMentor({
+              id: data.mentorId || data.id,
+              name: data.user?.name || 'Unknown Mentor',
+              iit: data.iit_name || 'Unknown IIT',
+              branch: data.branch || 'Unknown Branch',
+              year: data.year || '',
+              rating: data.avg_rating || 0,
+              reviews: data.reviews_count || 0,
+              sessions: data.total_calls || 0,
+              price: data.rate_per_min || 10,
+              originalPrice: data.originalPrice || null,
+              isOnline: data.isOnline || false,
+              bio: data.bio || 'Available for mentoring sessions.',
+              photoUrl: data.photo_url || data.user?.photo_url || null,
+              mentorlevel: data.mentorlevel || null,
+            });
+          }
+        } catch (err) {
+          console.error('Failed to fetch mentor profile:', err);
+        } finally {
+          hideLoading();
+        }
+      }
+    };
+    fetchMentorDetails();
+  }, [mentor.id]);
 
   useEffect(() => {
     const checkFavoriteStatus = async () => {
@@ -468,7 +503,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   callButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     borderRadius: 8,
     height: 32,
     alignItems: 'center',
@@ -483,7 +518,7 @@ const styles = StyleSheet.create({
   },
   chatButton: {
     borderWidth: 1,
-    borderColor: '#2563eb',
+    borderColor: '#0077CB',
     borderRadius: 8,
     height: 32,
     alignItems: 'center',

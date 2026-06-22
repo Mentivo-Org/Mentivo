@@ -66,7 +66,7 @@ const MentorCard: React.FC<MentorCardProps> = ({
             <Image
               source={require('../app-assets/heart-icon.svg')}
               style={styles.heartIcon}
-              tintColor={isFavorite ? '#2563eb' : '#c4c5d5'}
+              tintColor={isFavorite ? '#0077CB' : '#c4c5d5'}
             />
           </TouchableOpacity>
         </View>
@@ -103,11 +103,7 @@ const MentorCard: React.FC<MentorCardProps> = ({
             ]}
             activeOpacity={0.6}
           >
-            <Image 
-              source={require('../app-assets/phone-icon.svg')} 
-              style={styles.callIcon} 
-              tintColor="white"
-            />
+            <Text style={styles.callButtonText}>Call</Text>
           </TouchableOpacity>
         )}
         <View style={{ alignItems: 'flex-end', marginTop: 4 }}>
@@ -138,63 +134,66 @@ const styles = StyleSheet.create({
     elevation: 3,
     borderWidth: 1,
     borderColor: '#f0f0f0',
+    justifyContent: 'space-between',
   },
   imageContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
     position: 'relative',
-    alignSelf: 'center'
+    marginRight: 10,
   },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#e2e8f0',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
   onlineDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#22c55e',
     position: 'absolute',
-    top: -4,
-    right: -4,
-    width: 8,
-    height: 8,
-    backgroundColor: '#10b981',
-    borderRadius: 4,
-    borderWidth: 1,
+    bottom: 2,
+    right: 2,
+    borderWidth: 2,
     borderColor: 'white',
   },
   infoContainer: {
     flex: 1,
-    marginLeft: 12,
     justifyContent: 'center',
   },
   nameRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 4,
   },
   name: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#0b1c30',
   },
   heartIcon: {
-    width: 15,
-    height: 15,
+    width: 16,
+    height: 16,
   },
   iitText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#444653',
-    marginTop: 2,
+    marginBottom: 2,
   },
   branchRow: {
     flexDirection: 'row',
+    marginBottom: 4,
   },
   branchText: {
-    fontSize: 12,
-    color: '#444653',
+    fontSize: 10,
+    color: '#757684',
   },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
+    gap: 8,
   },
   ratingBadge: {
     flexDirection: 'row',
@@ -221,21 +220,22 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   callButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
     justifyContent: 'center',
     alignItems: 'center',
   },
   callButtonOnline: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#0077CB',
   },
   callButtonOffline: {
-    backgroundColor: '#94a3b8',
+    backgroundColor: '#93c5fd',
   },
-  callIcon: {
-    width: 14,
-    height: 14,
+  callButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 12,
   },
   priceText: {
     flexDirection: 'row',

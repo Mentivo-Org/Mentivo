@@ -66,7 +66,7 @@ export default function YourSession() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color="#0077CB" />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#2563eb',
+    color: '#0077CB',
   },
   scrollContent: {
     paddingHorizontal: 20,

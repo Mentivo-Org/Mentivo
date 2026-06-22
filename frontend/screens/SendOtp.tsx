@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   headerTitle: {
-    color: "#2563eb",
+    color: "#0077CB",
     fontSize: 16,
     fontWeight: "bold",
   },
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   verifyButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#0077CB",
     width: "100%",
     flexDirection: "row",
     alignItems: "center",

@@ -1,6 +1,6 @@
 import React, { useCallback, useImperativeHandle, useRef, useState } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import Ionicons from '@react-native-vector-icons/ionicons';
 
 interface PasswordInputProps {
   defaultValue?: string;
@@ -38,7 +38,7 @@ const EyeToggle = React.memo(({
     <Ionicons
       name={visible ? 'eye' : 'eye-off'}
       size={20}
-      color="#2563eb"
+      color="#0077CB"
     />
   </TouchableOpacity>
 ));

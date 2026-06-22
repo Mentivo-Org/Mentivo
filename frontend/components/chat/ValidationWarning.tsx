@@ -34,7 +34,7 @@ const ValidationWarning: React.FC<ValidationWarningProps> = ({
     return () => clearTimeout(timer);
   }, [fadeAnim, onDismiss]);
 
-  const bgColor = type === 'error' ? '#FF3B30' : type === 'warning' ? '#FF9F0A' : '#2563eb';
+  const bgColor = type === 'error' ? '#FF3B30' : type === 'warning' ? '#FF9F0A' : '#0077CB';
 
   return (
     <Animated.View

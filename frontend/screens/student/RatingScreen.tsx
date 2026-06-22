@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f3f4f6',
     padding: 2,
     borderWidth: 2,
-    borderColor: '#2563eb',
+    borderColor: '#0077CB',
     marginBottom: 12,
   },
   avatar: {
@@ -192,12 +192,12 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     width: '100%',
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     height: 56,
     borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: "#2563eb",
+    shadowColor: "#0077CB",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

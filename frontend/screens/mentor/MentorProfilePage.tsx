@@ -68,6 +68,14 @@ export default function MentorProfilePage() {
   const [tempUpi, setTempUpi] = useState("");
   const [savingUpi, setSavingUpi] = useState(false);
 
+  const [isEditingYear, setIsEditingYear] = useState(false);
+  const [tempYear, setTempYear] = useState("");
+  const [savingYear, setSavingYear] = useState(false);
+
+  const [isEditingExpertise, setIsEditingExpertise] = useState(false);
+  const [tempExpertise, setTempExpertise] = useState("");
+  const [savingExpertise, setSavingExpertise] = useState(false);
+
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertData, setAlertData] = useState({ title: '', message: '' });
 
@@ -78,6 +86,8 @@ export default function MentorProfilePage() {
         const parsedData = JSON.parse(cachedStats);
         setMentorData(parsedData.profile);
         setTempUpi(parsedData.profile.upiId || "");
+        setTempYear(parsedData.profile.year ? parsedData.profile.year.toString() : "");
+        setTempExpertise(parsedData.profile.expertise || "");
         setLoading(false);
       }
     } catch (err) {
@@ -93,6 +103,8 @@ export default function MentorProfilePage() {
         const newData = response.data;
         setMentorData(newData.profile);
         setTempUpi(newData.profile.upiId || "");
+        setTempYear(newData.profile.year ? newData.profile.year.toString() : "");
+        setTempExpertise(newData.profile.expertise || "");
         await AsyncStorage.setItem("stats", JSON.stringify(newData));
       }
     } catch (error) {
@@ -176,27 +188,27 @@ export default function MentorProfilePage() {
     }
   };
 
-  const handleUpdateUpi = async () => {
-    if (tempUpi === mentorData.upiId) {
-      setIsEditingUpi(false);
-      return;
-    }
-
-    setSavingUpi(true);
+  const handleUpdateProfile = async (field: 'upiId' | 'year' | 'expertise', val: string, setSaving: (v: boolean) => void, setIsEditing: (v: boolean) => void) => {
+    setSaving(true);
     try {
-      const response = await api.patch(MentorEndpoints.updateProfile, { upiId: tempUpi });
+      const body: any = {};
+      body[field] = field === 'year' ? (val !== '' ? parseInt(val) : null) : val;
+
+      const response = await api.patch(MentorEndpoints.updateProfile, body);
       if (response.status === 200) {
-        setAlertData({ title: 'Success', message: 'UPI ID updated successfully' });
+        let label = field === 'upiId' ? 'UPI ID' : field.charAt(0).toUpperCase() + field.slice(1);
+        setAlertData({ title: 'Success', message: `${label} updated successfully` });
         setAlertVisible(true);
         fetchData(true);
-        setIsEditingUpi(false);
+        setIsEditing(false);
       }
     } catch (error) {
-      console.error('Failed to update UPI:', error);
-      setAlertData({ title: 'Error', message: 'Failed to update UPI ID' });
+      console.error(`Failed to update ${field}:`, error);
+      let label = field === 'upiId' ? 'UPI ID' : field;
+      setAlertData({ title: 'Error', message: `Failed to update ${label}` });
       setAlertVisible(true);
     } finally {
-      setSavingUpi(false);
+      setSaving(false);
     }
   };
 
@@ -280,7 +292,21 @@ export default function MentorProfilePage() {
           onChangeUpi={setTempUpi}
           onStartEditUpi={() => setIsEditingUpi(true)}
           onCancelEditUpi={() => { setIsEditingUpi(false); setTempUpi(mentorData.upiId || ""); }}
-          onSaveUpi={handleUpdateUpi}
+          onSaveUpi={() => handleUpdateProfile('upiId', tempUpi, setSavingUpi, setIsEditingUpi)}
+          isEditingYear={isEditingYear}
+          tempYear={tempYear}
+          savingYear={savingYear}
+          onChangeYear={setTempYear}
+          onStartEditYear={() => setIsEditingYear(true)}
+          onCancelEditYear={() => { setIsEditingYear(false); setTempYear(mentorData.year ? mentorData.year.toString() : ""); }}
+          onSaveYear={() => handleUpdateProfile('year', tempYear, setSavingYear, setIsEditingYear)}
+          isEditingExpertise={isEditingExpertise}
+          tempExpertise={tempExpertise}
+          savingExpertise={savingExpertise}
+          onChangeExpertise={setTempExpertise}
+          onStartEditExpertise={() => setIsEditingExpertise(true)}
+          onCancelEditExpertise={() => { setIsEditingExpertise(false); setTempExpertise(mentorData.expertise || ""); }}
+          onSaveExpertise={() => handleUpdateProfile('expertise', tempExpertise, setSavingExpertise, setIsEditingExpertise)}
         />
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -354,6 +380,20 @@ interface DetailsSectionProps {
   onStartEditUpi: () => void;
   onCancelEditUpi: () => void;
   onSaveUpi: () => void;
+  isEditingYear: boolean;
+  tempYear: string;
+  savingYear: boolean;
+  onChangeYear: (val: string) => void;
+  onStartEditYear: () => void;
+  onCancelEditYear: () => void;
+  onSaveYear: () => void;
+  isEditingExpertise: boolean;
+  tempExpertise: string;
+  savingExpertise: boolean;
+  onChangeExpertise: (val: string) => void;
+  onStartEditExpertise: () => void;
+  onCancelEditExpertise: () => void;
+  onSaveExpertise: () => void;
 }
 
 function DetailsSection({
@@ -365,16 +405,97 @@ function DetailsSection({
   onStartEditUpi,
   onCancelEditUpi,
   onSaveUpi,
+  isEditingYear,
+  tempYear,
+  savingYear,
+  onChangeYear,
+  onStartEditYear,
+  onCancelEditYear,
+  onSaveYear,
+  isEditingExpertise,
+  tempExpertise,
+  savingExpertise,
+  onChangeExpertise,
+  onStartEditExpertise,
+  onCancelEditExpertise,
+  onSaveExpertise,
 }: DetailsSectionProps) {
   return (
     <View style={styles.detailsContainer}>
       <DetailRow label="Phone" value={mentorData.user?.phone || "Not provided"} />
       <DetailRow label="E-mail" value={mentorData.user?.email || "Not provided"} />
       <DetailRow label="University Name" value={mentorData.iit_name || "Not provided"} />
-      <DetailRow label="Current Year" value={mentorData.year ? mentorData.year.toString() : "Not provided"} />
-      <DetailRow label="Branch" value={mentorData.branch || "Not provided"} />
-      <DetailRow label="Expertise" value={mentorData.expertise || "Not provided"} />
       
+      {/* Current Year Row */}
+      <View style={styles.detailRow}>
+        <View style={styles.detailLabelRow}>
+          <Text style={styles.detailLabel}>Current Year</Text>
+          {!isEditingYear && (
+            <TouchableOpacity onPress={onStartEditYear}>
+              <Text style={styles.editLink}>Edit</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        
+        {isEditingYear ? (
+          <View style={styles.editInputContainer}>
+            <TextInput
+              style={styles.upiInput}
+              value={tempYear}
+              onChangeText={onChangeYear}
+              placeholder="Enter current year (e.g. 1, 2, 3, 4)"
+              keyboardType="number-pad"
+            />
+            <View style={styles.editActions}>
+              <TouchableOpacity onPress={onCancelEditYear} style={styles.cancelBtn}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onSaveYear} disabled={savingYear} style={styles.saveBtn}>
+                {savingYear ? <ActivityIndicator size="small" color="#0077c8" /> : <Text style={styles.saveText}>Save</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <Text style={styles.detailValue}>{mentorData.year ? mentorData.year.toString() : "Not provided"}</Text>
+        )}
+      </View>
+
+      <DetailRow label="Branch" value={mentorData.branch || "Not provided"} />
+      
+      {/* Expertise Row */}
+      <View style={styles.detailRow}>
+        <View style={styles.detailLabelRow}>
+          <Text style={styles.detailLabel}>Expertise</Text>
+          {!isEditingExpertise && (
+            <TouchableOpacity onPress={onStartEditExpertise}>
+              <Text style={styles.editLink}>Edit</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        
+        {isEditingExpertise ? (
+          <View style={styles.editInputContainer}>
+            <TextInput
+              style={styles.upiInput}
+              value={tempExpertise}
+              onChangeText={onChangeExpertise}
+              placeholder="Enter expertise (e.g. Math, Physics)"
+            />
+            <View style={styles.editActions}>
+              <TouchableOpacity onPress={onCancelEditExpertise} style={styles.cancelBtn}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onSaveExpertise} disabled={savingExpertise} style={styles.saveBtn}>
+                {savingExpertise ? <ActivityIndicator size="small" color="#0077c8" /> : <Text style={styles.saveText}>Save</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <Text style={styles.detailValue}>{mentorData.expertise || "Not provided"}</Text>
+        )}
+      </View>
+      
+      {/* UPI ID Row */}
       <View style={styles.detailRow}>
         <View style={styles.detailLabelRow}>
           <Text style={styles.detailLabel}>UPI ID</Text>

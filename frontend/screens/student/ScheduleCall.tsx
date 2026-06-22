@@ -395,14 +395,14 @@ const styles = StyleSheet.create({
     color: 'black',
   },
   selectedCard: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: '#0077CB',
+    borderColor: '#0077CB',
   },
   selectedText: {
     color: 'white',
   },
   confirmButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     borderRadius: 8,
     height: 40,
     alignItems: 'center',

@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
   },
   fill: {
     height: '100%',
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     borderRadius: 3,
   },
   warningFill: {
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   },
   compactFill: {
     height: '100%',
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     borderRadius: 2,
   },
   compactWarningFill: {

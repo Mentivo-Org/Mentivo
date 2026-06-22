@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Image } from 'expo-image';
@@ -57,6 +57,20 @@ const InCallScreen = () => {
     }
   }, [callId]);
 
+  useEffect(() => {
+    const backAction = () => {
+      handleMinimize();
+      return true; // Prevents default navigation pop
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, []);
+
   const formatDuration = (secs: number) => {
     const mins = Math.floor(secs / 60);
     const s = secs % 60;
@@ -97,7 +111,7 @@ const InCallScreen = () => {
           <Image
             source={require('../app-assets/arrow-back-up.svg')}
             style={styles.backIcon}
-            tintColor="#2563eb"
+            tintColor="#0077CB"
           />
         </TouchableOpacity>
         <View style={styles.topInfo}>
@@ -129,7 +143,7 @@ const InCallScreen = () => {
           <Image
             source={imgMic}
             style={styles.icon}
-            tintColor={isMuted ? '#FFFFFF' : '#2563eb'}
+            tintColor={isMuted ? '#FFFFFF' : '#0077CB'}
           />
         </TouchableOpacity>
 
@@ -156,7 +170,7 @@ const InCallScreen = () => {
           <Image
             source={imgSpeaker}
             style={styles.icon}
-            tintColor={isSpeakerOn ? '#FFFFFF' : '#2563eb'}
+            tintColor={isSpeakerOn ? '#FFFFFF' : '#0077CB'}
           />
         </TouchableOpacity>
       </View>
@@ -215,12 +229,12 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    color: '#2563eb',
+    color: '#0077CB',
   },
   callerName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#2563eb',
+    color: '#0077CB',
     marginBottom: 4,
   },
   profileContainer: {
@@ -233,7 +247,7 @@ const styles = StyleSheet.create({
     width: 168,
     height: 168,
     borderRadius: 84,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 2,
@@ -270,13 +284,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   activeControl: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
   },
   chatControlButton: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,

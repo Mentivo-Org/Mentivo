@@ -35,7 +35,7 @@ const SessionCard: React.FC<SessionCardProps> = ({
           <Image
             source={require('../app-assets/heart-icon.svg')}
             style={styles.heartIcon}
-            tintColor={isFavorite ? '#2563eb' : '#c4c5d5'}
+            tintColor={isFavorite ? '#0077CB' : '#c4c5d5'}
           />
         </View>
 

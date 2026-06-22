@@ -3,7 +3,7 @@ import { Text, View, ScrollView, TouchableOpacity, RefreshControl, Dimensions, S
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import api from "../../services/api";
-import { MentorEndpoints, CallEndpoints } from "../../constants/endpoint";
+import { MentorEndpoints, CallEndpoints, ConfigEndpoint } from "../../constants/endpoint";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import notifee from "@notifee/react-native";
@@ -29,6 +29,8 @@ const getLevelIcon = (lvl?: string) => {
   return require("../../app-assets/verified-check.svg");
 };
 
+const isNumeric = (val: any) => !isNaN(Number(val)) && val !== undefined && val !== null && String(val).trim() !== "";
+
 export default function MentorHomePage() {
   const navigation = useNavigation<any>();
   const [data, setData] = useState<any>(null);
@@ -36,6 +38,7 @@ export default function MentorHomePage() {
   const [refreshing, setRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
   const [expandedLevel, setExpandedLevel] = useState<string | null>(null);
+  const [settings, setSettings] = useState<any>(null);
 
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertData, setAlertData] = useState<{
@@ -46,6 +49,28 @@ export default function MentorHomePage() {
     secondaryButtonText?: string;
     onSecondaryPress?: () => void;
   }>({ title: '', message: '' });
+
+  const getLevelRateDisplay = (levelName: string) => {
+    const key = `price_${levelName}`;
+    if (settings && settings[key] !== undefined && settings[key] !== null && settings[key] !== "") {
+      return settings[key];
+    }
+    const defaults: any = {
+      Verified: "7",
+      Standard: "10",
+      Signature: "15",
+      Fellow: "20"
+    };
+    return defaults[levelName] || "";
+  };
+
+  const getLevelRateText = (levelName: string) => {
+    const rate = getLevelRateDisplay(levelName);
+    if (isNumeric(rate)) {
+      return `charge up to ${rate} credits/min`;
+    }
+    return rate;
+  };
 
   const toggleLevel = (levelName: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -117,10 +142,11 @@ export default function MentorHomePage() {
   const fetchData = async (silent = false) => {
     if (!silent) setRefreshing(true);
     try {
-      const [statsRes, historyRes, conditionsRes] = await Promise.all([
+      const [statsRes, historyRes, conditionsRes, settingsRes] = await Promise.all([
         api.get(MentorEndpoints.getMeStats),
         api.get(`${CallEndpoints.getMentorSessions}?limit=3`),
-        api.get(MentorEndpoints.getPromotionConditions)
+        api.get(MentorEndpoints.getPromotionConditions),
+        api.get(ConfigEndpoint.settings)
       ]);
       
       if (statsRes.status === 200) {
@@ -138,8 +164,12 @@ export default function MentorHomePage() {
           // Conditions from dedicated endpoint
           // We can use these to override the ones in stats data if needed
       }
+
+      if (settingsRes && settingsRes.status === 200) {
+        setSettings(settingsRes.data);
+      }
     } catch (err) {
-      console.error("Failed to fetch mentor stats", err);
+      console.error("Failed to fetch mentor stats/settings", err);
     } finally {
       setRefreshing(false);
     }
@@ -286,7 +316,7 @@ export default function MentorHomePage() {
             </View>
 
             <View style={styles.progressBarContainer}>
-              <View style={[styles.iconCircle, { backgroundColor: '#2563eb' }]}>
+              <View style={[styles.iconCircle, { backgroundColor: '#0077CB' }]}>
                 <Image source={require("../../app-assets/star-icon.svg")} style={styles.progressIcon} tintColor="white" />
               </View>
               <View style={styles.progressDetails}>
@@ -295,13 +325,13 @@ export default function MentorHomePage() {
                   <Text style={styles.progressValue}>{Number(profile.avg_rating).toFixed(1)}/{Number(nextCond?.minRating || 0).toFixed(1)}</Text>
                 </View>
                 <View style={styles.barBackground}>
-                   <View style={[styles.barFill, { backgroundColor: '#2563eb', width: `${Math.min(Number(profile.avg_rating) / (Number(nextCond?.minRating) || 1), 1) * 100}%` }]} />
+                   <View style={[styles.barFill, { backgroundColor: '#0077CB', width: `${Math.min(Number(profile.avg_rating) / (Number(nextCond?.minRating) || 1), 1) * 100}%` }]} />
                 </View>
               </View>
             </View>
 
             <Text style={styles.progressHint}>
-                Complete {nextCond?.minCalls} calls and maintain {Number(nextCond?.minRating).toFixed(1)}+ rating to upgrade to {nextLevel} Mentor and charge up to {levelRates[nextLevel]} credits/min
+                Complete {nextCond?.minCalls} calls and maintain {Number(nextCond?.minRating).toFixed(1)}+ rating to upgrade to {nextLevel} Mentor and {getLevelRateText(nextLevel)}
             </Text>
           </View>
         )}
@@ -351,7 +381,7 @@ export default function MentorHomePage() {
         <View style={styles.plansContainer}>
             <PlanCard 
                 level="Verified" 
-                rate={7} 
+                rate={getLevelRateDisplay("Verified")} 
                 requirements={getRequirements("Verified")} 
                 benefits={["Start earning immediately", "Get listed on the platform"]}
                 active={profile.mentorlevel === 'Verified'} 
@@ -360,25 +390,31 @@ export default function MentorHomePage() {
             />
             <PlanCard 
                 level="Standard" 
-                rate={10} 
+                rate={getLevelRateDisplay("Standard")} 
                 requirements={getRequirements("Standard")} 
-                benefits={["Charge up to 10 credits/min", "Better ranking in search"]}
+                benefits={[
+                  isNumeric(getLevelRateDisplay("Standard")) ? `Charge up to ${getLevelRateDisplay("Standard")} credits/min` : getLevelRateDisplay("Standard"),
+                  "Better ranking in search"
+                ]}
                 active={profile.mentorlevel === 'Standard'} 
                 isExpanded={expandedLevel === 'Standard'}
                 onToggle={() => toggleLevel('Standard')}
             />
             <PlanCard 
                 level="Signature" 
-                rate={15} 
+                rate={getLevelRateDisplay("Signature")} 
                 requirements={getRequirements("Signature")} 
-                benefits={["Charge up to 15 credits/min", "Featured in search results"]}
+                benefits={[
+                  isNumeric(getLevelRateDisplay("Signature")) ? `Charge up to ${getLevelRateDisplay("Signature")} credits/min` : getLevelRateDisplay("Signature"),
+                  "Featured in search results"
+                ]}
                 active={profile.mentorlevel === 'Signature'} 
                 isExpanded={expandedLevel === 'Signature'}
                 onToggle={() => toggleLevel('Signature')}
             />
             <PlanCard 
                 level="Fellow" 
-                rate={20} 
+                rate={getLevelRateDisplay("Fellow")} 
                 requirements={getRequirements("Fellow")} 
                 benefits={["Highest earning potential", "Direct platform support"]}
                 active={profile.mentorlevel === 'Fellow'} 
@@ -512,48 +548,56 @@ function PlanCard({ level, rate, requirements, benefits, active, isExpanded, onT
                     <Image source={getLevelIcon(level)} style={styles.planBannerIcon} />
                 </View>
                 
-                <View style={styles.planBannerMiddle}>
-                    <Text style={[styles.planBannerLevel, { color: textColor }]}>
-                        {getLevelDisplayName(level)}
-                    </Text>
-                    <Text style={[styles.planBannerChargeLabel, { color: textColor }]}>Charge up to</Text>
-                    <Text style={[styles.planBannerChargeValue, { color: textColor }]}>
-                        ₹{rate}
-                        <Text style={[styles.planBannerChargeUnit, { color: textColor }]}>/min</Text>
-                    </Text>
-                </View>
+                 <View style={styles.planBannerMiddle}>
+                     <Text style={[styles.planBannerLevel, { color: textColor }]}>
+                         {getLevelDisplayName(level)}
+                     </Text>
+                     {isNumeric(rate) ? (
+                         <>
+                             <Text style={[styles.planBannerChargeLabel, { color: textColor }]}>Charge up to</Text>
+                             <Text style={[styles.planBannerChargeValue, { color: textColor }]}>
+                                 ₹{rate}
+                                 <Text style={[styles.planBannerChargeUnit, { color: textColor }]}>/min</Text>
+                             </Text>
+                         </>
+                     ) : (
+                         <Text style={[styles.planBannerChargeValue, { color: textColor, fontSize: 13, marginTop: 4 }]}>
+                             {rate}
+                         </Text>
+                     )}
+                 </View>
 
-                <View style={styles.planBannerRight}>
-                    {requirements.slice(0, 2).map((req: string, index: number) => (
-                        <View key={index} style={styles.planBannerReqRow}>
-                            <Image 
-                                source={require("../../app-assets/tick-circle.svg")} 
-                                style={styles.bannerTickIcon} 
-                                tintColor={textColor} 
-                            />
-                            <Text style={[styles.planBannerReqText, { color: textColor }]} numberOfLines={1}>
-                                {req}
-                            </Text>
-                        </View>
-                    ))}
-                </View>
-            </TouchableOpacity>
+                 <View style={styles.planBannerRight}>
+                     {requirements.slice(0, 2).map((req: string, index: number) => (
+                         <View key={index} style={styles.planBannerReqRow}>
+                             <Image 
+                                 source={require("../../app-assets/tick-circle.svg")} 
+                                 style={styles.bannerTickIcon} 
+                                 tintColor={textColor} 
+                             />
+                             <Text style={[styles.planBannerReqText, { color: textColor }]} numberOfLines={1}>
+                                 {req}
+                             </Text>
+                         </View>
+                     ))}
+                 </View>
+             </TouchableOpacity>
 
-            {isExpanded && (
-                <Animated.View style={{ opacity, transform: [{ translateY }] }}>
-                    <View style={styles.planDetailsCard}>
-                        <View style={styles.planDetailsHeader}>
-                            {active && (
-                                <View style={{ backgroundColor: '#25d366', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, marginRight: 8 }}>
-                                    <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>ACTIVE</Text>
-                                </View>
-                            )}
-                            <Text style={styles.planDetailsLabel}>Charge</Text>
-                            <Text style={styles.planDetailsRate}>₹{rate}/min</Text>
-                        </View>
+             {isExpanded && (
+                 <Animated.View style={{ opacity, transform: [{ translateY }] }}>
+                     <View style={styles.planDetailsCard}>
+                         <View style={styles.planDetailsHeader}>
+                             {active && (
+                                 <View style={{ backgroundColor: '#25d366', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, marginRight: 8 }}>
+                                     <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>ACTIVE</Text>
+                                 </View>
+                             )}
+                             <Text style={styles.planDetailsLabel}>Charge</Text>
+                             <Text style={styles.planDetailsRate}>{isNumeric(rate) ? `₹${rate}/min` : rate}</Text>
+                         </View>
                         
                         <View style={styles.planSection}>
-                            <Text style={[styles.planSectionTitle, {color: '#2563eb'}]}>Requirements</Text>
+                            <Text style={[styles.planSectionTitle, {color: '#0077CB'}]}>Requirements</Text>
                             {requirements.map((req: string) => (
                                 <View key={req} style={styles.planRow}>
                                     <Image source={require("../../app-assets/tick-circle.svg")} style={styles.tickIcon} tintColor="#25d366" />
@@ -563,7 +607,7 @@ function PlanCard({ level, rate, requirements, benefits, active, isExpanded, onT
                         </View>
 
                         <View style={styles.planSection}>
-                            <Text style={[styles.planSectionTitle, {color: '#2563eb'}]}>Benefits</Text>
+                            <Text style={[styles.planSectionTitle, {color: '#0077CB'}]}>Benefits</Text>
                             {benefits.map((ben: string) => (
                                 <View key={ben} style={styles.planRow}>
                                     <Image source={require("../../app-assets/tick-circle.svg")} style={styles.tickIcon} tintColor="#25d366" />
@@ -788,7 +832,7 @@ const styles = StyleSheet.create({
   },
   nextLevelText: {
     fontSize: 16,
-    color: '#2563eb',
+    color: '#0077CB',
     marginBottom: 20,
   },
   progressBarContainer: {
@@ -914,7 +958,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 12,
-    color: '#2563eb',
+    color: '#0077CB',
   },
   moreText: {
     fontSize: 12,
@@ -1025,7 +1069,7 @@ const styles = StyleSheet.create({
   planDetailsRate: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#2563eb',
+    color: '#0077CB',
   },
   planSection: {
     marginBottom: 16,

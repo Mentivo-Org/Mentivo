@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   getStartedButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
   featureBlueLine: {
     width: 2,
     height: 40,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     marginRight: 12,
   },
   featureDescription: {

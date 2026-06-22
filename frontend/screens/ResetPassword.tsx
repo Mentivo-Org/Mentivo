@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   resetButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0077CB',
     borderRadius: 8,
     paddingVertical: 14,
     flexDirection: 'row',

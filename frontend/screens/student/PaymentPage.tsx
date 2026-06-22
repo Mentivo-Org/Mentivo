@@ -96,10 +96,10 @@ export default function PaymentPage() {
         <View style={styles.card}>
           <Text style={styles.amountLabel}>Current Credits</Text>
           <View style={styles.balanceContainer}>
-            <Image source={require("../../app-assets/wallet-fill.svg")} style={styles.creditIcon} tintColor="#2563eb" />
+            <Image source={require("../../app-assets/wallet-fill.svg")} style={styles.creditIcon} tintColor="#0077CB" />
             <Text style={styles.balanceText}>
               {loading ? (
-                <ActivityIndicator size="small" color="#2563eb" />
+                <ActivityIndicator size="small" color="#0077CB" />
               ) : (
                 `${balance !== null ? balance : 0} Credits`
               )}
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#2563eb",
+    backgroundColor: "#0077CB",
     marginRight: 10,
   },
   infoText: {
@@ -250,11 +250,11 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   addCreditsButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#0077CB",
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: "center",
-    shadowColor: "#2563eb",
+    shadowColor: "#0077CB",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 6,

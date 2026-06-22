@@ -104,3 +104,7 @@ export const PartnerEndpoints = {
 export const VersionEndpoint = {
     check: `${baseUrl}/config/version`
 }
+
+export const ConfigEndpoint = {
+    settings: `${baseUrl}/config/settings`
+}
