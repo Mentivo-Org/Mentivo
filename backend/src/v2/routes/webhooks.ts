@@ -46,8 +46,11 @@ router.post('/razorpay', async (req, res) => {
         if (txn) {
           // 3. Amount verification sanity check
           const expectedAmountPaise = Number(txn.amount) * 100;
-          if (payment.amount !== expectedAmountPaise) {
-            console.error(`[CRITICAL] Amount mismatch for Order ${orderId}. Expected ${expectedAmountPaise}, got ${payment.amount}`);
+          const paymentFee = payment.fee || 0;
+          const actualBaseAmountPaise = payment.amount - paymentFee;
+
+          if (actualBaseAmountPaise !== expectedAmountPaise) {
+            console.error(`[CRITICAL] Amount mismatch for Order ${orderId}. Expected ${expectedAmountPaise}, got ${payment.amount} (fee: ${paymentFee})`);
             // In a real production app, we would mark this for manual review or reverse it
             return;
           }

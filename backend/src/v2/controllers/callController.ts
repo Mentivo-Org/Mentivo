@@ -9,7 +9,7 @@ import redis from '../config/redis.ts';
 import { chatSessionService } from '../services/chat/chatSession.ts';
 import { chatMessageService } from '../services/chat/chatMessage.ts';
 import { agoraChatRestService } from '../services/agoraChat.ts';
-import { getMentorActiveRate, getMentorActiveRateByProfile } from '../utils/pricing.ts';
+import { getMentorActiveRate, getMentorActiveRateByProfile, getFreeCallDurationMins } from '../utils/pricing.ts';
 import { toAgoraUserId } from '../utils/agoraUtils.ts';
 
 
@@ -96,7 +96,9 @@ export const initiateCall = async (req: Request, res: Response) => {
     const { ratePerMin } = await getMentorActiveRate(mentorId);
     const affordableMinutes = Math.floor(Number(wallet.balance) / ratePerMin);
     const bufferSeconds = 60;
-    const maxAllowedSeconds = (affordableMinutes * 60) + (isFree ? 300 : 0) + bufferSeconds;
+    const freeMins = await getFreeCallDurationMins();
+    const freeSeconds = freeMins * 60;
+    const maxAllowedSeconds = (affordableMinutes * 60) + (isFree ? freeSeconds : 0) + bufferSeconds;
 
     // 7. Generate Agora Tokens
     const studentToken = generateToken(channelName, studentId as string, maxAllowedSeconds);
@@ -484,6 +486,12 @@ export const startCall = async (req: Request, res: Response) => {
     const otherPartyId = req.user?.id === session.student_id ? session.mentor_id : session.student_id;
     emitToUser(otherPartyId, 'call_status_changed', { callId: session.id, status: 'active' });
 
+    await prisma.user.update({
+      where: {id: session.student_id},
+      data: {
+        isFreeAvailable: false
+      }
+    })
     res.sendStatus(200);
   } catch (e) {
     res.status(500).json({ error: 'Server Error' });
@@ -577,7 +585,9 @@ export const sendHeartbeat = async (req: Request, res: Response) => {
 
         const maxBillableMins = Math.floor(walletBalance / ratePerMin);
         const allowedBillableSecs = maxBillableMins * 60;
-        const totalAllowedSecs = allowedBillableSecs + (isFree ? 300 : 0);
+        const freeMins = await getFreeCallDurationMins();
+        const freeSeconds = freeMins * 60;
+        const totalAllowedSecs = allowedBillableSecs + (isFree ? freeSeconds : 0);
 
         const remainingSecs = totalAllowedSecs - elapsedSecs;
 
@@ -689,7 +699,8 @@ export const getCallStatus = async (req: Request, res: Response) => {
       status: session.status,
       chatSessionId,
       student: session.student,
-      mentor: session.mentor
+      mentor: session.mentor,
+      is_free: session.is_free
     });
   } catch (e) {
     console.error('Get call status error:', e);
@@ -742,14 +753,24 @@ export const freeMatchmaking = async (req: Request, res: Response) => {
   try {
     // 1. Verify eligibility (first call must be free)
     // Only count calls that were actually answered/connected or are currently active
-    const pastCalls = await prisma.callSession.count({ 
-      where: { 
-        student_id: studentId,
-        status: { notIn: ['missed', 'rejected', 'failed', 'cancelled'] }
-      } 
+    
+    // const pastCalls = await prisma.callSession.count({ 
+    //   where: { 
+    //     student_id: studentId,
+    //     status: { notIn: ['missed', 'rejected', 'failed', 'cancelled'] }
+    //   } 
+    // });
+    // console.log("Past calls", pastCalls);
+    // if (pastCalls > 0) {
+    //   return res.status(400).json({ error: 'You are only eligible for the first free call.' });
+    // }
+    const student = await prisma.user.findFirst({
+      where: {
+        id: studentId,
+      }
     });
-    console.log("Past calls", pastCalls);
-    if (pastCalls > 0) {
+    const isFreeAvailable = student?.isFreeAvailable;
+    if(!isFreeAvailable==false) {
       return res.status(400).json({ error: 'You are only eligible for the first free call.' });
     }
 
@@ -793,7 +814,9 @@ export const freeMatchmaking = async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Failed to generate channel ID' });
     }
 
-    const maxAllowedSeconds = 300; // 5 minutes free call
+    const freeMins = await getFreeCallDurationMins();
+    const freeSeconds = freeMins * 60;
+    const maxAllowedSeconds = freeSeconds; // free call duration
 
     const session = await prisma.callSession.create({
       data: {

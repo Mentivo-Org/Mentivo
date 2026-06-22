@@ -13,6 +13,7 @@ export default function SettingsPage() {
   // App Settings (Promotions & Announcements)
   const [promotionalText, setPromotionalText] = useState<string>("");
   const [announcement, setAnnouncement] = useState<string>("");
+  const [freeCallDurationMins, setFreeCallDurationMins] = useState<number>(5);
 
   // Mentor Level Prices & Discounts
   const [priceStandard, setPriceStandard] = useState<string>("");
@@ -51,6 +52,7 @@ export default function SettingsPage() {
       // Set App Settings
       setPromotionalText(settingsData.promotionalText || "");
       setAnnouncement(settingsData.announcement || "");
+      setFreeCallDurationMins(Number(settingsData.free_call_duration_mins || 5));
 
       // Set Mentor Pricing & Discounts
       setPriceStandard(settingsData.price_Standard || "");
@@ -99,6 +101,7 @@ export default function SettingsPage() {
             discount_Signature: discountSignature,
             price_Fellow: priceFellow,
             discount_Fellow: discountFellow,
+            free_call_duration_mins: freeCallDurationMins.toString(),
           }
         })
       ]);
@@ -241,9 +244,7 @@ export default function SettingsPage() {
                   <div>
                     <label className="block text-xs font-semibold text-secondary mb-1">Original Price (₹/min)</label>
                     <input
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      type="text"
                       value={priceStandard}
                       onChange={(e) => setPriceStandard(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-text bg-white"
@@ -253,9 +254,7 @@ export default function SettingsPage() {
                   <div>
                     <label className="block text-xs font-semibold text-secondary mb-1">Discounted Price (₹/min) - Optional</label>
                     <input
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      type="text"
                       value={discountStandard}
                       onChange={(e) => setDiscountStandard(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-text bg-white"
@@ -270,9 +269,7 @@ export default function SettingsPage() {
                   <div>
                     <label className="block text-xs font-semibold text-secondary mb-1">Original Price (₹/min)</label>
                     <input
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      type="text"
                       value={priceVerified}
                       onChange={(e) => setPriceVerified(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-text bg-white"
@@ -282,9 +279,7 @@ export default function SettingsPage() {
                   <div>
                     <label className="block text-xs font-semibold text-secondary mb-1">Discounted Price (₹/min) - Optional</label>
                     <input
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      type="text"
                       value={discountVerified}
                       onChange={(e) => setDiscountVerified(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-text bg-white"
@@ -299,9 +294,7 @@ export default function SettingsPage() {
                   <div>
                     <label className="block text-xs font-semibold text-secondary mb-1">Original Price (₹/min)</label>
                     <input
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      type="text"
                       value={priceSignature}
                       onChange={(e) => setPriceSignature(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-text bg-white"
@@ -311,9 +304,7 @@ export default function SettingsPage() {
                   <div>
                     <label className="block text-xs font-semibold text-secondary mb-1">Discounted Price (₹/min) - Optional</label>
                     <input
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      type="text"
                       value={discountSignature}
                       onChange={(e) => setDiscountSignature(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-text bg-white"
@@ -328,9 +319,7 @@ export default function SettingsPage() {
                   <div>
                     <label className="block text-xs font-semibold text-secondary mb-1">Original Price (₹/min)</label>
                     <input
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      type="text"
                       value={priceFellow}
                       onChange={(e) => setPriceFellow(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-text bg-white"
@@ -340,9 +329,7 @@ export default function SettingsPage() {
                   <div>
                     <label className="block text-xs font-semibold text-secondary mb-1">Discounted Price (₹/min) - Optional</label>
                     <input
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      type="text"
                       value={discountFellow}
                       onChange={(e) => setDiscountFellow(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-text bg-white"
@@ -391,6 +378,31 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+
+          {/* Call Settings */}
+          <div className="bg-card rounded-xl border border-gray-200 shadow-sm p-6 space-y-6">
+            <h2 className="text-lg font-bold text-text border-b border-gray-100 pb-2">Call Settings</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-text mb-2">
+                  First-Call Free Duration (Minutes)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={freeCallDurationMins}
+                  onChange={(e) => setFreeCallDurationMins(Number(e.target.value))}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-text bg-white"
+                  placeholder="e.g. 5"
+                />
+                <p className="text-xs text-secondary mt-1.5">
+                  The duration in minutes for the first free call offered to students.
+                </p>
+              </div>
+            </div>
+          </div>
+
 
           <div className="pt-4 border-t border-gray-100 flex justify-end">
             <button

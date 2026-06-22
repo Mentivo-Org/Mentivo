@@ -20,6 +20,16 @@ export const CompleteProfileMentor = async (req: Request, res: Response) => {
     const user=req.user;
     const {college, year, branch, expertise, languages } = req.body;
     const file=req.file;
+
+    if (!college || !year || !branch || !expertise || !languages ||
+        String(college).trim() === '' || String(year).trim() === '' || 
+        String(branch).trim() === '' || String(expertise).trim() === '' || 
+        String(languages).trim() === '' || isNaN(Number(year))) {
+        return res.status(400).json({
+            error: "All fields (college, year, branch, expertise, languages) are required and must be valid"
+        });
+    }
+
     if(!file) {
         return res.status(400).json({
             error: "No ID card uploaded"
@@ -60,6 +70,7 @@ export const CompleteProfileMentor = async (req: Request, res: Response) => {
         where: {id: user?.id},
         data: {
             profile_completed: true,
+            isFreeAvailable: false,
             mentorProfile: {
                 upsert: {
                     create: {
@@ -110,6 +121,10 @@ export const CompleteProfileStudent = async (req: Request, res: Response) => {
       .json({ error: "Please use valid account to send the request" });
   }
 
+  if (!phone || !grade || String(phone).trim() === '' || String(grade).trim() === '') {
+    return res.status(400).json({ error: "Phone number and grade are required" });
+  }
+
   try {
     if (user?.profile_completed === true) {
       return res.status(404).json({ error: "Profile already completed" });
@@ -117,7 +132,7 @@ export const CompleteProfileStudent = async (req: Request, res: Response) => {
 
     const prismaUser = await prisma.user.update({
       where: { id: user?.id, profile_completed: false },
-      data: { phone, grade, profile_completed: true },
+      data: { phone, grade, profile_completed: true, isFreeAvailable: true },
     });
 
     return res

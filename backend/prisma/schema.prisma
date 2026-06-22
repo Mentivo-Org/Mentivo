@@ -39,6 +39,7 @@ model User {
   grade           String?
   photo_url       String?
   coachingCenterId String?   @db.Uuid
+  isFreeAvailable Boolean?
   created_at      DateTime  @default(now())
   profile_completed Boolean @default(false)
   favouriteMentors String[] @default([])

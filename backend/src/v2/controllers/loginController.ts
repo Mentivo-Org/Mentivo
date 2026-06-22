@@ -269,6 +269,12 @@ export const loginWithEmail = async (req: Request, res: Response) => {
 export const handleNativeGoogle = async (req: Request, res: Response) => {
   const { idToken, role, mode } = req.body;
 
+  if(!idToken) {
+    return res.status(401).json({
+      error: "Please complete the google authentication flow"
+    });
+  }
+
   const { data: sbData, error: sbError } =
     await supabaseAdmin.auth.signInWithIdToken({
       provider: "google",

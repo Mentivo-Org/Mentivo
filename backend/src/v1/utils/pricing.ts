@@ -36,3 +36,13 @@ export async function getMentorActiveRateByProfile(profile: any): Promise<{ rate
   }
   return { ratePerMin: originalPrice, originalPrice: null };
 }
+
+export async function getFreeCallDurationMins(): Promise<number> {
+  const setting = await prisma.appSetting.findUnique({
+    where: { key: 'free_call_duration_mins' }
+  });
+  if (!setting || isNaN(Number(setting.value))) {
+    return 5; // Default to 5 minutes
+  }
+  return Number(setting.value);
+}

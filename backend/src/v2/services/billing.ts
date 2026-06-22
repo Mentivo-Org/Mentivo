@@ -1,7 +1,6 @@
 import prisma from '../config/db.ts';
 
 const MENTOR_SHARE = 0.70; // 70%
-const FREE_SECONDS = 300;  // first 5 minutes free
 
 export async function settleBilling(sessionId: string, durationSecs: number, recordingUrl?: string) {
   // Use a transaction
@@ -41,10 +40,12 @@ export async function settleBilling(sessionId: string, durationSecs: number, rec
     if (!session) return;
 
     // 2. Calculation
-    const { getMentorActiveRateByProfile } = await import('../utils/pricing.ts');
+    const { getMentorActiveRateByProfile, getFreeCallDurationMins } = await import('../utils/pricing.ts');
     const { ratePerMin } = await getMentorActiveRateByProfile(session.mentor?.mentorProfile);
     const isFree = session.is_free; 
-    const billableSecs = isFree ? Math.max(0, durationSecs - FREE_SECONDS) : durationSecs;
+    const freeMins = await getFreeCallDurationMins();
+    const freeSeconds = freeMins * 60;
+    const billableSecs = isFree ? Math.max(0, durationSecs - freeSeconds) : durationSecs;
     const billableMins = Math.ceil(billableSecs / 60);
     const totalCharge = billableMins * ratePerMin;
     const mentorEarning = totalCharge * MENTOR_SHARE;

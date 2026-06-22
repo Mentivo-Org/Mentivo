@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { authenticateUser } from '../auth/authenticateUser.ts';
-import { createTopupOrder, verifyPayment } from '../services/razorpay.ts';
+import { createTopupOrder, verifyPayment, fetchPayment } from '../services/razorpay.ts';
 import prisma from '../config/db.ts';
 
 const router = Router();
@@ -68,12 +68,38 @@ router.post('/topup/confirm', authenticateUser, async (req: Request, res: Respon
   const { orderId, paymentId, signature } = req.body;
 
   try {
+    const txn = await prisma.walletTransaction.findFirst({
+      where: { razorpayOrderId: orderId }
+    });
+
+    if (!txn) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
+    if (txn.status === 'success') {
+      return res.json({ success: true });
+    }
+
     // 1. Verify signature first before checking DB
     if (!verifyPayment(orderId, paymentId, signature)) {
       return res.status(400).json({ error: 'Payment verification failed' });
     }
 
-    // 2. Process payment idempotently using updateMany to prevent race conditions
+    // 2. Fetch and verify payment from Razorpay API
+    const payment = await fetchPayment(paymentId);
+    if (!payment || payment.status !== 'captured' || payment.order_id !== orderId) {
+      return res.status(400).json({ error: 'Payment capture verification failed' });
+    }
+
+    const expectedAmountPaise = Number(txn.amount) * 100;
+    const paymentFee = Number(payment.fee || 0);
+    const actualBaseAmountPaise = Number(payment.amount) - paymentFee;
+
+    if (actualBaseAmountPaise !== expectedAmountPaise) {
+      return res.status(400).json({ error: 'Payment amount mismatch' });
+    }
+
+    // 3. Process payment idempotently using updateMany to prevent race conditions
     await prisma.$transaction(async (tx) => {
       // Attempt to update only if pending
       const updateResult = await tx.walletTransaction.updateMany({
@@ -86,17 +112,11 @@ router.post('/topup/confirm', authenticateUser, async (req: Request, res: Respon
         return;
       }
 
-      const txn = await tx.walletTransaction.findFirst({
-        where: { razorpayOrderId: orderId }
+      await tx.wallet.upsert({
+        where: { userId: txn.userId },
+        create: { userId: txn.userId, balance: txn.amount },
+        update: { balance: { increment: txn.amount } }
       });
-
-      if (txn) {
-        await tx.wallet.upsert({
-          where: { userId: txn.userId },
-          create: { userId: txn.userId, balance: txn.amount },
-          update: { balance: { increment: txn.amount } }
-        });
-      }
     });
 
     res.json({ success: true });

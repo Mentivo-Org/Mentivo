@@ -22,6 +22,10 @@ export async function createTopupOrder(amountRupees: number, userId: string) {
 }
 
 // Verify Razorpay payment signature after checkout
+export async function fetchPayment(paymentId: string) {
+  return rz.payments.fetch(paymentId);
+}
+
 export function verifyPayment(orderId: string, paymentId: string, signature: string) {
   const secret = process.env.RAZORPAY_KEY_SECRET;
   if(!secret) return false;

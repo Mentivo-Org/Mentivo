@@ -20,6 +20,16 @@ export const CompleteProfileMentor = async (req: Request, res: Response) => {
     const user=req.user;
     const {college, year, branch, expertise, languages } = req.body;
     const file=req.file;
+
+    if (!college || !year || !branch || !expertise || !languages ||
+        String(college).trim() === '' || String(year).trim() === '' || 
+        String(branch).trim() === '' || String(expertise).trim() === '' || 
+        String(languages).trim() === '' || isNaN(Number(year))) {
+        return res.status(400).json({
+            error: "All fields (college, year, branch, expertise, languages) are required and must be valid"
+        });
+    }
+
     if(!file) {
         return res.status(400).json({
             error: "No ID card uploaded"
@@ -108,6 +118,10 @@ export const CompleteProfileStudent = async (req: Request, res: Response) => {
     return res
       .status(401)
       .json({ error: "Please use valid account to send the request" });
+  }
+
+  if (!phone || !grade || String(phone).trim() === '' || String(grade).trim() === '') {
+    return res.status(400).json({ error: "Phone number and grade are required" });
   }
 
   try {

@@ -157,6 +157,32 @@ async function notifyUpcomingCalls() {
     }
 }
 
+/**
+ * Clean up pending wallet transactions
+ * Deletes all entries in wallet_transactions that are over a day old and are pending
+ */
+async function cleanupPendingWalletTransactions() {
+    try {
+        const ONE_DAY = 24 * 60 * 60 * 1000;
+        const thresholdDate = new Date(Date.now() - ONE_DAY);
+
+        const deleteResult = await prisma.walletTransaction.deleteMany({
+            where: {
+                status: 'pending',
+                createdAt: {
+                    lt: thresholdDate
+                }
+            }
+        });
+
+        if (deleteResult.count > 0) {
+            console.log(`[Cleanup] Successfully deleted ${deleteResult.count} pending wallet transactions older than 1 day.`);
+        }
+    } catch (err) {
+        console.error('[Cleanup] Error cleaning up pending wallet transactions:', err);
+    }
+}
+
 // Schedule repeatable jobs
 export function startJobs() {
     console.log('Initializing background jobs with node-cron (Redis-free scheduler)...');
@@ -178,6 +204,11 @@ export function startJobs() {
 
     // 4. Run mentor promotion job
     startPromotionJob();
+
+    // 5. Run pending transactions cleanup job daily at 12:30 AM
+    cron.schedule('30 0 * * *', () => {
+        cleanupPendingWalletTransactions().catch(err => console.error('Unhandled Transaction Cleanup error:', err));
+    });
 
     // No need to return a promise that resolves after adding jobs since they are in-memory
     return Promise.resolve();

@@ -309,8 +309,12 @@ router.get('/:id', authenticateUser, async (req:Request, res:Response) => {
       return res.status(404).json({ error: 'Mentor not found' });
     }
     
+    const availableIds = await getAvailableMentors();
     const formatted = await formatMentorList([mentor]);
-    res.json(formatted[0]);
+    res.json({
+      ...formatted[0],
+      isOnline: availableIds.includes(req.params.id as string)
+    });
   } catch (err) {
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -410,10 +414,16 @@ router.post('/me/status', authenticateUser, async (req: Request, res: Response) 
 router.patch('/me/profile', authenticateUser, async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id as string;
-    const { upiId, expertise, bio } = req.body;
+    const { upiId, expertise, bio, year } = req.body;
 
     if (req.user?.role !== 'mentor') {
       return res.status(403).json({ error: 'Access denied' });
+    }
+
+    if (year !== undefined && year !== null && year !== '') {
+      if (isNaN(Number(year))) {
+        return res.status(400).json({ error: 'Year must be a valid number' });
+      }
     }
 
     const updatedProfile = await prisma.mentorProfile.update({
@@ -421,7 +431,8 @@ router.patch('/me/profile', authenticateUser, async (req: Request, res: Response
       data: {
         upiId: upiId !== undefined ? upiId : undefined,
         expertise: expertise !== undefined ? expertise : undefined,
-        bio: bio !== undefined ? bio : undefined
+        bio: bio !== undefined ? bio : undefined,
+        year: year !== undefined ? (year !== null && year !== '' ? parseInt(year) : null) : undefined
       }
     });
 
