@@ -17,6 +17,9 @@ export async function generateMetadata(): Promise<Metadata> {
       icons: {
         icon: "/logo.svg",
       },
+      openGraph: {
+        siteName: "Mentivo",
+      },
     };
   }
 
@@ -25,6 +28,9 @@ export async function generateMetadata(): Promise<Metadata> {
     description: "Unlock your potential with personalized mentorship from the prestigious IIT community.",
     icons: {
       icon: "/logo.svg",
+    },
+    openGraph: {
+      siteName: "Mentivo",
     },
   };
 }
@@ -36,8 +42,21 @@ export default function RootLayout({
 }>) {
   const isMaintenanceMode = process.env.PRODUCTION_MODE === 'true';
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Mentivo",
+    "url": "https://mentivo.in"
+  };
+
   return (
     <html lang="en" className="scroll-smooth bg-[#f8fafc]" data-scroll-behavior="smooth">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body className={`${inter.className} bg-[#f8fafc] text-slate-900 antialiased`}>
         <LoadingProvider>
           <ApiInterceptor>

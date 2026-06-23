@@ -110,6 +110,19 @@ api.interceptors.response.use(
       } catch (refreshError) {
         console.error('Refresh token failed:', refreshError);
         if (typeof window !== 'undefined') {
+          // Clear local tokens and user info
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('user');
+          
+          // Clear Zustand store state to prevent re-redirect from login page
+          try {
+            const { useAuthStore } = await import('../store/useAuthStore');
+            useAuthStore.setState({ user: null, isSignedIn: false });
+          } catch (e) {
+            console.error('Failed to reset auth store:', e);
+          }
+
           // Prevent infinite redirect loop if already on a guest path
           const guestPaths = ['/', '/login', '/signup', '/verify-otp', '/privacy', '/about', '/support', '/terms', '/faq', '/disclaimer'];
           if (!guestPaths.includes(window.location.pathname)) {
