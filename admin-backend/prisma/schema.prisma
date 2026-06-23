@@ -155,8 +155,8 @@ model MentorProfile {
 model MentorPromotionCondition {
   id          String      @id @default(uuid()) @db.Uuid
   level       MentorLevel @unique
-  minCalls    Int         @default(0) @map("min_calls")
-  minRating   Decimal     @default(0) @db.Decimal(3, 2) @map("min_rating")
+  minCalls    Int?        @default(0) @map("min_calls")
+  minRating   Decimal?    @default(0) @db.Decimal(3, 2) @map("min_rating")
   updatedAt   DateTime    @default(now()) @updatedAt @map("updated_at")
 
   @@map("mentor_promotion_conditions")
