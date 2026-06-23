@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { Users, ShieldCheck, Mail, LogOut, LayoutDashboard, Bell, TrendingUp, UserMinus, Share2, Settings } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { Users, ShieldCheck, Mail, LayoutDashboard, Bell, TrendingUp, UserMinus, Share2, Settings } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { useAuth } from "@/context/AuthContext";
+import { motion } from "framer-motion";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -27,52 +27,43 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { logout } = useAuth();
-
-  const handleLogout = async () => {
-    await logout();
-    router.push("/login");
-  };
 
   return (
-    <aside className="w-64 bg-card border-r border-gray-200 flex flex-col h-full">
-      <div className="p-6 border-b border-gray-100 flex items-center gap-3">
-        <img src="/logo.svg" alt="Mentivo Logo" className="w-8 h-8" />
-        <span className="font-bold text-lg text-text">Admin</span>
+    <aside className="w-64 bg-card/60 backdrop-blur-xl border-r border-border flex flex-col h-full shadow-glass relative z-20">
+      <div className="p-6 border-b border-border flex items-center gap-3">
+        <img src="/logo.svg" alt="Mentivo Logo" className="w-8 h-8 drop-shadow-sm" />
+        <span className="font-black text-xl text-text tracking-tight">Admin</span>
       </div>
 
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
           return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
-                isActive 
-                  ? "bg-primary text-white shadow-md shadow-primary/20" 
-                  : "text-secondary hover:bg-gray-100"
+            <Link key={item.name} href={item.href} className="block relative">
+              {isActive && (
+                <motion.div
+                  layoutId="active-pill"
+                  className="absolute inset-0 bg-primary rounded-xl shadow-premium-hover"
+                  initial={false}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
               )}
-            >
-              <Icon size={20} />
-              <span className="font-medium">{item.name}</span>
+              <div
+                className={cn(
+                  "relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 z-10",
+                  isActive 
+                    ? "text-white font-semibold" 
+                    : "text-secondary hover:text-text hover:bg-primary/5 font-medium"
+                )}
+              >
+                <Icon size={20} className={cn("transition-transform duration-200", isActive ? "scale-110" : "group-hover:scale-110")} />
+                <span>{item.name}</span>
+              </div>
             </Link>
           );
         })}
       </nav>
-
-      <div className="p-4 border-t border-gray-100">
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 px-4 py-3 w-full text-left text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-        >
-          <LogOut size={20} />
-          <span className="font-medium">Logout</span>
-        </button>
-      </div>
     </aside>
   );
 }

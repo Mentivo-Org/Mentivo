@@ -4,7 +4,6 @@ import "./globals.css";
 
 import { LoadingProvider } from "@/context/LoadingContext";
 import { AuthProvider } from "@/context/AuthContext";
-import LoadingModal from "@/components/LoadingModal";
 import ApiInterceptor from "@/components/ApiInterceptor";
 import AdminAuthHandler from "@/components/AdminAuthHandler";
 
@@ -31,7 +30,6 @@ export default function RootLayout({
             <ApiInterceptor>
               <AdminAuthHandler>
                 {children}
-                <LoadingModal />
               </AdminAuthHandler>
             </ApiInterceptor>
           </LoadingProvider>

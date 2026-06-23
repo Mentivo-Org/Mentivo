@@ -1,9 +1,13 @@
 import Link from 'next/link';
 import { ArrowRight, Share2, User } from 'lucide-react';
+import ThreeWrapper from './components/ThreeWrapper';
 
 export default function LandingPage() {
   return (
     <div className="flex flex-col w-full min-h-screen relative overflow-hidden bg-slate-50">
+      {/* 3D Background */}
+      <ThreeWrapper />
+
       {/* Background Decorative Elements */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-100 rounded-full blur-3xl opacity-50" />
@@ -11,9 +15,9 @@ export default function LandingPage() {
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#0077CB 0.5px, transparent 0.5px)', backgroundSize: '24px 24px' }} />
       </div>
 
-      <div className="relative z-10">
+      <div className="relative z-10 pointer-events-none">
         {/* Hero Section */}
-        <section className="px-6 pt-12 pb-12 sm:pt-20 sm:pb-24 max-w-7xl mx-auto w-full">
+        <section className="px-6 pt-12 pb-12 sm:pt-20 sm:pb-24 max-w-7xl mx-auto w-full pointer-events-auto">
           <div className="bg-[#eff4ff]/80 backdrop-blur-sm rounded-[32px] p-8 sm:p-16 relative overflow-hidden shadow-2xl shadow-blue-500/10 border border-white/50">
           <div className="relative z-10 max-w-2xl">
             <span className="inline-block bg-[#dce9ff] text-[#004666] px-4 py-1.5 rounded-full text-sm font-bold mb-6 tracking-wide uppercase">
