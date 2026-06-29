@@ -47,6 +47,10 @@ const adminProxy = createProxyMiddleware({
     changeOrigin: true,
     ws: false,
     logLevel: 'error',
+    // Request uncompressed responses so our logger can read them
+    onProxyReq: (proxyReq) => {
+        proxyReq.setHeader('Accept-Encoding', 'identity');
+    },
 });
 
 // User/Socket Proxy (Round robin across all instances)
@@ -61,6 +65,10 @@ const userProxy = createProxyMiddleware({
         return node;
     },
     logLevel: 'error',
+    // Request uncompressed responses so our logger can read them
+    onProxyReq: (proxyReq) => {
+        proxyReq.setHeader('Accept-Encoding', 'identity');
+    },
 });
 
 // Centralized Request/Response logging middleware
