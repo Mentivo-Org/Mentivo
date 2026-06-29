@@ -132,6 +132,35 @@ router.get('/app/stream', authenticateAdmin, async (req: AuthRequest, res: Respo
   });
 });
 
+// Helper: Build a map of serviceId -> apiKey from environment variables
+// Supports multiple Render accounts where each service has its own API key
+const getServiceApiKeyMap = (): Map<string, string> => {
+  const map = new Map<string, string>();
+
+  // Main backend: RENDER_MAIN_BACKEND_SERVICE_ID + RENDER_MAIN_BACKEND_API_KEY
+  const mainId = process.env.RENDER_MAIN_BACKEND_SERVICE_ID;
+  const mainKey = process.env.RENDER_MAIN_BACKEND_API_KEY;
+  if (mainId && mainKey) {
+    map.set(mainId, mainKey);
+  }
+
+  // Workers: RENDER_WORKER_SERVICES="Label:serviceId:apiKey,Label2:serviceId2:apiKey2"
+  const workersEnv = process.env.RENDER_WORKER_SERVICES || '';
+  if (workersEnv) {
+    workersEnv.split(',').map((entry) => entry.trim()).filter(Boolean).forEach((entry) => {
+      const parts = entry.split(':');
+      if (parts.length >= 3) {
+        // Format: Label:serviceId:apiKey
+        const id = parts[1].trim();
+        const key = parts[2].trim();
+        map.set(id, key);
+      }
+    });
+  }
+
+  return map;
+};
+
 // GET /api/logs/render/services - List configured Render services
 router.get('/render/services', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   const services: { label: string; id: string; type: string }[] = [];
@@ -141,11 +170,16 @@ router.get('/render/services', authenticateAdmin, async (req: AuthRequest, res: 
     services.push({ label: 'Main Backend', id: mainId, type: 'main' });
   }
 
-  const workersEnv = process.env.RENDER_WORKER_SERVICE_IDS || '';
+  const workersEnv = process.env.RENDER_WORKER_SERVICES || '';
   if (workersEnv) {
     workersEnv.split(',').map((entry) => entry.trim()).filter(Boolean).forEach((entry) => {
-      const [label, id] = entry.includes(':') ? entry.split(':') : [entry, entry];
-      services.push({ label: label.trim(), id: id.trim(), type: 'worker' });
+      const parts = entry.split(':');
+      if (parts.length >= 3) {
+        services.push({ label: parts[0].trim(), id: parts[1].trim(), type: 'worker' });
+      } else if (parts.length === 2) {
+        // Fallback: Label:serviceId (no key — will fail on fetch)
+        services.push({ label: parts[0].trim(), id: parts[1].trim(), type: 'worker' });
+      }
     });
   }
 
@@ -153,13 +187,20 @@ router.get('/render/services', authenticateAdmin, async (req: AuthRequest, res: 
 });
 
 // GET /api/logs/render - Fetch logs from Render API by serviceId
+// Looks up the correct API key for the given serviceId (supports multi-account setups)
 router.get('/render', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   const { serviceId } = req.query;
-  const apiKey = process.env.RENDER_API_KEY;
 
-  if (!apiKey || !serviceId) {
+  if (!serviceId) {
+    return res.status(400).json({ error: 'Missing serviceId query parameter.' });
+  }
+
+  const keyMap = getServiceApiKeyMap();
+  const apiKey = keyMap.get(serviceId as string);
+
+  if (!apiKey) {
     return res.status(400).json({ 
-      error: 'Render API Configuration missing. Please configure RENDER_API_KEY and serviceId in your query/environment.' 
+      error: `No API key configured for service ${serviceId}. Check RENDER_MAIN_BACKEND_API_KEY or RENDER_WORKER_SERVICES.` 
     });
   }
 
