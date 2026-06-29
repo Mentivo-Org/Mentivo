@@ -1,0 +1,13 @@
+packages:
+  - "backend"
+  - "admin-frontend"
+  - "website"
+  - "frontend"
+  - "load-balancer"
+allowBuilds:
+  '@firebase/util': true
+  '@prisma/engines': true
+  prisma: true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true

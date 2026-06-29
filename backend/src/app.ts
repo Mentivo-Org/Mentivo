@@ -8,6 +8,10 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import './v1/app.ts';
 import './v2/app.ts';
 
+if (process.env.ENABLE_ADMIN_API === 'true') {
+  import('./admin/app.ts');
+}
+
 const app = express();
 
 // CORS configuration at root Gateway level
@@ -41,9 +45,9 @@ app.use(cors({
 // Route for fetching min versions on startup
 app.get('/api/config/version', getVersions);
 
-// Initialize Static Proxy Instances Once
 const v1Target = `http://127.0.0.1:${process.env.PORT_V1 || 4000}`;
 const v2Target = `http://127.0.0.1:${process.env.PORT_V2 || 4001}`;
+const adminTarget = `http://127.0.0.1:${process.env.PORT_ADMIN || 5001}`;
 
 const v1Proxy = createProxyMiddleware({
   target: v1Target,
@@ -57,11 +61,30 @@ const v2Proxy = createProxyMiddleware({
   ws: true,
 });
 
+let adminProxy: any = null;
+if (process.env.ENABLE_ADMIN_API === 'true') {
+  adminProxy = createProxyMiddleware({
+    target: adminTarget,
+    changeOrigin: true,
+    ws: false,
+    pathRewrite: {
+      '^/api/admin': '/api',
+    },
+  });
+}
+
 // Unified Proxy Router for both standard HTTP requests and initial polling requests
 app.use((req, res, next) => {
   // Skip gateway's own routes so they don't get proxied
   if (req.path.startsWith('/api/config/version')) {
     return next();
+  }
+
+  // Handle Admin traffic
+  if (req.path.startsWith('/api/admin') && adminProxy) {
+    return adminProxy(req, res, next);
+  } else if (req.path.startsWith('/api/admin') && !adminProxy) {
+    return res.status(404).json({ error: 'Admin API is disabled on this instance' });
   }
 
   const apiVersion = req.headers['x-api-version'] || req.query.version;
@@ -81,7 +104,11 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
-  console.log(`Mentivo API Gateway Proxy running on port ${PORT}`);
+  if (process.env.ENABLE_ADMIN_API === 'true') {
+    console.log(`🚀 Mentivo API Gateway Proxy running on port ${PORT} [MAIN WORKER - Admin Enabled]`);
+  } else {
+    console.log(`Mentivo API Gateway Proxy running on port ${PORT} [Standard Worker]`);
+  }
 });
 
 // Correctly proxy WebSocket upgrade requests without leaking listeners

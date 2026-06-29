@@ -1,1 +1,0 @@
-import { PrismaClient } from '@prisma/client'; const prisma = new PrismaClient(); async function main() { const mentors = await prisma.mentorProfile.findMany({ select: { mentorId: true, verificationStatus: true, mentorlevel: true } }); console.log(JSON.stringify(mentors, null, 2)); } main().catch(console.error).then(() => prisma.());

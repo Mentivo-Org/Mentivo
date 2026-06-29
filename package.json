@@ -1,15 +1,33 @@
 {
   "name": "mentivo",
   "version": "1.0.0",
-  "description": "Root folder",
+  "description": "Mentivo PNPM Monorepo",
   "keywords": [
     "mentivo"
   ],
   "license": "UNLICENSED",
   "author": "Ayan Bain",
   "type": "module",
-  "main": " ",
   "scripts": {
-    "dev": "concurrently --color always --names \"backend,admin-backend,admin-frontend,website\" --prefix-colors \"blue,green,magenta,cyan\" \"cd backend && npm run dev\" \"cd admin-backend && npm run dev\" \"cd admin-frontend && npm run dev\" \"cd website && npm run dev\""
+    "dev": "concurrently --color always --names \"backend-main,backend-worker,load-balancer,admin-web,website\" --prefix-colors \"blue,cyan,yellow,magenta,green\" \"npm run dev:backend-main\" \"npm run dev:backend-worker\" \"npm run dev:lb\" \"npm run dev:admin\" \"npm run dev:web\"",
+    "dev:backend-main": "cd backend && set PORT=3000&& set PORT_V1=4000&& set PORT_V2=4001&& set PORT_ADMIN=5000&& set ENABLE_ADMIN_API=true&& pnpm dev",
+    "dev:backend-worker": "cd backend && set PORT=3002&& set PORT_V1=4002&& set PORT_V2=4003&& set ENABLE_ADMIN_API=false&& pnpm dev",
+    "dev:lb": "cd load-balancer && set PORT=8080&& set MAIN_INSTANCE_URL=http://localhost:3000&& set WORKER_URLS=http://localhost:3002&& pnpm start",
+    "dev:admin": "cd admin-frontend && pnpm dev -p 5001",
+    "dev:web": "cd website && pnpm dev -p 3001",
+    "dev:cluster": "concurrently --color always --names \"backend-main,backend-worker,load-balancer\" --prefix-colors \"blue,cyan,yellow\" \"npm run dev:backend-main\" \"npm run dev:backend-worker\" \"npm run dev:lb\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@firebase/util",
+      "@prisma/engines",
+      "prisma",
+      "protobufjs",
+      "sharp",
+      "unrs-resolver"
+    ]
   }
 }

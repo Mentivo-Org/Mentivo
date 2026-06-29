@@ -433,3 +433,26 @@ model AppSetting {
 
   @@map("app_settings")
 }
+
+model LogEntry {
+  id         String   @id @default(uuid()) @db.Uuid
+  level      String   @db.VarChar(10)  // INFO, WARN, ERROR, DEBUG
+  message    String   @db.Text
+  source     String   @db.VarChar(50)  // "backend", "admin-backend", "gateway"
+  instanceId String?  @db.VarChar(100) // Render instance ID or "local"
+  method     String?  @db.VarChar(10)  // GET, POST, etc.
+  endpoint   String?  @db.Text         // Route path / URL
+  status     Int?     // HTTP status code
+  duration   Int?     // milliseconds taken
+  ip         String?  @db.VarChar(45)  // IP address
+  metadata   Json?    // extra details, payload, error stack trace
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([level])
+  @@index([source])
+  @@index([instanceId])
+  @@index([method])
+  @@index([status])
+  @@map("log_entries")
+}

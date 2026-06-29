@@ -110,9 +110,41 @@ export default function PartnerDashboard() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] gap-3 bg-slate-50">
-        <Loader2 className="animate-spin text-[#0077CB]" size={36} />
-        <span className="text-slate-500 font-bold">Loading dashboard details...</span>
+      <div className="p-6 sm:p-10 max-w-7xl mx-auto w-full space-y-8 bg-slate-50/50 min-h-screen">
+        {/* Header Skeleton */}
+        <div className="flex justify-between items-center bg-white p-6 sm:p-8 rounded-[28px] border border-slate-200/80 shadow-sm skeleton-shimmer">
+          <div className="space-y-3 flex-1">
+            <div className="h-4 bg-slate-200 rounded-full w-24" />
+            <div className="h-8 bg-slate-200 rounded-full w-64" />
+          </div>
+          <div className="h-12 bg-slate-200 rounded-xl w-32 hidden sm:block" />
+        </div>
+
+        {/* Stats Grid Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-white border border-slate-200/80 rounded-[24px] p-6 shadow-sm flex items-center gap-6 skeleton-shimmer">
+              <div className="w-14 h-14 bg-slate-100 rounded-2xl shrink-0" />
+              <div className="space-y-2 flex-1">
+                <div className="h-3 bg-slate-200 rounded-full w-20" />
+                <div className="h-7 bg-slate-200 rounded-full w-32" />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Leaderboard Skeleton */}
+        <div className="bg-white border border-slate-200/80 rounded-[28px] p-8 shadow-sm skeleton-shimmer space-y-4">
+          <div className="space-y-2">
+            <div className="h-5 bg-slate-200 rounded-full w-48" />
+            <div className="h-3 bg-slate-200 rounded-full w-64" />
+          </div>
+          <div className="space-y-3 mt-6">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-16 bg-slate-50 border border-slate-100 rounded-2xl" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

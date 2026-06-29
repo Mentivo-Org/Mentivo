@@ -9,8 +9,8 @@ export default function ApiInterceptor({ children }: { children: React.ReactNode
 
   useEffect(() => {
     const requestInterceptor = api.interceptors.request.use((config) => {
-      // Opt-out of loading modal if hideLoading is set
-      if (!(config as any).hideLoading) {
+      // Opt-in to loading modal if showLoading is set
+      if ((config as any).showLoading) {
         setIsLoading(true);
       }
       return config;
@@ -20,12 +20,12 @@ export default function ApiInterceptor({ children }: { children: React.ReactNode
     });
 
     const responseInterceptor = api.interceptors.response.use((response) => {
-      if (!(response.config as any).hideLoading) {
+      if ((response.config as any).showLoading) {
         setIsLoading(false);
       }
       return response;
     }, async (error) => {
-      if (!(error.config as any)?.hideLoading) {
+      if ((error.config as any)?.showLoading) {
         setIsLoading(false);
       }
       const originalRequest = error.config;

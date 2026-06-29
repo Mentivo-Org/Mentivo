@@ -1,6 +1,6 @@
 import prisma from "../../config/db.ts";
-import { Prisma } from "@prisma/client";
-
+import type { Prisma } from "@prisma/client";
+// const { Prisma } = prismaClient;
 class ChatMessageService {
   async create(data: {
     agoraMsgId: string;

@@ -10,6 +10,14 @@ router.post('/razorpay', async (req, res) => {
   const rawBody = req.body;
 
   if (!verifyWebhookSignature(rawBody.toString(), signature)) {
+    await prisma.logEntry.create({
+      data: {
+        level: 'WARN',
+        source: 'backend',
+        message: 'Invalid Razorpay webhook signature detected (potential spoofing)',
+        metadata: { signature, ip: req.ip }
+      }
+    }).catch(() => {});
     return res.status(400).send('Invalid signature');
   }
 
@@ -51,6 +59,14 @@ router.post('/razorpay', async (req, res) => {
 
           if (actualBaseAmountPaise !== expectedAmountPaise) {
             console.error(`[CRITICAL] Amount mismatch for Order ${orderId}. Expected ${expectedAmountPaise}, got ${payment.amount} (fee: ${paymentFee})`);
+            await prisma.logEntry.create({
+                data: {
+                    level: 'ERROR',
+                    source: 'backend',
+                    message: `[CRITICAL] Amount mismatch for Order ${orderId}`,
+                    metadata: { orderId, expectedAmountPaise, actual: payment.amount, fee: paymentFee }
+                }
+            }).catch(() => {});
             // In a real production app, we would mark this for manual review or reverse it
             return;
           }
@@ -59,6 +75,15 @@ router.post('/razorpay', async (req, res) => {
             where: { userId: txn.userId },
             create: { userId: txn.userId, balance: txn.amount },
             update: { balance: { increment: txn.amount } }
+          });
+          
+          await tx.logEntry.create({
+            data: {
+              level: 'INFO',
+              source: 'backend',
+              message: `Razorpay payment captured for Order ${orderId}`,
+              metadata: { orderId, paymentId, amount: txn.amount, userId: txn.userId }
+            }
           });
         }
       });
@@ -70,8 +95,16 @@ router.post('/razorpay', async (req, res) => {
     }
 
     res.json({ status: 'ok' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Webhook processing error:', error);
+    await prisma.logEntry.create({
+        data: {
+            level: 'ERROR',
+            source: 'backend',
+            message: `Webhook processing error: ${error.message}`,
+            metadata: { error: error.stack, event: event?.event }
+        }
+    }).catch(() => {});
     res.status(500).send('Internal server error');
   }
 });

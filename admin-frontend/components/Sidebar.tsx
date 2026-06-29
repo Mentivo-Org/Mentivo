@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, ShieldCheck, Mail, LayoutDashboard, Bell, TrendingUp, UserMinus, Share2, Settings } from "lucide-react";
+import { Users, ShieldCheck, Mail, LayoutDashboard, Bell, TrendingUp, UserMinus, Share2, Settings, Terminal, Database } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { motion } from "framer-motion";
@@ -13,15 +13,11 @@ function cn(...inputs: ClassValue[]) {
 
 const navItems = [
   { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Students", href: "/dashboard/students", icon: Users },
-  { name: "Mentors", href: "/dashboard/mentors", icon: ShieldCheck },
-  { name: "Mentor Verification", href: "/dashboard/mentor-verification", icon: ShieldCheck },
-  { name: "Mentor Levels", href: "/dashboard/mentor-levels", icon: TrendingUp },
+  { name: "Profile", href: "/dashboard/profile", icon: Users },
   { name: "Partner Referrals", href: "/dashboard/partners", icon: Share2 },
-  { name: "Email Center", href: "/dashboard/email", icon: Mail },
-  { name: "Notification Center", href: "/dashboard/notifications", icon: Bell },
-  { name: "Chat Moderation", href: "/dashboard/moderation", icon: ShieldCheck },
-  { name: "Profile Deletion", href: "/dashboard/profile-deletion", icon: UserMinus },
+  { name: "Communication", href: "/dashboard/communication", icon: Mail },
+  { name: "Deletion Hub", href: "/dashboard/deletion-hub", icon: UserMinus, isRed: true },
+  { name: "Developer Options", href: "/dashboard/developer-options", icon: Database },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
@@ -38,14 +34,19 @@ export default function Sidebar() {
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          // Robust nested route matching: Overview strictly matches /dashboard, others match startsWith.
+          const isActive = item.href === "/dashboard" 
+            ? pathname === "/dashboard" 
+            : pathname === item.href || pathname.startsWith(item.href + "/");
+
           return (
             <Link key={item.name} href={item.href} className="block relative">
               {isActive && (
                 <motion.div
                   layoutId="active-pill"
-                  className="absolute inset-0 bg-primary rounded-xl shadow-premium-hover"
-                  initial={false}
+                  className="absolute inset-0 rounded-xl shadow-premium-hover"
+                  animate={{ backgroundColor: item.isRed ? "#ef4444" : "#0077CB" }}
+                  initial={{ backgroundColor: item.isRed ? "#ef4444" : "#0077CB" }}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 />
               )}
@@ -54,7 +55,9 @@ export default function Sidebar() {
                   "relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 z-10",
                   isActive 
                     ? "text-white font-semibold" 
-                    : "text-secondary hover:text-text hover:bg-primary/5 font-medium"
+                    : item.isRed
+                      ? "text-red-500 hover:text-red-600 hover:bg-red-500/5 font-medium"
+                      : "text-secondary hover:text-text hover:bg-primary/5 font-medium"
                 )}
               >
                 <Icon size={20} className={cn("transition-transform duration-200", isActive ? "scale-110" : "group-hover:scale-110")} />

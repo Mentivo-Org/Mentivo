@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { UserPlus, Settings, Loader2, Sparkles, Mail, Phone, Users, ShieldAlert, Award } from "lucide-react";
+import { Skeleton } from "@/components/Skeleton";
 
 interface Partner {
   id: string;
@@ -175,31 +176,52 @@ export default function PartnersPage() {
 
       {/* Partners List */}
       <div className="bg-white border border-gray-200 rounded-[24px] overflow-hidden shadow-sm">
-        {loading ? (
-          <div className="p-16 flex flex-col items-center justify-center gap-3">
-            <Loader2 className="animate-spin text-blue-600" size={32} />
-            <span className="text-gray-500 font-medium">Loading partner accounts...</span>
-          </div>
-        ) : partners.length === 0 ? (
-          <div className="p-16 text-center text-gray-500">
-            <Users className="mx-auto text-gray-300 mb-4" size={48} />
-            <p className="font-semibold text-lg">No partners found</p>
-            <p className="text-sm text-gray-400 mt-1">Register partner accounts to generate invitation links.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-100 text-gray-500 text-xs uppercase tracking-wider font-bold">
-                  <th className="px-6 py-4">Partner details</th>
-                  <th className="px-6 py-4">Type / Referral</th>
-                  <th className="px-6 py-4">Commission Model</th>
-                  <th className="px-6 py-4">Earnings / Balance</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-100 text-gray-500 text-xs uppercase tracking-wider font-bold">
+                <th className="px-6 py-4">Partner details</th>
+                <th className="px-6 py-4">Type / Referral</th>
+                <th className="px-6 py-4">Commission Model</th>
+                <th className="px-6 py-4">Earnings / Balance</th>
+                <th className="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {loading ? (
+                [...Array(5)].map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="px-6 py-5">
+                      <Skeleton className="h-5 w-32 mb-1" />
+                      <Skeleton className="h-4 w-48 mt-1" />
+                    </td>
+                    <td className="px-6 py-5">
+                      <Skeleton className="h-5 w-24 mb-1.5" />
+                      <Skeleton className="h-6 w-16" />
+                    </td>
+                    <td className="px-6 py-5">
+                      <Skeleton className="h-5 w-32 mb-1" />
+                      <Skeleton className="h-3 w-16" />
+                    </td>
+                    <td className="px-6 py-5">
+                      <Skeleton className="h-4 w-20 mb-1" />
+                      <Skeleton className="h-3 w-16" />
+                    </td>
+                    <td className="px-6 py-5 text-right">
+                      <Skeleton className="h-8 w-8 rounded-xl ml-auto" />
+                    </td>
+                  </tr>
+                ))
+              ) : partners.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-16 text-center text-gray-500">
+                    <Users className="mx-auto text-gray-300 mb-4" size={48} />
+                    <p className="font-semibold text-lg">No partners found</p>
+                    <p className="text-sm text-gray-400 mt-1">Register partner accounts to generate invitation links.</p>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {partners.map((partner) => (
+              ) : (
+                partners.map((partner) => (
                   <tr key={partner.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-5">
                       <div className="font-bold text-gray-900 text-base">{partner.name || "Unnamed Partner"}</div>
@@ -251,11 +273,11 @@ export default function PartnersPage() {
                       </button>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Create Partner Modal */}

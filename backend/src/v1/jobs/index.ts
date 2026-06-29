@@ -26,6 +26,14 @@ async function sweepAbandonedCalls() {
         if (abandonedCalls.length === 0) return;
 
         console.log(`[Sweeper] Found ${abandonedCalls.length} abandoned calls.`);
+        await prisma.logEntry.create({
+            data: {
+                level: 'WARN',
+                source: 'backend',
+                message: `[Sweeper] Found ${abandonedCalls.length} abandoned calls to sweep.`,
+                metadata: { abandonedCallIds: abandonedCalls.map(c => c.id) }
+            }
+        });
 
         for (const call of abandonedCalls) {
             try {
@@ -48,8 +56,16 @@ async function sweepAbandonedCalls() {
                 console.error(`[Sweeper] Failed to sweep call ${call.id}:`, e);
             }
         }
-    } catch (err) {
+    } catch (err: any) {
         console.error('[Sweeper] Error in abandoned call sweeper:', err);
+        await prisma.logEntry.create({
+            data: {
+                level: 'ERROR',
+                source: 'backend',
+                message: `[Sweeper] Error in abandoned call sweeper: ${err.message}`,
+                metadata: { error: err.stack }
+            }
+        }).catch(() => {});
     }
 }
 
@@ -107,8 +123,23 @@ async function processWeeklyPayouts() {
             }
         }
         console.log('[Payouts] Weekly payout process completed.');
-    } catch (err) {
+        await prisma.logEntry.create({
+            data: {
+                level: 'INFO',
+                source: 'backend',
+                message: `[Payouts] Processed ${mentorBalances.length} weekly payouts.`
+            }
+        });
+    } catch (err: any) {
         console.error('[Payouts] Error in weekly payout job:', err);
+        await prisma.logEntry.create({
+            data: {
+                level: 'ERROR',
+                source: 'backend',
+                message: `[Payouts] Error in weekly payout job: ${err.message}`,
+                metadata: { error: err.stack }
+            }
+        }).catch(() => {});
     }
 }
 
@@ -177,9 +208,24 @@ async function cleanupPendingWalletTransactions() {
 
         if (deleteResult.count > 0) {
             console.log(`[Cleanup] Successfully deleted ${deleteResult.count} pending wallet transactions older than 1 day.`);
+            await prisma.logEntry.create({
+                data: {
+                    level: 'INFO',
+                    source: 'backend',
+                    message: `[Cleanup] Deleted ${deleteResult.count} pending wallet transactions.`
+                }
+            });
         }
-    } catch (err) {
+    } catch (err: any) {
         console.error('[Cleanup] Error cleaning up pending wallet transactions:', err);
+        await prisma.logEntry.create({
+            data: {
+                level: 'ERROR',
+                source: 'backend',
+                message: `[Cleanup] Error cleaning up pending wallet transactions: ${err.message}`,
+                metadata: { error: err.stack }
+            }
+        }).catch(() => {});
     }
 }
 

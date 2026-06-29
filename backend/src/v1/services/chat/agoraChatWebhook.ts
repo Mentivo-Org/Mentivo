@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../config/db.ts';
 import { validationEngine } from './validation.ts';
 import { chatMessageService } from './chatMessage.ts';
 import { chatSessionService } from './chatSession.ts';
@@ -7,7 +7,6 @@ import { agoraChatRestService } from '../agoraChat.ts';
 import { toStandardUuid } from '../../utils/agoraUtils.ts';
 import crypto from 'crypto';
 
-const prisma = new PrismaClient();
 
 export async function handleAgoraChatWebhook(req: Request, res: Response) {
   const { event, callId, ...payload } = req.body;
@@ -21,6 +20,14 @@ export async function handleAgoraChatWebhook(req: Request, res: Response) {
     hmac.update(JSON.stringify(req.body));
     const expectedSignature = hmac.digest('hex');
     if (signature !== expectedSignature) {
+      await prisma.logEntry.create({
+        data: {
+          level: 'WARN',
+          source: 'backend',
+          message: 'Invalid Agora Chat webhook signature detected (potential spoofing)',
+          metadata: { signature, expectedSignature, ip: req.ip }
+        }
+      }).catch(() => {});
       return res.status(401).json({ error: 'Invalid signature' });
     }
   }
@@ -37,8 +44,16 @@ export async function handleAgoraChatWebhook(req: Request, res: Response) {
         await chatMessageService.updateStatus(payload.msg_id, 'read');
         break;
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Agora Webhook Error:', error);
+    await prisma.logEntry.create({
+        data: {
+            level: 'ERROR',
+            source: 'backend',
+            message: `Agora Chat webhook processing error: ${error.message}`,
+            metadata: { error: error.stack, event }
+        }
+    }).catch(() => {});
     // Return 200 to Agora to avoid retries if we can't handle it
   }
 

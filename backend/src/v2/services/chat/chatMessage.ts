@@ -1,5 +1,5 @@
 import prisma from "../../config/db.ts";
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 
 class ChatMessageService {
   async create(data: {

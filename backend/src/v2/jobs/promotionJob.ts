@@ -61,13 +61,30 @@ const checkAndPromoteMentors = async () => {
         await promoteMentor(mentor.mentorId, finalLevel, mentor.user.fcmTokens.map(t => t.token));
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in promotion job:', error);
+    await prisma.logEntry.create({
+        data: {
+            level: 'ERROR',
+            source: 'backend',
+            message: `[PromotionJob] Error in nightly mentor promotion job: ${error.message}`,
+            metadata: { error: error.stack }
+        }
+    }).catch(() => {});
   }
 };
 
 const promoteMentor = async (mentorId: string, level: string, fcmTokens: string[]) => {
   console.log(`Promoting mentor ${mentorId} to ${level}`);
+  
+  await prisma.logEntry.create({
+      data: {
+          level: 'INFO',
+          source: 'backend',
+          message: `[PromotionJob] Promoted mentor to ${level} tier.`,
+          metadata: { mentorId, newLevel: level }
+      }
+  }).catch(() => {});
   
   await prisma.$transaction([
     prisma.mentorProfile.update({

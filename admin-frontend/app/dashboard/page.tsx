@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { Users, UserCheck, ShieldAlert } from "lucide-react";
 import { motion } from "framer-motion";
+import { Skeleton } from "@/components/Skeleton";
 
 const containerVars = {
   hidden: { opacity: 0 },
@@ -26,12 +27,14 @@ export default function DashboardOverview() {
     mentors: 0,
     unverifiedMentors: 0,
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // In a real app, you'd fetch stats from a dedicated endpoint.
     // For now, we can fetch lists to get counts.
     const fetchStats = async () => {
       try {
+        setLoading(true);
         const [studentsRes, mentorsRes, unverifiedRes] = await Promise.all([
           api.get("/students"),
           api.get("/mentors"),
@@ -45,6 +48,8 @@ export default function DashboardOverview() {
         });
       } catch (err) {
         console.error("Failed to fetch overview stats");
+      } finally {
+        setLoading(false);
       }
     };
     fetchStats();
@@ -69,9 +74,13 @@ export default function DashboardOverview() {
           <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
             <Users size={28} />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-semibold text-secondary uppercase tracking-wider mb-1">Total Students</p>
-            <p className="text-3xl font-black text-text">{stats.students}</p>
+            {loading ? (
+              <Skeleton className="h-9 w-16" />
+            ) : (
+              <p className="text-3xl font-black text-text">{stats.students}</p>
+            )}
           </div>
         </motion.div>
 
@@ -79,9 +88,13 @@ export default function DashboardOverview() {
           <div className="w-14 h-14 bg-green-50 text-green-600 rounded-xl flex items-center justify-center group-hover:scale-110 group-hover:bg-green-600 group-hover:text-white transition-all duration-300">
             <UserCheck size={28} />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-semibold text-secondary uppercase tracking-wider mb-1">Total Mentors</p>
-            <p className="text-3xl font-black text-text">{stats.mentors}</p>
+            {loading ? (
+              <Skeleton className="h-9 w-16" />
+            ) : (
+              <p className="text-3xl font-black text-text">{stats.mentors}</p>
+            )}
           </div>
         </motion.div>
 
@@ -89,9 +102,13 @@ export default function DashboardOverview() {
           <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-500 group-hover:text-white transition-all duration-300">
             <ShieldAlert size={28} />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-semibold text-secondary uppercase tracking-wider mb-1">Pending Verifications</p>
-            <p className="text-3xl font-black text-text">{stats.unverifiedMentors}</p>
+            {loading ? (
+              <Skeleton className="h-9 w-16" />
+            ) : (
+              <p className="text-3xl font-black text-text">{stats.unverifiedMentors}</p>
+            )}
           </div>
         </motion.div>
       </motion.div>
