@@ -104,12 +104,14 @@ app.use((req, res, next) => {
         const timeStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
 
         // Parse response to ensure it's not a huge binary blob
+        // Sanitize null bytes (\u0000) as PostgreSQL JSONB does not support them
+        const sanitizedBody = responseBody.replace(/\0/g, '');
         let parsedResponse = null;
         try {
-            parsedResponse = JSON.parse(responseBody);
+            parsedResponse = JSON.parse(sanitizedBody);
         } catch {
             // Not JSON, truncate if too long
-            parsedResponse = responseBody.length > 1000 ? responseBody.substring(0, 1000) + '... [truncated]' : responseBody;
+            parsedResponse = sanitizedBody.length > 1000 ? sanitizedBody.substring(0, 1000) + '... [truncated]' : sanitizedBody;
         }
 
         // Exact requested log format: time, info/warn, method, endpoint, status, time, response
