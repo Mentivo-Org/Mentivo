@@ -4,6 +4,7 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import http from 'http';
 import pg from 'pg';
 import crypto from 'crypto';
+import zlib from 'zlib';
 
 const app = express();
 
@@ -82,25 +83,21 @@ app.use((req, res, next) => {
     const { method, url } = req;
     const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
 
-    // Capture response chunks
-    let responseBody = '';
+    // Capture response chunks as raw Buffers to handle gzip/binary correctly
+    const chunks = [];
     const originalWrite = res.write;
     const originalEnd = res.end;
 
     res.write = function (chunk, ...args) {
-        if (chunk && typeof chunk !== 'string') {
-            responseBody += chunk.toString('utf8');
-        } else if (typeof chunk === 'string') {
-            responseBody += chunk;
+        if (chunk) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, 'binary'));
         }
         return originalWrite.apply(res, [chunk, ...args]);
     };
 
     res.end = function (chunk, ...args) {
-        if (chunk && typeof chunk !== 'string') {
-            responseBody += chunk.toString('utf8');
-        } else if (typeof chunk === 'string') {
-            responseBody += chunk;
+        if (chunk) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, 'binary'));
         }
         return originalEnd.apply(res, [chunk, ...args]);
     };
@@ -111,15 +108,33 @@ app.use((req, res, next) => {
         const endpoint = url.split('?')[0];
         const timeStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
 
-        // Parse response to ensure it's not a huge binary blob
+        // Concatenate all chunks into a single Buffer
+        let rawBuffer = Buffer.concat(chunks);
+
+        // Decompress if the backend ignored Accept-Encoding: identity and sent compressed data anyway
+        const encoding = res.getHeader('content-encoding') || '';
+        try {
+            if (encoding.includes('gzip')) {
+                rawBuffer = zlib.gunzipSync(rawBuffer);
+            } else if (encoding.includes('deflate')) {
+                rawBuffer = zlib.inflateSync(rawBuffer);
+            } else if (encoding.includes('br')) {
+                rawBuffer = zlib.brotliDecompressSync(rawBuffer);
+            }
+        } catch {
+            // Decompression failed — use raw buffer as-is
+        }
+
         // Sanitize null bytes (\u0000) as PostgreSQL JSONB does not support them
-        const sanitizedBody = responseBody.replace(/\0/g, '');
+        const sanitizedBody = rawBuffer.toString('utf8').replace(/\0/g, '');
         let parsedResponse = null;
         try {
             parsedResponse = JSON.parse(sanitizedBody);
         } catch {
             // Not JSON, truncate if too long
-            parsedResponse = sanitizedBody.length > 1000 ? sanitizedBody.substring(0, 1000) + '... [truncated]' : sanitizedBody;
+            parsedResponse = sanitizedBody.length > 1000
+                ? sanitizedBody.substring(0, 1000) + '... [truncated]'
+                : sanitizedBody;
         }
 
         // Exact requested log format: time, info/warn, method, endpoint, status, time, response
@@ -187,4 +202,3 @@ server.on('upgrade', (req, socket, head) => {
 server.listen(PORT, () => {
     console.log(`Multi-account Load Balancer running on port ${PORT}`);
 });
-
