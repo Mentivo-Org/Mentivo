@@ -5,7 +5,8 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "render:build": "bash scripts/render-build.sh"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

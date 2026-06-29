@@ -68,46 +68,46 @@ The Mentivo platform is hosted across **Render** and **Vercel** to ensure high a
 └── IMPLEMENTATION_NOTES.md # Detailed technical logs and API reference
 ```
 
-## ⚙️ Getting Started
+## ⚙️ Getting Started & Build Commands
 
-### Prerequisites
-- Node.js 20+
-- Expo CLI
-- Docker (for local development)
-- Supabase Project & Redis Instance
+Mentivo is structured as a monorepo. We use `pnpm` workspace settings for packages routing.
 
-### Backend Setup
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Configure your `.env` file (see `VISION.md` for required keys).
-4. Run migrations:
-   ```bash
-   npx prisma migrate dev
-   ```
-5. Start the server:
-   ```bash
-   npm run run
-   ```
+### Development Commands
 
-### Frontend Setup
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the Expo server:
-   ```bash
-   npx expo start
-   ```
+To start all services concurrently in development mode (includes main backend, worker, load-balancer, admin dashboard, and website):
+```bash
+pnpm dev
+```
+
+Alternatively, to start specific services in development:
+* **Backend Main**: `pnpm --filter backend dev:backend-main` (or run manually from `/backend` with local variables)
+* **Backend Worker**: `pnpm --filter backend dev:backend-worker`
+* **Load Balancer**: `pnpm --filter load-balancer start`
+* **Admin Dashboard**: `pnpm --filter mentivo-admin-frontend dev`
+* **Website**: `pnpm --filter website dev`
+
+---
+
+### Production Build & Start Commands
+
+Below are the build and start commands required for setting up production environments (e.g. Render, Vercel, or manual VMs).
+
+| Service | Directory | Build Command | Start Command |
+|---|---|---|---|
+| **Backend Main & Worker** | `/backend` | `pnpm install && pnpm run render:build` | `pnpm run start` |
+| **Load Balancer** | `/load-balancer` | `pnpm install && pnpm run render:build` | `pnpm run start` |
+| **Admin Dashboard** | `/admin-frontend` | `pnpm install && pnpm run build` | `pnpm run start` |
+| **Website & Partner Portal** | `/website` | `pnpm install && pnpm run build` | `pnpm run start` |
+| **Mobile App** | `/frontend` | `npm install` | `npx expo start` (or EAS build triggers) |
+
+#### Database Setup (Production)
+Before running the backend in production, make sure to apply Prisma database migrations:
+```bash
+cd backend
+npx prisma migrate deploy
+```
+
+---
 
 ## 🔄 Core Workflows
 
