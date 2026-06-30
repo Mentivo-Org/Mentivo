@@ -34,12 +34,15 @@ const userNodes = [mainInstance, ...workers];
 console.log(`Main Instance (Admin+User): ${mainInstance}`);
 console.log(`Worker Nodes (User only): ${workers.length}`);
 
-// Simple Round Robin index
-let currentWorkerIndex = 0;
-const getNextNode = () => {
-    const node = userNodes[currentWorkerIndex];
-    currentWorkerIndex = (currentWorkerIndex + 1) % userNodes.length;
-    return node;
+// Sticky Session Router logic (IP Hashing)
+const getStickyNode = (ip) => {
+    let hash = 0;
+    for (let i = 0; i < ip.length; i++) {
+        hash = (hash << 5) - hash + ip.charCodeAt(i);
+        hash |= 0; // Convert to 32bit int
+    }
+    const index = Math.abs(hash) % userNodes.length;
+    return userNodes[index];
 };
 
 // Admin Proxy (Strictly routes to the main instance)
@@ -54,14 +57,15 @@ const adminProxy = createProxyMiddleware({
     },
 });
 
-// User/Socket Proxy (Round robin across all instances)
+// User/Socket Proxy (Sticky sessions via IP hashing across all instances)
 let lastRoutedNode = '';
 const userProxy = createProxyMiddleware({
     target: mainInstance, // default target, but we override it in router
     changeOrigin: true,
     ws: true, // Enable WebSockets
     router: (req) => {
-        const node = getNextNode();
+        const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+        const node = getStickyNode(ip);
         lastRoutedNode = node;
         return node;
     },
