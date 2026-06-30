@@ -7,6 +7,44 @@ import type { AuthRequest } from '../middleware/auth.ts';
 
 const router = Router();
 
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+let primaryKeyMap: Record<string, string> | null = null;
+const getPrimaryKeyMap = () => {
+  if (primaryKeyMap) return primaryKeyMap;
+  primaryKeyMap = {};
+  try {
+    const schemaPath = path.join(__dirname, '../../../prisma/schema.prisma');
+    const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
+    
+    const modelBlocks = schemaContent.split('model ');
+    for (let i = 1; i < modelBlocks.length; i++) {
+      const block = modelBlocks[i];
+      const modelNameMatch = block.match(/^([a-zA-Z0-9_]+)/);
+      if (!modelNameMatch) continue;
+      const modelName = modelNameMatch[1];
+      
+      const lines = block.split('\n');
+      let pkField = 'id';
+      for (const line of lines) {
+        if (line.includes('@id')) {
+          const parts = line.trim().split(/\s+/);
+          pkField = parts[0];
+          break;
+        }
+      }
+      primaryKeyMap[modelName.toLowerCase()] = pkField;
+    }
+  } catch (error) {
+    console.error('Failed to parse schema.prisma for primary keys:', error);
+  }
+  return primaryKeyMap;
+};
+
 // Introspect Prisma model names and metadata from Prisma DMMF (Data Model Meta Format)
 const getAvailableTables = () => {
   // @ts-ignore - Accessing Prisma internals to dynamic metadata
@@ -39,11 +77,13 @@ const logDBAction = async (adminEmail: string, table: string, action: string, de
 router.get('/tables', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const models = getAvailableTables();
+    const pkMap = getPrimaryKeyMap();
     
     // Get row counts for all tables dynamically
     const tableStats = await Promise.all(
       models.map(async (model: any) => {
         const modelKey = model.name.charAt(0).toLowerCase() + model.name.slice(1);
+        const pkFieldName = pkMap[model.name.toLowerCase()] || 'id';
         let count = 0;
         try {
           // @ts-ignore
@@ -54,10 +94,16 @@ router.get('/tables', authenticateAdmin, async (req: AuthRequest, res: Response)
         } catch (e) {
           // ignore counting error
         }
+        
+        const mappedFields = model.fields.map((f: any) => ({
+          ...f,
+          isId: f.name === pkFieldName
+        }));
+
         return {
           name: model.name,
           dbName: model.dbName || model.name,
-          fields: model.fields,
+          fields: mappedFields,
           rowCount: count
         };
       })
@@ -209,10 +255,12 @@ router.put('/tables/:tableName/rows/:id', authenticateAdmin, async (req: AuthReq
     return res.status(404).json({ error: `Table '${tableName}' not found.` });
   }
 
+  const pkMap = getPrimaryKeyMap();
+  const pkName = pkMap[tableName.toLowerCase()] || 'id';
+
   const models = getAvailableTables();
   const modelMeta = models.find((m: any) => m.name.toLowerCase() === tableName.toLowerCase());
-  const pkField = modelMeta?.fields.find((f: any) => f.isId);
-  const pkName = pkField?.name || 'id';
+  const pkField = modelMeta?.fields.find((f: any) => f.name === pkName);
   const pkType = pkField?.type || 'String';
   let parsedId: any = id;
   if (pkType === 'Int') parsedId = parseInt(id, 10);
@@ -250,10 +298,12 @@ router.delete('/tables/:tableName/rows/:id', authenticateAdmin, async (req: Auth
     return res.status(404).json({ error: `Table '${tableName}' not found.` });
   }
 
+  const pkMap = getPrimaryKeyMap();
+  const pkName = pkMap[tableName.toLowerCase()] || 'id';
+
   const models = getAvailableTables();
   const modelMeta = models.find((m: any) => m.name.toLowerCase() === tableName.toLowerCase());
-  const pkField = modelMeta?.fields.find((f: any) => f.isId);
-  const pkName = pkField?.name || 'id';
+  const pkField = modelMeta?.fields.find((f: any) => f.name === pkName);
   const pkType = pkField?.type || 'String';
   let parsedId: any = id;
   if (pkType === 'Int') parsedId = parseInt(id, 10);
