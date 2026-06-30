@@ -209,14 +209,23 @@ router.put('/tables/:tableName/rows/:id', authenticateAdmin, async (req: AuthReq
     return res.status(404).json({ error: `Table '${tableName}' not found.` });
   }
 
+  const models = getAvailableTables();
+  const modelMeta = models.find((m: any) => m.name.toLowerCase() === tableName.toLowerCase());
+  const pkField = modelMeta?.fields.find((f: any) => f.isId);
+  const pkName = pkField?.name || 'id';
+  const pkType = pkField?.type || 'String';
+  let parsedId: any = id;
+  if (pkType === 'Int') parsedId = parseInt(id, 10);
+  else if (pkType === 'Float' || pkType === 'Decimal') parsedId = parseFloat(id);
+
   try {
     const data = req.body;
     const result = await dbModel.update({
-      where: { id },
+      where: { [pkName]: parsedId },
       data
     });
 
-    await logDBAction(req.user?.email || 'admin', tableName, 'UPDATE', { id, updates: data });
+    await logDBAction(req.user?.email || 'admin', tableName, 'UPDATE', { [pkName]: parsedId, updates: data });
 
     res.json(result);
   } catch (error: any) {
@@ -241,14 +250,23 @@ router.delete('/tables/:tableName/rows/:id', authenticateAdmin, async (req: Auth
     return res.status(404).json({ error: `Table '${tableName}' not found.` });
   }
 
+  const models = getAvailableTables();
+  const modelMeta = models.find((m: any) => m.name.toLowerCase() === tableName.toLowerCase());
+  const pkField = modelMeta?.fields.find((f: any) => f.isId);
+  const pkName = pkField?.name || 'id';
+  const pkType = pkField?.type || 'String';
+  let parsedId: any = id;
+  if (pkType === 'Int') parsedId = parseInt(id, 10);
+  else if (pkType === 'Float' || pkType === 'Decimal') parsedId = parseFloat(id);
+
   try {
     const result = await dbModel.delete({
-      where: { id }
+      where: { [pkName]: parsedId }
     });
 
-    await logDBAction(req.user?.email || 'admin', tableName, 'DELETE', { id, deleted: result });
+    await logDBAction(req.user?.email || 'admin', tableName, 'DELETE', { [pkName]: parsedId, deleted: result });
 
-    res.json({ message: 'Row successfully deleted', deleted: result });
+    res.json({ success: true, deletedId: parsedId });
   } catch (error: any) {
     res.status(400).json({ error: error.message || 'Failed to delete row' });
   }

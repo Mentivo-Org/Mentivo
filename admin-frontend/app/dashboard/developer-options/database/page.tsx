@@ -410,11 +410,15 @@ export default function DatabasePage() {
                       </td>
                     </tr>
                   ) : (
-                    rows.map((row) => (
-                      <tr key={row.id} className="hover:bg-slate-50 transition border-r border-border">
+                    rows.map((row) => {
+                      const pkField = selectedTable.fields.find(f => f.isId)?.name || 'id';
+                      const currentRowId = row[pkField];
+
+                      return (
+                      <tr key={currentRowId} className="hover:bg-slate-50 transition border-r border-border">
                         <td className="p-2 border-r border-border text-center">
                           <button
-                            onClick={() => handleDeleteRow(row.id)}
+                            onClick={() => handleDeleteRow(currentRowId)}
                             className="p-1.5 text-red-500 hover:bg-red-50 hover:text-red-600 rounded-lg cursor-pointer transition"
                             title="Delete row"
                           >
@@ -430,14 +434,14 @@ export default function DatabasePage() {
                             ? JSON.stringify(val) 
                             : String(val);
 
-                          const isEditing = editingCell?.rowId === row.id && editingCell?.colName === f.name;
+                          const isEditing = editingCell?.rowId === currentRowId && editingCell?.colName === f.name;
 
                           return (
                             <td
                               key={f.name}
                               onDoubleClick={() => {
                                 if (!isIdCol) {
-                                  setEditingCell({ rowId: row.id, colName: f.name });
+                                  setEditingCell({ rowId: currentRowId, colName: f.name });
                                   setEditingValue(val === null || val === undefined ? "" : String(val));
                                 }
                               }}
@@ -453,11 +457,11 @@ export default function DatabasePage() {
                                     className="flex-1 bg-transparent border-none text-xs focus:outline-none text-text p-1"
                                     autoFocus
                                     onKeyDown={(e) => {
-                                      if (e.key === "Enter") handleInlineSave(row.id, f.name, f.type);
+                                      if (e.key === "Enter") handleInlineSave(currentRowId, f.name, f.type);
                                       if (e.key === "Escape") setEditingCell(null);
                                     }}
                                   />
-                                  <button onClick={() => handleInlineSave(row.id, f.name, f.type)} className="text-emerald-500 hover:bg-emerald-50 p-0.5 rounded cursor-pointer">
+                                  <button onClick={() => handleInlineSave(currentRowId, f.name, f.type)} className="text-emerald-500 hover:bg-emerald-50 p-0.5 rounded cursor-pointer">
                                     <Check size={12} />
                                   </button>
                                   <button onClick={() => setEditingCell(null)} className="text-red-500 hover:bg-red-50 p-0.5 rounded cursor-pointer">
@@ -471,8 +475,8 @@ export default function DatabasePage() {
                           );
                         })}
                       </tr>
-                    ))
-                  )}
+                    );
+                  }))}
                 </tbody>
               </table>
             </div>
