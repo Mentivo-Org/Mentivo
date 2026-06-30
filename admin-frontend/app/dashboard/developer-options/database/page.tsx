@@ -411,7 +411,7 @@ export default function DatabasePage() {
                     </tr>
                   ) : (
                     rows.map((row) => {
-                      const pkField = selectedTable.fields.find(f => f.isId)?.name || 'id';
+                      const pkField = selectedTable.fields.find(f => f.isId)?.name || selectedTable.fields.find(f => f.name === 'id')?.name || selectedTable.fields[0]?.name || 'id';
                       const currentRowId = row[pkField];
 
                       return (
@@ -427,7 +427,8 @@ export default function DatabasePage() {
                         </td>
                         {selectedTable.fields.map((f) => {
                           const val = row[f.name];
-                          const isIdCol = f.isId;
+                          const pkFieldForCol = selectedTable.fields.find(field => field.isId)?.name || selectedTable.fields.find(field => field.name === 'id')?.name || selectedTable.fields[0]?.name || 'id';
+                          const isIdCol = f.isId || f.name === pkFieldForCol;
                           const displayVal = val === null || val === undefined 
                             ? "NULL" 
                             : typeof val === "object" 
