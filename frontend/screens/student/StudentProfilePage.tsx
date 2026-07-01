@@ -22,12 +22,21 @@ import * as ImagePicker from 'expo-image-picker';
 
 const { width, height } = Dimensions.get("window");
 
+import useSWR, { mutate } from 'swr';
+import { Skeleton } from '../../components/Skeleton';
+
+const fetcher = (url: string) => api.get(url).then(res => res.data);
+
 export default function StudentProfilePage() {
   const navigation = useNavigation<any>();
-  const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [userData, setUserData] = useState<any>(null);
+
+  const { data: whoAmIData, error: loadError, isLoading } = useSWR(LoginEndpoints.whoAmI, fetcher, {
+    revalidateOnFocus: true,
+  });
+
+  const userData = whoAmIData?.user;
 
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertData, setAlertData] = useState({ title: '', message: '' });
@@ -40,58 +49,23 @@ export default function StudentProfilePage() {
   const [tempName, setTempName] = useState("");
   const [savingName, setSavingName] = useState(false);
 
-
   const [isEditingGrade, setIsEditingGrade] = useState(false);
   const [tempGrade, setTempGrade] = useState("");
   const [savingGrade, setSavingGrade] = useState(false);
 
-  const loadCachedData = async () => {
-    try {
-      const cachedUser = await AsyncStorage.getItem("user");
-      if (cachedUser) {
-        const parsedUser = JSON.parse(cachedUser);
-        setUserData(parsedUser);
-        setTempName(parsedUser.name || "");
-        setTempGrade(parsedUser.grade || "");
-        setLoading(false);
-      }
-    } catch (err) {
-      console.error("Failed to load cached student profile", err);
-    }
-  };
-
-  const fetchData = async (silent = false) => {
-    if (!silent) setRefreshing(true);
-    try {
-      const response = await api.get(LoginEndpoints.whoAmI);
-      if (response.status === 200 && response.data?.user) {
-        const user = response.data.user;
-        setUserData(user);
-        setTempName(user.name || "");
-        setTempGrade(user.grade || "");
-        await AsyncStorage.setItem("user", JSON.stringify(user));
-      }
-    } catch (error) {
-      console.error("Failed to fetch student profile:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
+  // Sync state variables when SWR fetches new data
   useEffect(() => {
-    loadCachedData();
-    fetchData(true);
-  }, []);
+    if (userData) {
+      setTempName(userData.name || "");
+      setTempGrade(userData.grade || "");
+      AsyncStorage.setItem("user", JSON.stringify(userData)).catch(err => console.error(err));
+    }
+  }, [userData]);
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchData(true);
-    }, [])
-  );
-
-  const onRefresh = () => {
-    fetchData();
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await mutate(LoginEndpoints.whoAmI);
+    setRefreshing(false);
   };
 
   const handlePickImage = async () => {
@@ -132,13 +106,10 @@ export default function StudentProfilePage() {
 
       if (response.status === 200 && response.data?.photo_url) {
         const newPhotoUrl = response.data.photo_url;
-        const updatedUser = { ...userData, photo_url: newPhotoUrl };
-        setUserData(updatedUser);
-        await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
+        await mutate(LoginEndpoints.whoAmI); // Refetch profile
         await AsyncStorage.setItem("photo_url", newPhotoUrl);
         setAlertData({ title: 'Success', message: 'Profile picture updated successfully' });
         setAlertVisible(true);
-        fetchData(true);
       }
     } catch (error) {
       console.error('Image upload failed:', error);
@@ -157,9 +128,7 @@ export default function StudentProfilePage() {
 
       const response = await api.patch(LoginEndpoints.updateProfile, body);
       if (response.status === 200 && response.data?.user) {
-        const updatedUser = response.data.user;
-        setUserData(updatedUser);
-        await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
+        await mutate(LoginEndpoints.whoAmI); // Refetch profile
         setAlertData({ title: 'Success', message: `${field.charAt(0).toUpperCase() + field.slice(1)} updated successfully` });
         setAlertVisible(true);
         setIsEditing(false);
@@ -173,10 +142,29 @@ export default function StudentProfilePage() {
     }
   };
 
-  if (loading && !refreshing) {
+  if (isLoading && !refreshing) {
     return (
-      <SafeAreaView style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color="#0077CB" />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.bgContainer}>
+          <View style={styles.ellipse18} />
+        </View>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.header}>
+            <Skeleton style={{ width: 40, height: 40, borderRadius: 20 }} />
+            <Skeleton style={{ width: 100, height: 24, borderRadius: 12, marginLeft: 20 }} />
+          </View>
+          <View style={styles.avatarSection}>
+            <Skeleton style={{ width: 120, height: 120, borderRadius: 60 }} />
+          </View>
+          <View style={styles.nameSection}>
+            <Skeleton style={{ width: 180, height: 28, borderRadius: 8, alignSelf: 'center', marginTop: 10 }} />
+          </View>
+          <View style={[styles.detailsContainer, { marginTop: 30 }]}>
+            <Skeleton style={{ width: '100%', height: 60, borderRadius: 12, marginBottom: 15 }} />
+            <Skeleton style={{ width: '100%', height: 60, borderRadius: 12, marginBottom: 15 }} />
+            <Skeleton style={{ width: '100%', height: 60, borderRadius: 12 }} />
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }

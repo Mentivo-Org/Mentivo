@@ -10,11 +10,11 @@ import App from './App';
 // Create Notifee channels
 async function setupNotifee() {
   await notifee.createChannel({
-    id: 'incoming_calls',
+    id: 'incoming_calls_v2',
     name: 'Incoming Calls',
     importance: AndroidImportance.HIGH,
     vibration: true,
-    sound: 'default',
+    sound: 'custom_ringtone',
   });
   await notifee.createChannel({
     id: 'ongoing_calls',
@@ -74,14 +74,14 @@ setBackgroundMessageHandler(messaging, async (remoteMessage) => {
       body: 'Tap to answer',
       data: { callId, channelName, callerName, callerPhoto },
       android: {
-        channelId: 'incoming_calls',
+        channelId: 'incoming_calls_v2',
         importance: AndroidImportance.HIGH,
         priority: 'high',
         category: 'call',
         ongoing: true,
         autoCancel: false,
         loopSound: true,
-        sound: 'default', 
+        sound: 'custom_ringtone', 
         showWhenLocked: true,
         turnScreenOn: true,
         fullScreenAction: {

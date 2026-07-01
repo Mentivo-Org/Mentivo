@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -23,8 +23,12 @@ import api from "../../services/api";
 import { AskEndpoints, CallEndpoints, WalletEndpoints } from "../../constants/endpoint";
 import DialogBox from "../../components/DialogBox";
 import { useLoading } from "../../context/LoadingContext";
+import useSWR, { mutate } from "swr";
+import { Skeleton } from "../../components/Skeleton";
 
 const { width } = Dimensions.get("window");
+const fetcher = (url: string) => api.get(url).then(res => res.data);
+const fetcherWithParams = ([url, params]: [string, any]) => api.get(url, { params }).then(res => res.data);
 
 export default function StudentAskPage() {
   const navigation = useNavigation<any>();
@@ -44,7 +48,6 @@ export default function StudentAskPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isMoreLoading, setIsMoreLoading] = useState(false);
 
@@ -69,11 +72,14 @@ export default function StudentAskPage() {
       hideSubscription.remove();
     };
   }, []);
-  const [askConfig, setAskConfig] = useState<any>({
+
+  // Fetch Ask Configuration via SWR
+  const { data: configData } = useSWR(AskEndpoints.config, fetcher);
+  const askConfig = configData || {
     maxQuestionChars: null,
     maxQuestionsPerPeriod: 5,
     periodHours: 24,
-  });
+  };
 
   // Fetch logged-in user ID
   useEffect(() => {
@@ -89,7 +95,6 @@ export default function StudentAskPage() {
       }
     };
     getUserId();
-    fetchConfig();
   }, []);
 
   // Debounce search query
@@ -100,17 +105,28 @@ export default function StudentAskPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch Ask Configuration
-  const fetchConfig = async () => {
-    try {
-      const res = await api.get(AskEndpoints.config);
-      if (res.status === 200) {
-        setAskConfig(res.data);
+  // Fetch Questions via SWR
+  const { data: fetchResult, error: questionsError, isLoading } = useSWR(
+    [AskEndpoints.questions, { sort: "popular", search: debouncedSearch, page, limit: 10 }],
+    fetcherWithParams
+  );
+
+  useEffect(() => {
+    if (fetchResult) {
+      const fetchedQuestions = fetchResult.questions || [];
+      setTotalPages(fetchResult.pagination?.totalPages || 1);
+      if (page === 1) {
+        setQuestions(fetchedQuestions);
+      } else {
+        setQuestions((prev) => {
+          const existingIds = new Set(prev.map(q => q.id));
+          const newQuestions = fetchedQuestions.filter((q: any) => !existingIds.has(q.id));
+          return [...prev, ...newQuestions];
+        });
       }
-    } catch (err) {
-      console.error("Error fetching Q&A config:", err);
+      setIsMoreLoading(false);
     }
-  };
+  }, [fetchResult, page]);
 
   const handleInitiateCall = async (mentor: any) => {
     if (!mentor) return;
@@ -164,59 +180,24 @@ export default function StudentAskPage() {
     }
   };
 
-  // Fetch Questions
-  const fetchQuestions = async (pageNum: number, search: string, refresh = false) => {
-    if (pageNum === 1) {
-      if (refresh) setIsRefreshing(true);
-      else setIsLoading(true);
-    } else {
-      setIsMoreLoading(true);
-    }
-
-    try {
-      const res = await api.get(AskEndpoints.questions, {
-        params: {
-          sort: "popular",
-          search: search,
-          page: pageNum,
-          limit: 10,
-        },
-      });
-
-      if (res.status === 200) {
-        const fetchedQuestions = res.data.questions || [];
-        setTotalPages(res.data.pagination?.totalPages || 1);
-        if (pageNum === 1) {
-          setQuestions(fetchedQuestions);
-        } else {
-          setQuestions((prev) => [...prev, ...fetchedQuestions]);
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching questions:", err);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-      setIsMoreLoading(false);
-    }
-  };
-
   useEffect(() => {
     setPage(1);
-    fetchQuestions(1, debouncedSearch);
   }, [debouncedSearch]);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
     setPage(1);
-    fetchQuestions(1, searchQuery, true);
-    fetchConfig();
+    await Promise.all([
+      mutate(AskEndpoints.config),
+      mutate([AskEndpoints.questions, { sort: "popular", search: searchQuery, page: 1, limit: 10 }])
+    ]);
+    setIsRefreshing(false);
   };
 
   const handleLoadMore = () => {
-    if (page < totalPages && !isMoreLoading) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      fetchQuestions(nextPage, searchQuery);
+    if (page < totalPages && !isMoreLoading && !isLoading) {
+      setIsMoreLoading(true);
+      setPage(prev => prev + 1);
     }
   };
 
@@ -428,9 +409,24 @@ export default function StudentAskPage() {
       </View>
 
       {/* List */}
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0077CB" />
+      {isLoading && page === 1 ? (
+        <View style={styles.listContent}>
+          {[1, 2, 3].map((key) => (
+            <View key={key} style={[styles.questionCard, { borderColor: '#e5e7eb', padding: 16, marginBottom: 16 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                <Skeleton style={{ width: 36, height: 36, borderRadius: 18, marginRight: 12 }} />
+                <View style={{ flex: 1 }}>
+                  <Skeleton style={{ width: 120, height: 16, borderRadius: 8, marginBottom: 6 }} />
+                  <Skeleton style={{ width: 80, height: 12, borderRadius: 6 }} />
+                </View>
+              </View>
+              <Skeleton style={{ width: '100%', height: 40, borderRadius: 8, marginBottom: 12 }} />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Skeleton style={{ width: 60, height: 20, borderRadius: 10 }} />
+                <Skeleton style={{ width: 80, height: 20, borderRadius: 10 }} />
+              </View>
+            </View>
+          ))}
         </View>
       ) : (
         <FlatList

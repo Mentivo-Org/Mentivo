@@ -108,11 +108,11 @@ const MentorCard: React.FC<MentorCardProps> = ({
         )}
         <View style={{ alignItems: 'flex-end', marginTop: 4 }}>
           {originalPrice && originalPrice > price ? (
-            <Text style={styles.originalPriceText}>₹{originalPrice}/min</Text>
+            <Text style={styles.originalPriceText}>{originalPrice} credits/min</Text>
           ) : null}
           <Text style={styles.priceText}>
-            <Text style={styles.priceAmount}>₹{price}</Text>
-            <Text style={styles.priceUnit}>/min</Text>
+            <Text style={styles.priceAmount}>{price}</Text>
+            <Text style={styles.priceUnit}> credits/min</Text>
           </Text>
         </View>
       </View>

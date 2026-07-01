@@ -7,6 +7,7 @@ import { chatSessionManager } from '../../services/chat/chatSessionManager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../services/api';
 import { MentorEndpoints } from '../../constants/endpoint';
+import { Skeleton } from '../../components/Skeleton';
 
 const { width } = Dimensions.get('window');
 
@@ -215,8 +216,19 @@ const ChatListPage = () => {
       </View>
 
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0077CB" />
+        <View style={styles.scrollViewContent}>
+          {[1, 2, 3, 4].map((key) => (
+            <View key={key} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6', marginHorizontal: 20 }}>
+              <Skeleton style={{ width: 44, height: 44, borderRadius: 22, marginRight: 12 }} />
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <Skeleton style={{ width: 100, height: 16, borderRadius: 8 }} />
+                  <Skeleton style={{ width: 40, height: 12, borderRadius: 6 }} />
+                </View>
+                <Skeleton style={{ width: '70%', height: 14, borderRadius: 7 }} />
+              </View>
+            </View>
+          ))}
         </View>
       ) : filteredFavorites.length === 0 && filteredSessions.length === 0 ? (
         <View style={styles.emptyScreenContainer}>

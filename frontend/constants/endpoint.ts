@@ -34,6 +34,7 @@ export const ForgotPassEndpoints = {
 
 export const MentorEndpoints = {
     getAllMentors: `${baseUrl}/mentors`,
+    getTopMentors: `${baseUrl}/mentors/top`,
     getMentorsPaginated: `${baseUrl}/mentors/paginated`,
     getOnlineCount: `${baseUrl}/mentors/count/online`,
     searchMentors: `${baseUrl}/mentors/search`,

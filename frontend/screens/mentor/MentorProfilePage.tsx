@@ -9,6 +9,8 @@ import api from '../../services/api';
 import { MentorEndpoints, ProfilePictureEndpoints } from '../../constants/endpoint';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from 'expo-image-picker';
+import useSWR, { mutate } from 'swr';
+import { Skeleton } from '../../components/Skeleton';
 
 const { width, height } = Dimensions.get("window");
 
@@ -52,13 +54,16 @@ const getLevelColors = (lvl?: string) => {
   };
 };
 
+const fetcher = (url: string) => api.get(url).then(res => res.data);
+
 export default function MentorProfilePage() {
   const navigation = useNavigation<any>();
   const { handleLogout } = useAuth();
-  const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [mentorData, setMentorData] = useState<any>(null);
+
+  const { data: statsData, error: profileError, isLoading } = useSWR(MentorEndpoints.getMeStats, fetcher);
+  const mentorData = statsData?.profile;
   
   // Image Viewer State
   const [isViewerVisible, setIsViewerVisible] = useState(false);
@@ -79,55 +84,20 @@ export default function MentorProfilePage() {
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertData, setAlertData] = useState({ title: '', message: '' });
 
-  const loadCachedData = async () => {
-    try {
-      const cachedStats = await AsyncStorage.getItem("stats");
-      if (cachedStats) {
-        const parsedData = JSON.parse(cachedStats);
-        setMentorData(parsedData.profile);
-        setTempUpi(parsedData.profile.upiId || "");
-        setTempYear(parsedData.profile.year ? parsedData.profile.year.toString() : "");
-        setTempExpertise(parsedData.profile.expertise || "");
-        setLoading(false);
-      }
-    } catch (err) {
-      console.error("Failed to load cached profile", err);
-    }
-  };
-
-  const fetchData = async (silent = false) => {
-    if (!silent) setRefreshing(true);
-    try {
-      const response = await api.get(MentorEndpoints.getMeStats);
-      if (response.status === 200) {
-        const newData = response.data;
-        setMentorData(newData.profile);
-        setTempUpi(newData.profile.upiId || "");
-        setTempYear(newData.profile.year ? newData.profile.year.toString() : "");
-        setTempExpertise(newData.profile.expertise || "");
-        await AsyncStorage.setItem("stats", JSON.stringify(newData));
-      }
-    } catch (error) {
-      console.error("Failed to fetch mentor profile:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
+  // Sync state variables when SWR fetches new data
   useEffect(() => {
-    loadCachedData();
-    fetchData(true); // Background fetch on mount
-  }, []);
+    if (mentorData) {
+      setTempUpi(mentorData.upiId || "");
+      setTempYear(mentorData.year ? mentorData.year.toString() : "");
+      setTempExpertise(mentorData.expertise || "");
+      AsyncStorage.setItem("stats", JSON.stringify(statsData)).catch(err => console.error(err));
+    }
+  }, [mentorData, statsData]);
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchData(true); // Background fetch on focus
-    }, [])
-  );
-
-  const onRefresh = () => {
-    fetchData();
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await mutate(MentorEndpoints.getMeStats);
+    setRefreshing(false);
   };
 
   const handlePickImage = async () => {
@@ -167,17 +137,9 @@ export default function MentorProfilePage() {
       });
 
       if (response.status === 200 && response.data?.photo_url) {
-        const newPhotoUrl = response.data.photo_url;
-        const updatedMentorData = {
-          ...mentorData,
-          user: { ...mentorData.user, photo_url: newPhotoUrl }
-        };
-        setMentorData(updatedMentorData);
-        await AsyncStorage.setItem("stats", JSON.stringify({ ...mentorData, profile: updatedMentorData }));
-        await AsyncStorage.setItem("photo_url", newPhotoUrl);
+        await mutate(MentorEndpoints.getMeStats); // Refetch profile
         setAlertData({ title: 'Success', message: 'Profile picture updated successfully' });
         setAlertVisible(true);
-        fetchData(true);
       }
     } catch (error) {
       console.error('Image upload failed:', error);
@@ -199,7 +161,7 @@ export default function MentorProfilePage() {
         let label = field === 'upiId' ? 'UPI ID' : field.charAt(0).toUpperCase() + field.slice(1);
         setAlertData({ title: 'Success', message: `${label} updated successfully` });
         setAlertVisible(true);
-        fetchData(true);
+        await mutate(MentorEndpoints.getMeStats); // Refetch profile
         setIsEditing(false);
       }
     } catch (error) {
@@ -212,10 +174,29 @@ export default function MentorProfilePage() {
     }
   };
 
-  if (loading && !refreshing) {
+  if (isLoading && !refreshing) {
     return (
-      <SafeAreaView style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color="#0077c8" />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.bgContainer}>
+          <View style={styles.ellipse18} />
+        </View>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.header}>
+            <Skeleton style={{ width: 40, height: 40, borderRadius: 20 }} />
+            <Skeleton style={{ width: 100, height: 24, borderRadius: 12, marginLeft: 20 }} />
+          </View>
+          <View style={styles.avatarSection}>
+            <Skeleton style={{ width: 120, height: 120, borderRadius: 60 }} />
+          </View>
+          <View style={styles.nameSection}>
+            <Skeleton style={{ width: 180, height: 28, borderRadius: 8, alignSelf: 'center', marginTop: 10 }} />
+          </View>
+          <View style={[styles.detailsContainer, { marginTop: 30 }]}>
+            <Skeleton style={{ width: '100%', height: 60, borderRadius: 12, marginBottom: 15 }} />
+            <Skeleton style={{ width: '100%', height: 60, borderRadius: 12, marginBottom: 15 }} />
+            <Skeleton style={{ width: '100%', height: 60, borderRadius: 12 }} />
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }

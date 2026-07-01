@@ -13,7 +13,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { PartnerEndpoints, websiteUrl } from '../constants/endpoint';
+import { PartnerEndpoints, MentorEndpoints, websiteUrl } from '../constants/endpoint';
 import api from '../services/api';
 import { useLoading } from '../context/LoadingContext';
 import DialogBox from '../components/DialogBox';
@@ -27,6 +27,7 @@ const LandingPage = () => {
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertData, setAlertData] = useState({ title: '', message: '' });
   const [onCloseCallback, setOnCloseCallback] = useState<(() => void) | null>(null);
+  const [topMentors, setTopMentors] = useState<any[]>([]);
 
   const handleLinkPress = async (link: string) => {
     try {
@@ -92,6 +93,20 @@ const LandingPage = () => {
     validateReferral();
   }, [route.params]);
 
+  useEffect(() => {
+    const fetchTopMentors = async () => {
+      try {
+        const response = await api.get(MentorEndpoints.getTopMentors);
+        if (Array.isArray(response.data)) {
+          setTopMentors(response.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch top mentors:", err);
+      }
+    };
+    fetchTopMentors();
+  }, []);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -142,26 +157,49 @@ const LandingPage = () => {
           <Text style={styles.sectionTitle}>Top mentors</Text>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mentorScroll}>
-          {[
-            { name: 'Suraj Jain', college: 'IIT Guwahati', rating: '4.6' },
-            { name: 'Abhirajya Yadav', college: 'IIT Guwahati', rating: '4.8' },
-            { name: 'Suraj Jain', college: 'IIT Guwahati', rating: '4.0' },
-          ].map((mentor, index) => (
-            <View key={index} style={styles.mentorCard}>
-              <View style={styles.mentorHeader}>
-                <Image source={require('../app-assets/profile-circle.svg')} style={styles.mentorAvatar} />
-                <Image source={require('../app-assets/heart-icon.svg')} style={styles.heartIcon} />
-              </View>
-              <Text style={styles.mentorName}>{mentor.name}</Text>
-              <View style={styles.mentorFooter}>
-                <Text style={styles.mentorCollege}>{mentor.college}</Text>
-                <View style={styles.ratingContainer}>
-                  <Text style={styles.ratingText}>{mentor.rating}</Text>
-                  <Image source={require('../app-assets/star-icon.svg')} style={styles.starIcon} />
+          {topMentors.length > 0 ? (
+            topMentors.map((mentor, index) => (
+              <View key={mentor.mentorId || index} style={styles.mentorCard}>
+                <View style={styles.mentorHeader}>
+                  {mentor.user?.photo_url ? (
+                    <Image source={{ uri: mentor.user.photo_url }} style={styles.mentorAvatar} />
+                  ) : (
+                    <Image source={require('../app-assets/profile-circle.svg')} style={styles.mentorAvatar} />
+                  )}
+                  <Image source={require('../app-assets/heart-icon.svg')} style={styles.heartIcon} />
+                </View>
+                <Text style={styles.mentorName} numberOfLines={1}>{mentor.user?.name || mentor.name}</Text>
+                <View style={styles.mentorFooter}>
+                  <Text style={styles.mentorCollege} numberOfLines={1}>{mentor.iit_name || mentor.college}</Text>
+                  <View style={styles.ratingContainer}>
+                    <Text style={styles.ratingText}>{Number(mentor.avg_rating || mentor.rating).toFixed(1)}</Text>
+                    <Image source={require('../app-assets/star-icon.svg')} style={styles.starIcon} />
+                  </View>
                 </View>
               </View>
-            </View>
-          ))}
+            ))
+          ) : (
+            [
+              { name: 'Suraj Jain', college: 'IIT Guwahati', rating: '4.6' },
+              { name: 'Abhirajya Yadav', college: 'IIT Guwahati', rating: '4.8' },
+              { name: 'Suraj Jain', college: 'IIT Guwahati', rating: '4.0' },
+            ].map((mentor, index) => (
+              <View key={index} style={styles.mentorCard}>
+                <View style={styles.mentorHeader}>
+                  <Image source={require('../app-assets/profile-circle.svg')} style={styles.mentorAvatar} />
+                  <Image source={require('../app-assets/heart-icon.svg')} style={styles.heartIcon} />
+                </View>
+                <Text style={styles.mentorName}>{mentor.name}</Text>
+                <View style={styles.mentorFooter}>
+                  <Text style={styles.mentorCollege}>{mentor.college}</Text>
+                  <View style={styles.ratingContainer}>
+                    <Text style={styles.ratingText}>{mentor.rating}</Text>
+                    <Image source={require('../app-assets/star-icon.svg')} style={styles.starIcon} />
+                  </View>
+                </View>
+              </View>
+            ))
+          )}
         </ScrollView>
 
         {/* How it works */}

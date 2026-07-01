@@ -28,6 +28,8 @@ import { useLoading } from "../../context/LoadingContext";
 import DialogBox from "../../components/DialogBox";
 import api from "../../services/api";
 import { WalletEndpoints, MentorEndpoints, LoginEndpoints, CallEndpoints, ConfigEndpoint } from "../../constants/endpoint";
+import useSWR, { mutate } from "swr";
+import { Skeleton } from "../../components/Skeleton";
 
 const { width, height } = Dimensions.get("window");
 
@@ -69,7 +71,6 @@ export default function StudentHomePage() {
   const [displayedMentors, setDisplayedMentors] = useState<any[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [offset, setOffset] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -420,65 +421,71 @@ export default function StudentHomePage() {
     };
   }, [searchQuery, mentors]);
 
-  const fetchMentors = async (reset = false) => {
-    if (isLoading || (!hasMore && !reset) || searchQuery.length > 0) return;
-    
-    setIsLoading(true);
-    const currentOffset = reset ? 0 : offset;
-    const isOnlineOnly = selectedFilter === "Online";
-    const levelParam = selectedLevel;
+  const fetcherWithParams = ([url, params]: [string, any]) => api.get(url, { params }).then(res => res.data);
 
-    try {
-      const response = await api.get(`${MentorEndpoints.getMentorsPaginated}?offset=${currentOffset}&limit=${LIMIT}&onlineOnly=${isOnlineOnly}&sortBy=${sortBy}&level=${levelParam}&language=${encodeURIComponent(selectedLanguage)}`);
-      
-      if (response.status === 200) {
-        const fetchedMentors = response.data;
-        
-        // Transform the backend data format to match the frontend expectations
-        const formattedMentors = fetchedMentors.map((m: any) => ({
-          id: m.mentorId,
-          name: m.user?.name || "Unknown",
-          iit: m.iit_name || "IIT Delhi",
-          branch: m.branch || "CSE",
-          year: `Y${m.year}`,
-          rating: m.avg_rating || 0,
-          calls: m.total_calls || 0,
-          price: m.rate_per_min || 10,
-          originalPrice: m.originalPrice || null,
-          isFavorite: false, // Update if you have a favorites system
-          isOnline: m.isOnline,
-          photoUrl: m.user?.photo_url,
-          mentorlevel: m.mentorlevel,
-        }));
-
-        if (formattedMentors.length < LIMIT) {
-          setHasMore(false);
-        } else {
-          setHasMore(true);
-        }
-
-        const newMentors = reset ? formattedMentors : [...mentors, ...formattedMentors];
-        setMentors(newMentors);
-        if (!searchQuery.trim()) {
-           setDisplayedMentors(newMentors);
-        }
-        setOffset(currentOffset + LIMIT);
-      }
-    } catch (error) {
-      console.error("Failed to fetch mentors:", error);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
+  const queryParams = {
+    offset,
+    limit: LIMIT,
+    onlineOnly: selectedFilter === "Online",
+    sortBy,
+    level: selectedLevel,
+    language: selectedLanguage,
   };
 
-  const handleRefresh = () => {
+  const { data: fetchResult, error: mentorsError, isLoading } = useSWR(
+    searchQuery.trim() ? null : [MentorEndpoints.getMentorsPaginated, queryParams],
+    fetcherWithParams
+  );
+
+  useEffect(() => {
+    if (fetchResult) {
+      const formattedMentors = fetchResult.map((m: any) => ({
+        id: m.mentorId,
+        name: m.user?.name || "Unknown",
+        iit: m.iit_name || "IIT Delhi",
+        branch: m.branch || "CSE",
+        year: `Y${m.year}`,
+        rating: m.avg_rating || 0,
+        calls: m.total_calls || 0,
+        price: m.rate_per_min || 10,
+        originalPrice: m.originalPrice || null,
+        isFavorite: favoriteIds.includes(m.mentorId),
+        isOnline: m.isOnline,
+        photoUrl: m.user?.photo_url,
+        mentorlevel: m.mentorlevel,
+      }));
+
+      setHasMore(formattedMentors.length === LIMIT);
+
+      if (offset === 0) {
+        setMentors(formattedMentors);
+        if (!searchQuery.trim()) {
+          setDisplayedMentors(formattedMentors);
+        }
+      } else {
+        setMentors(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const newMentors = formattedMentors.filter((p: any) => !existingIds.has(p.id));
+          const updated = [...prev, ...newMentors];
+          if (!searchQuery.trim()) {
+            setDisplayedMentors(updated);
+          }
+          return updated;
+        });
+      }
+      setIsRefreshing(false);
+    }
+  }, [fetchResult, offset, favoriteIds]);
+
+  const handleRefresh = async () => {
     setIsRefreshing(true);
+    setOffset(0);
     fetchWalletBalance();
     fetchOnlineCount();
     fetchUpcomingCall();
     fetchSettingsAndEligibility();
-    fetchMentors(true);
+    await mutate([MentorEndpoints.getMentorsPaginated, { ...queryParams, offset: 0 }]);
+    setIsRefreshing(false);
   };
 
   useTabPressRefresh(navigation, handleRefresh);
@@ -504,7 +511,6 @@ export default function StudentHomePage() {
     fetchOnlineCount();
     fetchUpcomingCall();
     fetchSettingsAndEligibility();
-    fetchMentors(true); // Initial fetch
 
     return () => {
       unsubscribeFocus();
@@ -528,7 +534,7 @@ export default function StudentHomePage() {
   }, []);
 
   useEffect(() => {
-    fetchMentors(true);
+    setOffset(0);
   }, [selectedFilter, selectedLevel, sortBy, selectedLanguage]);
 
   const toggleSidebar = () => {
@@ -689,7 +695,7 @@ export default function StudentHomePage() {
         </View>
         <TouchableOpacity style={styles.walletHeaderButton} onPress={() => navigation.navigate("Payment")}>
           <Image source={require("../../app-assets/wallet-fill.svg")} style={styles.walletHeaderIcon} tintColor="#0077CB" />
-          <Text style={styles.walletHeaderBalance}>₹{walletBalance}</Text>
+          <Text style={styles.walletHeaderBalance}>{walletBalance}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.filterHeaderButton} onPress={() => {
           setTempSortBy(sortBy);
@@ -719,8 +725,8 @@ export default function StudentHomePage() {
         ListHeaderComponent={renderHeader}
         ListFooterComponent={renderFooter}
         onEndReached={() => {
-          if (!searchQuery.trim()) {
-            fetchMentors();
+          if (!searchQuery.trim() && hasMore && !isLoading) {
+            setOffset(prev => prev + LIMIT);
           }
         }}
         onEndReachedThreshold={0.5}
@@ -730,11 +736,24 @@ export default function StudentHomePage() {
           <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={["#0077CB"]} />
         }
         ListEmptyComponent={
-          !isLoading ? (
+          isLoading && offset === 0 ? (
+            <View style={{ paddingHorizontal: '5%' }}>
+              {[1, 2, 3].map((key) => (
+                <View key={key} style={{ backgroundColor: 'white', borderRadius: 8, height: 120, padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#f0f0f0', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }}>
+                  <Skeleton style={{ width: 64, height: 64, borderRadius: 32, marginRight: 16 }} />
+                  <View style={{ flex: 1 }}>
+                    <Skeleton style={{ width: 120, height: 20, borderRadius: 10, marginBottom: 8 }} />
+                    <Skeleton style={{ width: 160, height: 16, borderRadius: 8, marginBottom: 6 }} />
+                    <Skeleton style={{ width: 80, height: 14, borderRadius: 7 }} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No mentors found</Text>
             </View>
-          ) : null
+          )
         }
       />
 

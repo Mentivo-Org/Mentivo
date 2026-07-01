@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Keyboard, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Keyboard, StatusBar, ScrollView } from 'react-native';
+import { Skeleton } from '../../components/Skeleton';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -387,22 +388,39 @@ const ChatPage = (props: any) => {
           style={styles.bgPattern}
         />
         
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => (
-            <MessageBubble 
-              content={item.content}
-              isSender={item.isSender}
-              senderName={item.senderName}
-              timestamp={item.timestamp}
-              status={item.status}
-            />
-          )}
-          contentContainerStyle={styles.flatListContent}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
-        />
+        {isConnecting ? (
+          <ScrollView contentContainerStyle={styles.flatListContent}>
+            <View style={{ alignSelf: 'flex-start', marginBottom: 12, width: '60%' }}>
+              <Skeleton style={{ height: 40, borderRadius: 12, width: '100%' }} />
+            </View>
+            <View style={{ alignSelf: 'flex-end', marginBottom: 12, width: '50%' }}>
+              <Skeleton style={{ height: 40, borderRadius: 12, width: '100%' }} />
+            </View>
+            <View style={{ alignSelf: 'flex-start', marginBottom: 12, width: '70%' }}>
+              <Skeleton style={{ height: 50, borderRadius: 12, width: '100%' }} />
+            </View>
+            <View style={{ alignSelf: 'flex-end', marginBottom: 12, width: '40%' }}>
+              <Skeleton style={{ height: 40, borderRadius: 12, width: '100%' }} />
+            </View>
+          </ScrollView>
+        ) : (
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            keyExtractor={item => item.id}
+            renderItem={({ item }) => (
+              <MessageBubble 
+                content={item.content}
+                isSender={item.isSender}
+                senderName={item.senderName}
+                timestamp={item.timestamp}
+                status={item.status}
+              />
+            )}
+            contentContainerStyle={styles.flatListContent}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
+          />
+        )}
 
         {!isStudent && (
           <MessageInput 

@@ -31,7 +31,7 @@ const IncomingCallScreen = () => {
     }
 
     // Start playing ringtone
-    InCallManager.startRingtone('_BUNDLE_', [300, 100, 300], 'playback', 30);
+    InCallManager.startRingtone('custom_ringtone', [300, 100, 300], 'playback', 30);
     InCallManager.setForceSpeakerphoneOn(false);
 
     // Notify backend that phone is ringing

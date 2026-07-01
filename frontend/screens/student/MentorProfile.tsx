@@ -223,11 +223,11 @@ export default function MentorProfile() {
 
           <View style={styles.priceTag}>
             {mentor.originalPrice && mentor.originalPrice > mentor.price ? (
-              <Text style={styles.originalPriceText}>₹{mentor.originalPrice}/min</Text>
+              <Text style={styles.originalPriceText}>{mentor.originalPrice} credits/min</Text>
             ) : null}
             <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-              <Text style={styles.priceAmount}>₹{mentor.price}</Text>
-              <Text style={styles.priceUnit}>/min</Text>
+              <Text style={styles.priceAmount}>{mentor.price}</Text>
+              <Text style={styles.priceUnit}> credits/min</Text>
             </View>
           </View>
         </View>

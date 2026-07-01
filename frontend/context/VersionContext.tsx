@@ -15,7 +15,13 @@ const VersionContext = createContext<VersionContextType>({ apiVersion: 'v1' });
 export const useVersion = () => useContext(VersionContext);
 
 // Simple comparison: removes dots and compares as integers (e.g. 1.0.5 -> 105)
-const parseVersion = (v: string) => parseInt(v.replace(/\./g, ''), 10);
+const parseVersion = (v: string) => {
+  // Temporary bypass for the 1.0.0 downgrade release
+  if (v === '1.0.0' && Constants.expoConfig?.version === '1.0.0') {
+    return 999;
+  }
+  return parseInt(v.replace(/\./g, ''), 10);
+};
 
 export const VersionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [apiVersion, setApiVersion] = useState<string>('v1');

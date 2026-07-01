@@ -65,6 +65,7 @@ import {
   DeviceEventEmitter,
   Dimensions,
   Text,
+  Linking,
 } from "react-native";
 import Svg, { Rect, Circle, Defs, Mask } from "react-native-svg";
 import notifee, { EventType, AndroidImportance } from "@notifee/react-native";
@@ -82,7 +83,7 @@ import { agoraChatService } from "../services/chat/agoraChatClient";
 import { chatSessionManager } from "../services/chat/chatSessionManager";
 import ProfileIcon from "../components/ProfileIcon";
 
-const INCOMING_CALL_CHANNEL = "incoming_calls";
+const INCOMING_CALL_CHANNEL = "incoming_calls_v2";
 const ONGOING_CALL_CHANNEL = "ongoing_calls";
 
 const Tab = createBottomTabNavigator();
@@ -424,7 +425,7 @@ export default function RootNavigator() {
         importance: AndroidImportance.HIGH,
         vibration: true,
         vibrationPattern: [300, 100, 300, 100, 300],
-        sound: "default",
+        sound: "custom_ringtone",
       });
 
       await notifee.createChannel({
@@ -506,6 +507,13 @@ export default function RootNavigator() {
             });
           } else if (notificationType === "question_answered" || questionId) {
             navigate("QuestionDetail", { questionId: questionId });
+          } else if (data.source === "admin-dashboard") {
+            const { actionType, actionTarget } = data;
+            if (actionType === "EXTERNAL_URL" && actionTarget) {
+              Linking.openURL(actionTarget).catch(err => console.error("Failed to open URL:", err));
+            } else if (actionType === "IN_APP" && actionTarget) {
+              navigate(actionTarget as any);
+            }
           }
         } else if (type === EventType.ACTION_PRESS) {
           const data = detail.notification?.data || {};
@@ -638,6 +646,13 @@ export default function RootNavigator() {
           partnerName: senderName,
           sessionId: sessionId,
         });
+      } else if (data.source === "admin-dashboard") {
+        const { actionType, actionTarget } = data;
+        if (actionType === "EXTERNAL_URL" && actionTarget) {
+          Linking.openURL(actionTarget).catch(err => console.error("Failed to open URL:", err));
+        } else if (actionType === "IN_APP" && actionTarget) {
+          navigate(actionTarget as any);
+        }
       } else if (notificationType === "question_answered" || questionId) {
         navigate("QuestionDetail", { questionId: questionId });
       }

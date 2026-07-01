@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Dimensions,
   ScrollView,
-  ActivityIndicator,
   Linking,
 } from "react-native";
 import * as WebBrowser from "expo-web-browser";
@@ -17,30 +16,21 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../../services/api";
 import { WalletEndpoints, websiteUrl } from "../../constants/endpoint";
 import DialogBox from "../../components/DialogBox";
+import useSWR from "swr";
+import { Skeleton } from "../../components/Skeleton";
 
 const { width } = Dimensions.get("window");
+const fetcher = (url: string) => api.get(url).then(res => res.data);
 
 export default function PaymentPage() {
   const navigation = useNavigation<any>();
-  const [balance, setBalance] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
 
   const [alertData, setAlertData] = useState({ title: "", message: "" });
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
 
-  const fetchBalance = async () => {
-    try {
-      const response = await api.get(WalletEndpoints.getBalance);
-      if (response.status === 200) {
-        setBalance(response.data.balance);
-      }
-    } catch (error) {
-      console.error("Failed to fetch session credits balance:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: walletData, isLoading } = useSWR(WalletEndpoints.getBalance, fetcher);
+  const balance = walletData?.balance ?? 0;
 
   useEffect(() => {
     const loadUser = async () => {
@@ -50,7 +40,6 @@ export default function PaymentPage() {
       }
     };
     loadUser();
-    fetchBalance();
   }, []);
 
   const handleAddCredits = async () => {
@@ -98,10 +87,10 @@ export default function PaymentPage() {
           <View style={styles.balanceContainer}>
             <Image source={require("../../app-assets/wallet-fill.svg")} style={styles.creditIcon} tintColor="#0077CB" />
             <Text style={styles.balanceText}>
-              {loading ? (
-                <ActivityIndicator size="small" color="#0077CB" />
+              {isLoading ? (
+                <Skeleton style={{ width: 80, height: 24, borderRadius: 12 }} />
               ) : (
-                `${balance !== null ? balance : 0} Credits`
+                `${balance} Credits`
               )}
             </Text>
           </View>
@@ -112,7 +101,7 @@ export default function PaymentPage() {
             <Text style={styles.infoTitle}>How it works</Text>
             <View style={styles.infoRow}>
               <View style={styles.bullet} />
-              <Text style={styles.infoText}>1 Credit = ₹1.00 session value</Text>
+              <Text style={styles.infoText}>1 Credit = 1.00 session value</Text>
             </View>
             <View style={styles.infoRow}>
               <View style={styles.bullet} />

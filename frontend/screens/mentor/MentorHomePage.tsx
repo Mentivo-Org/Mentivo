@@ -556,8 +556,8 @@ function PlanCard({ level, rate, requirements, benefits, active, isExpanded, onT
                          <>
                              <Text style={[styles.planBannerChargeLabel, { color: textColor }]}>Charge up to</Text>
                              <Text style={[styles.planBannerChargeValue, { color: textColor }]}>
-                                 ₹{rate}
-                                 <Text style={[styles.planBannerChargeUnit, { color: textColor }]}>/min</Text>
+                                 {rate}
+                                 <Text style={[styles.planBannerChargeUnit, { color: textColor }]}> credits/min</Text>
                              </Text>
                          </>
                      ) : (
@@ -593,7 +593,7 @@ function PlanCard({ level, rate, requirements, benefits, active, isExpanded, onT
                                  </View>
                              )}
                              <Text style={styles.planDetailsLabel}>Charge</Text>
-                             <Text style={styles.planDetailsRate}>{isNumeric(rate) ? `₹${rate}/min` : rate}</Text>
+                             <Text style={styles.planDetailsRate}>{isNumeric(rate) ? `${rate} credits/min` : rate}</Text>
                          </View>
                         
                         <View style={styles.planSection}>

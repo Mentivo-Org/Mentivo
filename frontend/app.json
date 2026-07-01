@@ -2,7 +2,7 @@
   "expo": {
     "name": "Mentivo",
     "slug": "mentivo",
-    "version": "1.0.8",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -55,7 +55,7 @@
         "FOREGROUND_SERVICE_MICROPHONE",
         "RECEIVE_BOOT_COMPLETED"
       ],
-      "versionCode": 16
+      "versionCode": 18
     },
     "web": {
       "favicon": "./assets/icon.png"

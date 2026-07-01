@@ -68,7 +68,7 @@ export default function MentorSessionsPage() {
       <View style={styles.historyInfo}>
         <View style={styles.historyTopRow}>
           <Text style={styles.studentName}>{item.student?.name || "Student"}</Text>
-          <Text style={styles.earningText}>₹{item.mentorEarning || 0}</Text>
+          <Text style={styles.earningText}>{item.mentorEarning || 0} credits</Text>
         </View>
         <View style={styles.historyBottomRow}>
           <Text style={styles.durationText}>{Math.floor((item.durationSecs || 0) / 60)}m {item.durationSecs % 60}s</Text>
