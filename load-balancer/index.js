@@ -34,16 +34,26 @@ const userNodes = [mainInstance, ...workers];
 console.log(`Main Instance (Admin+User): ${mainInstance}`);
 console.log(`Worker Nodes (User only): ${workers.length}`);
 
-// Sticky Session Router logic (IP Hashing)
-const getStickyNode = (ip) => {
-    let hash = 0;
-    for (let i = 0; i < ip.length; i++) {
-        hash = (hash << 5) - hash + ip.charCodeAt(i);
-        hash |= 0; // Convert to 32bit int
-    }
-    const index = Math.abs(hash) % userNodes.length;
-    return userNodes[index];
+// Dynamic Sticky Session Router logic (In-Memory IP Map with TTL)
+const ipWorkerMap = new Map();
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+let currentWorkerIndex = 0;
+const getNextNode = () => {
+    const node = userNodes[currentWorkerIndex];
+    currentWorkerIndex = (currentWorkerIndex + 1) % userNodes.length;
+    return node;
 };
+
+// Cleanup stale sessions every 5 minutes
+setInterval(() => {
+    const now = Date.now();
+    for (const [ip, session] of ipWorkerMap.entries()) {
+        if (now - session.lastSeen > SESSION_TIMEOUT_MS) {
+            ipWorkerMap.delete(ip);
+        }
+    }
+}, 5 * 60 * 1000);
 
 // Admin Proxy (Strictly routes to the main instance)
 const adminProxy = createProxyMiddleware({
@@ -57,7 +67,7 @@ const adminProxy = createProxyMiddleware({
     },
 });
 
-// User/Socket Proxy (Sticky sessions via IP hashing across all instances)
+// User/Socket Proxy (Dynamic sticky sessions with round-robin fallback and TTL)
 let lastRoutedNode = '';
 const userProxy = createProxyMiddleware({
     target: mainInstance, // default target, but we override it in router
@@ -65,7 +75,19 @@ const userProxy = createProxyMiddleware({
     ws: true, // Enable WebSockets
     router: (req) => {
         const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
-        const node = getStickyNode(ip);
+        const now = Date.now();
+
+        let node;
+        if (ipWorkerMap.has(ip)) {
+            const session = ipWorkerMap.get(ip);
+            session.lastSeen = now;
+            node = session.node;
+        } else {
+            // New IP session - assign via Round Robin
+            node = getNextNode();
+            ipWorkerMap.set(ip, { node, lastSeen: now });
+        }
+
         lastRoutedNode = node;
         return node;
     },

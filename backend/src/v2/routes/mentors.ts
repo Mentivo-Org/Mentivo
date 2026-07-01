@@ -6,7 +6,7 @@ import prisma from '../config/db.ts';
 
 const router = Router();
 
-const mentorInclude = {
+export const mentorInclude = {
   user: {
     select: {
       name: true,
@@ -23,7 +23,7 @@ const mentorInclude = {
   }
 };
 
-const formatMentor = (m: any, configMap: any = {}) => {
+export const formatMentor = (m: any, configMap: any = {}) => {
   const level = m.mentorlevel;
   let rate_per_min = Number(m.rate_per_min || 10);
   let originalPrice: number | null = null;
@@ -54,7 +54,7 @@ const formatMentor = (m: any, configMap: any = {}) => {
   };
 };
 
-const formatMentorList = async (mentorsList: any[]) => {
+export const formatMentorList = async (mentorsList: any[]) => {
   const settings = await prisma.appSetting.findMany();
   const configMap = settings.reduce((acc: any, curr) => {
     acc[curr.key] = curr.value;
@@ -64,6 +64,28 @@ const formatMentorList = async (mentorsList: any[]) => {
   return mentorsList.map(m => formatMentor(m, configMap));
 };
 
+// GET /api/mentors/top
+router.get('/top', async (req: Request, res: Response) => {
+  try {
+    const redis = (await import('../config/redis.ts')).default;
+    const cached = await redis.get('public:top_mentors');
+    
+    if (cached) {
+      return res.json(JSON.parse(cached));
+    }
+    
+    // Cache miss, trigger recalculation
+    const { recalculateTopMentors } = await import('../services/topMentors.ts');
+    const mentors = await recalculateTopMentors();
+    res.json(mentors);
+  } catch (err) {
+    console.error('[GET /top] Error fetching top mentors:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+import { getCachedData, setCachedData } from '../utils/cache.ts';
+
 // GET /api/mentors
 router.get('/', authenticateUser, async (req:Request, res:Response) => {
   try {
@@ -72,12 +94,34 @@ router.get('/', authenticateUser, async (req:Request, res:Response) => {
       return res.json([]);
     }
 
-    const mentors = await prisma.mentorProfile.findMany({
-      where: { mentorId: { in: availableIds } },
-      include: mentorInclude
-    });
-    
-    res.json(await formatMentorList(mentors));
+    // Try to get formatted mentors from cache
+    const finalMentors = [];
+    const cacheMisses = [];
+
+    for (const id of availableIds) {
+      const cached = await getCachedData<any>(`mentor:formatted:${id}`);
+      if (cached) {
+        finalMentors.push(cached);
+      } else {
+        cacheMisses.push(id);
+      }
+    }
+
+    if (cacheMisses.length > 0) {
+      const dbMentors = await prisma.mentorProfile.findMany({
+        where: { mentorId: { in: cacheMisses } },
+        include: mentorInclude
+      });
+      
+      const formattedMisses = await formatMentorList(dbMentors);
+      
+      for (const m of formattedMisses) {
+        await setCachedData(`mentor:formatted:${m.mentorId}`, m, 300); // 5 min TTL
+        finalMentors.push(m);
+      }
+    }
+
+    res.json(finalMentors);
   } catch (err) {
     res.status(500).json({ error: 'Internal Server Error' });
   }

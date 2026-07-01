@@ -12,6 +12,43 @@ const router = Router();
 
 router.use(authenticateAdmin);
 
+// Preview top mentors matching specified criteria
+router.post('/top-mentors/preview', async (req, res) => {
+  try {
+    const { minRating, minCalls, limit } = req.body;
+
+    const parsedMinRating = parseFloat(minRating !== undefined ? minRating : '4.5');
+    const parsedMinCalls = parseInt(minCalls !== undefined ? minCalls : '10', 10);
+    const parsedLimit = parseInt(limit !== undefined ? limit : '5', 10);
+
+    const mentors = await prisma.mentorProfile.findMany({
+      where: {
+        verificationStatus: 'VERIFIED',
+        avg_rating: { gte: parsedMinRating },
+        total_calls: { gte: parsedMinCalls }
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+            photo_url: true,
+            email: true
+          }
+        }
+      },
+      orderBy: [
+        { avg_rating: 'desc' },
+        { total_calls: 'desc' }
+      ],
+      take: parsedLimit
+    });
+
+    res.json(mentors);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Internal Server Error' });
+  }
+});
+
 // List all mentors
 router.get('/', async (req, res) => {
   const { search } = req.query;
@@ -80,8 +117,8 @@ router.get('/eligible-fellows', async (req, res) => {
   const eligibleMentors = await prisma.mentorProfile.findMany({
     where: {
       mentorlevel: { not: 'Fellow' },
-      total_calls: { gte: fellowCondition.minCalls },
-      avg_rating: { gte: fellowCondition.minRating },
+      total_calls: { gte: fellowCondition.minCalls ?? undefined },
+      avg_rating: { gte: fellowCondition.minRating ?? undefined },
     },
     include: { user: true },
   });

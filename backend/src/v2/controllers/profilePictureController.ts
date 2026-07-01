@@ -3,6 +3,7 @@ import prisma from "../config/db.ts";
 import multer from "multer";
 import type { Request, Response } from "express";
 import mime from 'mime-types';
+import { invalidateCache } from '../utils/cache.ts';
 
 const bucketName = process.env.SUPABASE_PROFILE_PICTURE_BUCKET_NAME || 'mentivo-profile-pictures';
 
@@ -59,6 +60,8 @@ export const uploadProfilePicture = async (req: Request, res: Response) => {
             where: { id: user?.id },
             data: { photo_url: urlData.publicUrl }
         });
+
+        await invalidateCache(`user:profile:${user?.id}`);
 
         return res.status(200).json({
             message: 'Profile picture updated successfully',

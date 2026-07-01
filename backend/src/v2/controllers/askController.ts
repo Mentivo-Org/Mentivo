@@ -3,9 +3,16 @@ import prisma from '../config/db.ts';
 import { sendAnswerAlert } from '../services/notifications.ts';
 
 
+import { getCachedData, setCachedData } from '../utils/cache.ts';
+
 // 1. Get Q&A configuration
 export const getAskConfig = async (req: Request, res: Response) => {
   try {
+    const cachedConfig = await getCachedData('ask:config');
+    if (cachedConfig) {
+      return res.json(cachedConfig);
+    }
+
     let config = await prisma.askConfig.findUnique({
       where: { id: 'default' },
     });
@@ -20,6 +27,8 @@ export const getAskConfig = async (req: Request, res: Response) => {
         },
       });
     }
+    
+    await setCachedData('ask:config', config, 600); // 10 min TTL
     res.json(config);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -117,11 +126,23 @@ export const getQuestions = async (req: Request, res: Response) => {
     const limitNum = parseInt(limit as string) || 10;
     const skip = (pageNum - 1) * limitNum;
 
-    // Fetch user to get coachingCenterId
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-    const userCoachingCenterId = user?.coachingCenterId;
+    // Fetch user to get coachingCenterId (cached)
+    const cachedUser = await getCachedData<any>(`user:profile:${userId}`);
+    let userCoachingCenterId = cachedUser?.coachingCenterId;
+    
+    if (!cachedUser) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+      userCoachingCenterId = user?.coachingCenterId;
+      if (user) await setCachedData(`user:profile:${userId}`, user, 300);
+    }
+
+    const cacheKey = `ask:questions:cc:${userCoachingCenterId || 'global'}:sort:${sort}:search:${search}:page:${pageNum}:limit:${limitNum}`;
+    const cachedQuestions = await getCachedData(cacheKey);
+    if (cachedQuestions) {
+      return res.json(cachedQuestions);
+    }
 
     // Build filter
     const whereClause: any = {
@@ -225,7 +246,7 @@ export const getQuestions = async (req: Request, res: Response) => {
       });
     }
 
-    res.json({
+    const responseData = {
       questions,
       pagination: {
         totalCount,
@@ -233,7 +254,11 @@ export const getQuestions = async (req: Request, res: Response) => {
         currentPage: pageNum,
         limit: limitNum,
       },
-    });
+    };
+
+    // Cache this specific feed query for 3 minutes (short TTL due to high mutability)
+    await setCachedData(cacheKey, responseData, 180);
+    res.json(responseData);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

@@ -298,8 +298,10 @@ model Notification {
   userId    String   @db.Uuid
   title     String
   body      String
-  isRead    Boolean  @default(false) @map("is_read")
-  createdAt DateTime @default(now()) @map("created_at")
+  isRead       Boolean  @default(false) @map("is_read")
+  createdAt    DateTime @default(now()) @map("created_at")
+  actionType   String?  @map("action_type")
+  actionTarget String?  @map("action_target")
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -313,6 +315,8 @@ model NotificationLog {
   title          String
   body           String   @db.Text
   sent_at        DateTime @default(now())
+  actionType     String?  @map("action_type")
+  actionTarget   String?  @map("action_target")
 
   @@map("notification_logs")
 }

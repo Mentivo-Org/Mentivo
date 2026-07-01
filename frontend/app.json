@@ -12,10 +12,7 @@
       "resizeMode": "cover",
       "backgroundColor": "#0077CB"
     },
-    "notification": {
-      "icon": "./assets/notification-icon.png",
-      "color": "#0077CB"
-    },
+
     "ios": {
       "supportsTablet": true
     },
@@ -65,6 +62,13 @@
       "favicon": "./assets/icon.png"
     },
     "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#0077CB"
+        }
+      ],
       "@react-native-google-signin/google-signin",
       "@react-native-firebase/app",
       "@react-native-firebase/messaging",

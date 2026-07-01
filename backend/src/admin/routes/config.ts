@@ -106,6 +106,18 @@ router.post('/settings/bulk', async (req, res) => {
         })
       )
     );
+    
+    // Check if top mentors settings were modified to trigger cache invalidation
+    const settingKeys = Object.keys(settings);
+    if (settingKeys.some(key => key.startsWith('top_mentors_'))) {
+      import('../../v1/services/topMentors.ts').then(({ recalculateTopMentors }) => {
+        recalculateTopMentors().catch(err => console.error('[Config v1] Failed to recalculate top mentors:', err));
+      });
+      import('../../v2/services/topMentors.ts').then(({ recalculateTopMentors }) => {
+        recalculateTopMentors().catch(err => console.error('[Config v2] Failed to recalculate top mentors:', err));
+      });
+    }
+
     res.json({ success: true, count: results.length });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

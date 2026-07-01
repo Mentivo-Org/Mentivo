@@ -57,7 +57,7 @@ router.post('/preview-group', async (req, res) => {
 
 // Send notification to a single user
 router.post('/send', async (req: AuthRequest, res) => {
-  const { toId, title, body, priority } = req.body;
+  const { toId, title, body, priority, actionType, actionTarget } = req.body;
   const adminEmail = req.user?.email;
 
   if (!toId || !title || !body || !adminEmail) {
@@ -78,6 +78,8 @@ router.post('/send', async (req: AuthRequest, res) => {
         userId: toId,
         title,
         body,
+        actionType: actionType || null,
+        actionTarget: actionTarget || null,
       }
     });
 
@@ -88,13 +90,18 @@ router.post('/send', async (req: AuthRequest, res) => {
         received_by_id: [toId],
         title,
         body,
+        actionType: actionType || null,
+        actionTarget: actionTarget || null,
       }
     });
 
     // 3. Send Push Notification
     const tokens = user.fcmTokens.map(t => t.token);
     if (tokens.length > 0) {
-      await sendPushNotification(tokens, title, body, priority || 'normal');
+      await sendPushNotification(tokens, title, body, priority || 'normal', {
+        ...(actionType ? { actionType } : {}),
+        ...(actionTarget ? { actionTarget } : {}),
+      });
     }
 
     res.json({ message: 'Notification sent successfully.' });
@@ -106,7 +113,7 @@ router.post('/send', async (req: AuthRequest, res) => {
 
 // Send notification to a batch of users
 router.post('/send-batch', async (req: AuthRequest, res) => {
-  const { userIds, title, body, priority } = req.body;
+  const { userIds, title, body, priority, actionType, actionTarget } = req.body;
   const adminEmail = req.user?.email;
 
   if (!userIds || !Array.isArray(userIds) || userIds.length === 0 || !title || !body || !adminEmail) {
@@ -120,6 +127,8 @@ router.post('/send-batch', async (req: AuthRequest, res) => {
         userId: id,
         title,
         body,
+        actionType: actionType || null,
+        actionTarget: actionTarget || null,
       }))
     });
 
@@ -130,6 +139,8 @@ router.post('/send-batch', async (req: AuthRequest, res) => {
         received_by_id: userIds,
         title,
         body,
+        actionType: actionType || null,
+        actionTarget: actionTarget || null,
       }
     });
 
@@ -146,7 +157,10 @@ router.post('/send-batch', async (req: AuthRequest, res) => {
       const batchSize = 500;
       for (let i = 0; i < allTokens.length; i += batchSize) {
         const batch = allTokens.slice(i, i + batchSize);
-        await sendPushNotification(batch, title, body, priority || 'normal');
+        await sendPushNotification(batch, title, body, priority || 'normal', {
+          ...(actionType ? { actionType } : {}),
+          ...(actionTarget ? { actionTarget } : {}),
+        });
       }
     }
 
@@ -159,7 +173,7 @@ router.post('/send-batch', async (req: AuthRequest, res) => {
 
 // Send notification to a group based on filters
 router.post('/send-group', async (req: AuthRequest, res) => {
-  const { filters, title, body, priority } = req.body;
+  const { filters, title, body, priority, actionType, actionTarget } = req.body;
   const adminEmail = req.user?.email;
 
   if (!title || !body || !adminEmail) {
@@ -185,6 +199,8 @@ router.post('/send-group', async (req: AuthRequest, res) => {
         userId: id,
         title,
         body,
+        actionType: actionType || null,
+        actionTarget: actionTarget || null,
       }))
     });
 
@@ -195,6 +211,8 @@ router.post('/send-group', async (req: AuthRequest, res) => {
         received_by_id: userIds,
         title,
         body,
+        actionType: actionType || null,
+        actionTarget: actionTarget || null,
       }
     });
 
@@ -210,7 +228,10 @@ router.post('/send-group', async (req: AuthRequest, res) => {
       const batchSize = 500;
       for (let i = 0; i < allTokens.length; i += batchSize) {
         const batch = allTokens.slice(i, i + batchSize);
-        await sendPushNotification(batch, title, body, priority || 'normal');
+        await sendPushNotification(batch, title, body, priority || 'normal', {
+          ...(actionType ? { actionType } : {}),
+          ...(actionTarget ? { actionTarget } : {}),
+        });
       }
     }
 

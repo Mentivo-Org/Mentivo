@@ -25,6 +25,13 @@ export default function SettingsPage() {
   const [priceFellow, setPriceFellow] = useState<string>("");
   const [discountFellow, setDiscountFellow] = useState<string>("");
 
+  const [topMentorsMinRating, setTopMentorsMinRating] = useState<string>("4.5");
+  const [topMentorsMinCalls, setTopMentorsMinCalls] = useState<string>("10");
+  const [topMentorsLimit, setTopMentorsLimit] = useState<string>("5");
+  const [previewMentors, setPreviewMentors] = useState<any[]>([]);
+  const [previewLoading, setPreviewLoading] = useState<boolean>(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +70,9 @@ export default function SettingsPage() {
       setDiscountSignature(settingsData.discount_Signature || "");
       setPriceFellow(settingsData.price_Fellow || "");
       setDiscountFellow(settingsData.discount_Fellow || "");
+      setTopMentorsMinRating(settingsData.top_mentors_min_rating || "4.5");
+      setTopMentorsMinCalls(settingsData.top_mentors_min_calls || "10");
+      setTopMentorsLimit(settingsData.top_mentors_limit || "5");
     } catch (err: any) {
       console.error("Failed to fetch settings config", err);
       setError("Failed to load settings configuration.");
@@ -102,6 +112,9 @@ export default function SettingsPage() {
             price_Fellow: priceFellow,
             discount_Fellow: discountFellow,
             free_call_duration_mins: freeCallDurationMins.toString(),
+            top_mentors_min_rating: topMentorsMinRating,
+            top_mentors_min_calls: topMentorsMinCalls,
+            top_mentors_limit: topMentorsLimit,
           }
         })
       ]);
@@ -113,6 +126,29 @@ export default function SettingsPage() {
       setError(err.response?.data?.error || "Failed to update settings configuration.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePreview = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setPreviewLoading(true);
+    setPreviewError(null);
+    setPreviewMentors([]);
+    try {
+      const { data } = await api.post("/mentors/top-mentors/preview", {
+        minRating: topMentorsMinRating,
+        minCalls: topMentorsMinCalls,
+        limit: topMentorsLimit,
+      });
+      setPreviewMentors(data);
+      if (data.length === 0) {
+        setPreviewError("No mentors match these criteria.");
+      }
+    } catch (err: any) {
+      console.error("Failed to preview top mentors", err);
+      setPreviewError(err.response?.data?.error || "Failed to load preview.");
+    } finally {
+      setPreviewLoading(false);
     }
   };
 
@@ -400,6 +436,122 @@ export default function SettingsPage() {
                   The duration in minutes for the first free call offered to students.
                 </p>
               </div>
+            </div>
+          </div>
+
+          {/* Top Mentors Settings */}
+          <div className="bg-card rounded-xl border border-gray-200 shadow-sm p-6 space-y-6">
+            <h2 className="text-lg font-bold text-text border-b border-gray-100 pb-2">Top Mentors Selection</h2>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-text mb-2">
+                    Min Average Rating
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="5"
+                    required
+                    value={topMentorsMinRating}
+                    onChange={(e) => setTopMentorsMinRating(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-text bg-white"
+                    placeholder="e.g. 4.5"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-text mb-2">
+                    Min Total Calls
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={topMentorsMinCalls}
+                    onChange={(e) => setTopMentorsMinCalls(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-text bg-white"
+                    placeholder="e.g. 10"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-text mb-2">
+                    Display Limit
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={topMentorsLimit}
+                    onChange={(e) => setTopMentorsLimit(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-text bg-white"
+                    placeholder="e.g. 5"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handlePreview}
+                  disabled={previewLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-text font-medium rounded-lg disabled:opacity-50 transition-all border border-gray-300 text-sm"
+                >
+                  {previewLoading ? (
+                    <>
+                      <RefreshCw size={16} className="animate-spin text-primary" />
+                      Loading Preview...
+                    </>
+                  ) : (
+                    "Preview Top Mentors"
+                  )}
+                </button>
+              </div>
+
+              {previewError && (
+                <div className="text-sm text-red-500 bg-red-50 p-3 rounded-lg border border-red-100">
+                  {previewError}
+                </div>
+              )}
+
+              {previewMentors.length > 0 && (
+                <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                  <div className="bg-gray-50 border-b border-gray-200 px-4 py-2 text-xs font-semibold text-secondary uppercase tracking-wider grid grid-cols-4">
+                    <span className="col-span-2">Mentor</span>
+                    <span>Rating</span>
+                    <span>Calls</span>
+                  </div>
+                  <div className="divide-y divide-gray-150 max-h-60 overflow-y-auto">
+                    {previewMentors.map((mentor) => (
+                      <div key={mentor.mentorId} className="px-4 py-3 grid grid-cols-4 items-center text-sm">
+                        <div className="col-span-2 flex items-center gap-3">
+                          {mentor.user?.photo_url ? (
+                            <img
+                              src={mentor.user.photo_url}
+                              alt={mentor.user.name || "Mentor"}
+                              className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 font-bold border border-gray-200">
+                              {(mentor.user?.name || "M").charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-semibold text-text">{mentor.user?.name || "Anonymous"}</p>
+                            <p className="text-xs text-secondary">{mentor.iit_name || "N/A"}</p>
+                          </div>
+                        </div>
+                        <div className="text-text font-medium flex items-center gap-1">
+                          {Number(mentor.avg_rating).toFixed(1)} ⭐
+                        </div>
+                        <div className="text-secondary">{mentor.total_calls} calls</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

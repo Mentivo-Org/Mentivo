@@ -37,20 +37,35 @@ export const logout = async (req: Request, res: Response) => {
   return res.status(200).json({ message: "Logged out successfully" });
 };
 
+import { getCachedData, setCachedData, invalidateCache } from '../utils/cache.ts';
+
 export const whoAmI = async (req:Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+  const cacheKey = `user:profile:${userId}`;
+  const cachedUser = await getCachedData(cacheKey);
+
+  if (cachedUser) {
+    return res.status(200).json({ user: cachedUser });
+  }
+
   if (req.user?.role === 'mentor') {
     const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
+      where: { id: userId },
       include: { mentorProfile: true }
     });
     if (user?.mentorProfile && user.mentorProfile.verificationStatus !== 'VERIFIED') {
       user.mentorProfile.mentorlevel = null;
     }
+    if (user) await setCachedData(cacheKey, user, 300);
     return res.status(200).json({ user });
   }
-  return res.status(200).json({
-    user: req.user
-  })
+
+  const user = await prisma.user.findUnique({ where: { id: userId } }) || req.user;
+  await setCachedData(cacheKey, user, 300);
+  
+  return res.status(200).json({ user })
 }
 
 const checkEmailAndPhoneConflict = async (email: string, phone?: string) => {
@@ -486,6 +501,8 @@ export const updateUserProfile = async (req: Request, res: Response) => {
         grade: grade !== undefined ? grade : undefined,
       },
     });
+
+    await invalidateCache(`user:profile:${userId}`);
 
     return res.status(200).json({ success: true, user: updatedUser });
   } catch (err) {

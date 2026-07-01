@@ -237,16 +237,19 @@ export function startJobs() {
     cron.schedule('* * * * *', () => {
         sweepAbandonedCalls().catch(err => console.error('Unhandled Sweeper error:', err));
     });
+    console.log('Initialised Sweeper job, scheduled at * * * * * (every minute)');
 
     // 2. Run payouts every Monday at 3 AM
     cron.schedule('0 3 * * 1', () => {
         processWeeklyPayouts().catch(err => console.error('Unhandled Payouts error:', err));
     });
+    console.log('Initialised Weekly Payouts job, scheduled at 0 3 * * 1 (weekly on Monday at 3 AM)');
 
     // 3. Run upcoming calls reminder every minute
     cron.schedule('* * * * *', () => {
         notifyUpcomingCalls().catch(err => console.error('Unhandled Reminder error:', err));
     });
+    console.log('Initialised Upcoming Calls Reminder job, scheduled at * * * * * (every minute)');
 
     // 4. Run mentor promotion job
     startPromotionJob();
@@ -255,6 +258,18 @@ export function startJobs() {
     cron.schedule('30 0 * * *', () => {
         cleanupPendingWalletTransactions().catch(err => console.error('Unhandled Transaction Cleanup error:', err));
     });
+    console.log('Initialised Pending Transactions Cleanup job, scheduled at 30 0 * * * (daily at 12:30 AM)');
+
+    // 6. Recalculate top mentors cache daily at 1:00 AM
+    cron.schedule('0 1 * * *', async () => {
+        try {
+            const { recalculateTopMentors } = await import('../services/topMentors.ts');
+            await recalculateTopMentors();
+        } catch (err) {
+            console.error('Unhandled TopMentors recalculation error:', err);
+        }
+    });
+    console.log('Initialised Top Mentors Recalculation job, scheduled at 0 1 * * * (daily at 1:00 AM)');
 
     // No need to return a promise that resolves after adding jobs since they are in-memory
     return Promise.resolve();

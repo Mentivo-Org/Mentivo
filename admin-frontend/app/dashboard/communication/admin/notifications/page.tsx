@@ -31,6 +31,8 @@ export default function NotificationCenterPage() {
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(false);
   const [counting, setCounting] = useState(false);
+  const [actionType, setActionType] = useState<"none" | "IN_APP" | "EXTERNAL_URL">("none");
+  const [actionTarget, setActionTarget] = useState("");
 
   useEffect(() => {
     if (mode === "group") {
@@ -125,8 +127,8 @@ export default function NotificationCenterPage() {
     try {
       const endpoint = mode === "group" ? "/notifications/send-group" : "/notifications/send-batch";
       const payload = mode === "group" 
-        ? { filters, title, body, priority } 
-        : { userIds: selectedUsers.map(u => u.id), title, body, priority };
+        ? { filters, title, body, priority, actionType: actionType === "none" ? null : actionType, actionTarget: actionType === "none" ? null : actionTarget } 
+        : { userIds: selectedUsers.map(u => u.id), title, body, priority, actionType: actionType === "none" ? null : actionType, actionTarget: actionType === "none" ? null : actionTarget };
 
       await api.post(endpoint, payload);
       
@@ -137,6 +139,8 @@ export default function NotificationCenterPage() {
       }
       setTitle("");
       setBody("");
+      setActionType("none");
+      setActionTarget("");
     } catch (err: any) {
       alert(err.response?.data?.error || "Failed to send notification.");
     } finally {
@@ -343,6 +347,67 @@ export default function NotificationCenterPage() {
                     <p className="text-[10px] text-secondary mt-1 ml-1 italic">
                         High priority should be used sparingly to respect user battery and delivery policies.
                     </p>
+                </div>
+
+                <div className="border-t border-gray-100 pt-4 space-y-4">
+                  <h3 className="text-sm font-bold text-text">Click Action Routing</h3>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Action Type</label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 text-sm text-text cursor-pointer">
+                        <input 
+                          type="radio" 
+                          name="actionType" 
+                          value="none" 
+                          checked={actionType === "none"} 
+                          onChange={() => setActionType("none")}
+                        />
+                        None (Just open app)
+                      </label>
+                      <label className="flex items-center gap-2 text-sm text-text cursor-pointer">
+                        <input 
+                          type="radio" 
+                          name="actionType" 
+                          value="IN_APP" 
+                          checked={actionType === "IN_APP"} 
+                          onChange={() => setActionType("IN_APP")}
+                        />
+                        Open App Screen
+                      </label>
+                      <label className="flex items-center gap-2 text-sm text-text cursor-pointer">
+                        <input 
+                          type="radio" 
+                          name="actionType" 
+                          value="EXTERNAL_URL" 
+                          checked={actionType === "EXTERNAL_URL"} 
+                          onChange={() => setActionType("EXTERNAL_URL")}
+                        />
+                        Open External URL
+                      </label>
+                    </div>
+                  </div>
+
+                  {actionType !== "none" && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                        {actionType === "IN_APP" ? "Target App Screen Name" : "Target External URL"}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder={actionType === "IN_APP" ? "e.g., Wallet, MentorProfile, Ask" : "e.g., https://mentivo.in/blog/guide"}
+                        className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary transition-all text-sm"
+                        value={actionTarget}
+                        onChange={(e) => setActionTarget(e.target.value)}
+                      />
+                      <p className="text-[10px] text-secondary mt-1 ml-1 italic">
+                        {actionType === "IN_APP" 
+                          ? "Enter the exact route/screen name specified in RootNavigator.tsx (case-sensitive)." 
+                          : "Must start with http:// or https://."}
+                      </p>
+                    </div>
+                  )}
                 </div>
              </div>
 

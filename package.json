@@ -9,6 +9,7 @@
   "author": "Ayan Bain",
   "type": "module",
   "scripts": {
+    "dev:all": "concurrently --color always --names \"server,mobile\" --prefix-colors \"green,yellow\" \"pnpm run dev\" \"cd frontend && npx expo run:android\"",
     "dev": "concurrently --color always --names \"backend-main,backend-worker,load-balancer,admin-web,website\" --prefix-colors \"blue,cyan,yellow,magenta,green\" \"npm run dev:backend-main\" \"npm run dev:backend-worker\" \"npm run dev:lb\" \"npm run dev:admin\" \"npm run dev:web\"",
     "dev:backend-main": "cd backend && set PORT=3000&& set PORT_V1=4000&& set PORT_V2=4001&& set PORT_ADMIN=5000&& set ENABLE_ADMIN_API=true&& pnpm dev",
     "dev:backend-worker": "cd backend && set PORT=3002&& set PORT_V1=4002&& set PORT_V2=4003&& set ENABLE_ADMIN_API=false&& pnpm dev",
