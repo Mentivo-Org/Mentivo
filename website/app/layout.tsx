@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Fraunces, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { LoadingProvider } from "@/context/LoadingContext";
 import ApiInterceptor from "./components/ApiInterceptor";
 import AppWrapper from "./components/AppWrapper";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const fraunces = Fraunces({ subsets: ["latin"], weight: ["300", "500", "600"], variable: "--font-fraunces" });
+const jetBrainsMono = JetBrains_Mono({ subsets: ["latin"], weight: ["500"], variable: "--font-mono" });
 
 export async function generateMetadata(): Promise<Metadata> {
   const isMaintenanceMode = process.env.PRODUCTION_MODE === 'true';
@@ -57,7 +59,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className={`${inter.className} bg-[#f8fafc] text-slate-900 antialiased`}>
+      <body className={`${inter.variable} ${fraunces.variable} ${jetBrainsMono.variable} font-sans bg-[#f8fafc] text-slate-900 antialiased`}>
         <LoadingProvider>
           <ApiInterceptor>
             <AppWrapper isMaintenanceMode={isMaintenanceMode}>

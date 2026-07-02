@@ -58,7 +58,9 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     // Check if error is 401, we haven't retried yet, and it's not an auth route
-    const isAuthRoute = originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/auth/signup');
+    const isAuthRoute = originalRequest.url?.includes('/auth/login') || 
+                        originalRequest.url?.includes('/auth/signup') || 
+                        originalRequest.url?.includes('/partners/login');
     const errorMessage = error.response?.data?.error?.toLowerCase() || '';
     const isNoTokenError = errorMessage.includes('no token provided');
 
@@ -106,7 +108,8 @@ api.interceptors.response.use(
         }
 
         // Retry the original request
-        return api(originalRequest);
+        delete originalRequest.adapter;
+        return api.request(originalRequest);
       } catch (refreshError) {
         console.error('Refresh token failed:', refreshError);
         if (typeof window !== 'undefined') {

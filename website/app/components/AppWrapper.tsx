@@ -35,10 +35,12 @@ export default function AppWrapper({
     return null;
   }
 
+  const isHomePage = cleanPath === "";
+
   return (
     <>
-      {!isMaintenanceMode && <Navbar />}
-      <main className={isMaintenanceMode ? "" : "min-h-screen pt-16"}>
+      {!isMaintenanceMode && !isHomePage && <Navbar />}
+      <main className={isMaintenanceMode ? "" : isHomePage ? "min-h-screen" : "min-h-screen pt-16"}>
         {isMaintenanceMode ? <MaintenancePage /> : children}
       </main>
       {!isMaintenanceMode && <Footer />}

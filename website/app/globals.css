@@ -4,6 +4,17 @@
   --color-background: #f8fafc;
   --color-foreground: #0f172a;
   
+  /* Landing Page Design Tokens */
+  --color-ink: #0B0D10;
+  --color-paper: #FAFAF7;
+  --color-rank-gold: #C9A227;
+  --color-mute: rgba(11, 13, 16, 0.55);
+  --color-line: rgba(11, 13, 16, 0.12);
+  
+  --font-fraunces: var(--font-fraunces), serif;
+  --font-inter: var(--font-inter), sans-serif;
+  --font-mono: var(--font-mono), monospace;
+  
   --color-primary: #0077CB;
   --color-primary-dark: #005a9c;
   --color-primary-light: #39b8fd;

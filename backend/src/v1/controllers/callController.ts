@@ -11,6 +11,7 @@ import { chatMessageService } from '../services/chat/chatMessage.ts';
 import { agoraChatRestService } from '../services/agoraChat.ts';
 import { getMentorActiveRate, getMentorActiveRateByProfile, getFreeCallDurationMins } from '../utils/pricing.ts';
 import { toAgoraUserId } from '../utils/agoraUtils.ts';
+import crypto from 'crypto';
 
 
 export function scheduleMissedCallTimeout(sessionId: string, studentId: string, mentorId: string) {
@@ -683,8 +684,73 @@ export const getAgoraToken = async (req: Request, res: Response) => {
 
 export const getCallStatus = async (req: Request, res: Response) => {
   try {
+    const callId = req.params.id as string;
+    
+    // Check if this call is part of a broadcast
+    const broadcastGroupId = await redis.get(`broadcast_member:${callId}`);
+    
+    if (broadcastGroupId) {
+      // It is part of a broadcast. Let's see if we can claim it.
+      // 1. Try to acquire the lock (only one callId can win)
+      const claimed = await redis.setnx(`broadcast_lock:${broadcastGroupId}`, callId);
+      
+      if (claimed === 1) {
+        // We won!
+        await redis.set(`broadcast:${broadcastGroupId}`, `claimed:${callId}`, 'EX', 30);
+        
+        // Find other members of this broadcast to cancel them
+        const membersJson = await redis.get(`broadcast_members_list:${broadcastGroupId}`);
+        if (membersJson) {
+          const members: string[] = JSON.parse(membersJson);
+          const otherMembers = members.filter((id: string) => id !== callId);
+          
+          if (otherMembers.length > 0) {
+            // Update DB to missed for other members
+            await prisma.callSession.updateMany({
+              where: { id: { in: otherMembers } },
+              data: { status: 'missed' }
+            });
+            
+            // Send cancellation push and socket events to other mentors
+            const otherSessions = await prisma.callSession.findMany({
+              where: { id: { in: otherMembers } },
+              select: { id: true, mentor_id: true }
+            });
+            
+            for (const other of otherSessions) {
+              const otherMentorFcm = await prisma.fCMToken.findFirst({
+                where: { userId: other.mentor_id },
+                orderBy: { updatedAt: 'desc' }
+              });
+              if (otherMentorFcm?.token) {
+                await sendCallCancelledMessage(otherMentorFcm.token, other.id);
+              }
+              emitToUser(other.mentor_id, 'call_status_changed', { callId: other.id, status: 'missed' });
+            }
+          }
+        }
+      } else {
+        // Someone else won.
+        // Update this specific call session to missed if it isn't already
+        await prisma.callSession.update({
+          where: { id: callId },
+          data: { status: 'missed' }
+        });
+        
+        // Return missed so the frontend gracefully drops out
+        return res.json({
+          status: 'missed',
+          chatSessionId: null,
+          student: null,
+          mentor: null,
+          is_free: true
+        });
+      }
+    }
+
+    // Normal behavior
     const session = await prisma.callSession.findUnique({ 
-      where: { id: req.params.id as string },
+      where: { id: callId },
       include: {
         student: { select: { id: true, name: true, photo_url: true } },
         mentor: { select: { id: true, name: true, photo_url: true } },
@@ -751,36 +817,20 @@ export const rateCall = async (req: Request, res: Response) => {
 export const freeMatchmaking = async (req: Request, res: Response) => {
   const studentId = req.user?.id;
   try {
-    // 1. Verify eligibility (first call must be free)
-    // Only count calls that were actually answered/connected or are currently active
-    
-    // const pastCalls = await prisma.callSession.count({ 
-    //   where: { 
-    //     student_id: studentId,
-    //     status: { notIn: ['missed', 'rejected', 'failed', 'cancelled'] }
-    //   } 
-    // });
-    // console.log("Past calls", pastCalls);
-    // if (pastCalls > 0) {
-    //   return res.status(400).json({ error: 'You are only eligible for the first free call.' });
-    // }
+    // 1. Verify eligibility
     const student = await prisma.user.findFirst({
-      where: {
-        id: studentId,
-      }
+      where: { id: studentId }
     });
-    const isFreeAvailable = student?.isFreeAvailable;
-    if(!isFreeAvailable==false) {
+    if (student?.isFreeAvailable === false) {
       return res.status(400).json({ error: 'You are only eligible for the first free call.' });
     }
 
-    // 2. Find an online, available mentor
+    // 2. Find online, available mentors
     const availableMentorIds = await getAvailableMentors();
     if (availableMentorIds.length === 0) {
       return res.status(404).json({ error: 'No mentors are online right now. Please try again later!' });
     }
 
-    // Matchmaking logic: pick the online mentor with the least total_calls
     const availableMentors = await prisma.user.findMany({
       where: { id: { in: availableMentorIds } },
       include: { mentorProfile: true }
@@ -795,75 +845,133 @@ export const freeMatchmaking = async (req: Request, res: Response) => {
       const callsB = b.mentorProfile?.total_calls || 0;
       return callsA - callsB;
     });
-    const index = Math.floor(Math.random()*availableMentors.length);
-    console.log(index);
-    const mentor = availableMentors[index];
-    console.log("Matched with ",mentor);
-    const matchedMentorId = mentor.mentorProfile?.mentorId;
 
-    if (!mentor.mentorProfile || !mentor.mentorProfile.isOnline) {
-      return res.status(404).json({ error: 'Matched mentor went offline. Please try again.' });
-    }
-
-    // 3. Lock matched mentor
-    await lockToBusy(matchedMentorId as string);
-
-    // 4. Create free call session
-    const channelName = generateChannelName(studentId as string, matchedMentorId as string);
-    if (!channelName) {
-      return res.status(500).json({ error: 'Failed to generate channel ID' });
-    }
-
+    // 3. Pick up to 6 mentors for simultaneous ringing
+    const selectedMentors = availableMentors.slice(0, 6);
+    
+    const broadcastGroupId = crypto.randomUUID();
+    await redis.set(`broadcast:${broadcastGroupId}`, 'pending', 'EX', 35);
+    
     const freeMins = await getFreeCallDurationMins();
     const freeSeconds = freeMins * 60;
-    const maxAllowedSeconds = freeSeconds; // free call duration
-
-    const session = await prisma.callSession.create({
-      data: {
-        student_id: studentId as string,
-        mentor_id: matchedMentorId as string,
-        agoraChannelId: channelName,
-        status: 'calling',
-        is_free: true,
-        startedAt: new Date()
-      }
-    });
-
-    const studentToken = generateToken(channelName, studentId as string);
-    const mentorToken = generateToken(channelName, matchedMentorId as string);
-
-    const agoraConvId = `${studentId}_${matchedMentorId}`;
-    const chatSession = await chatSessionService.getOrCreateSession(studentId as string, matchedMentorId as string, agoraConvId);
-
-    const mentorFcmToken = await prisma.fCMToken.findFirst({
-      where: { userId: matchedMentorId },
-      orderBy: { updatedAt: 'desc' },
-      select: { token: true }
-    });
-
-    if (mentorFcmToken && mentorFcmToken.token) {
-      await sendCallSignalingMessage(mentorFcmToken.token, {
-        callId: session.id,
-        channelName,
-        callerName: req.user?.name || 'Student',
-        callerPhoto: req.user?.photo_url,
-        chatSessionId: chatSession.id
+    const maxAllowedSeconds = freeSeconds;
+    
+    const createdSessionIds: string[] = [];
+    
+    // Create sessions and send push notifications
+    for (const mentor of selectedMentors) {
+      const matchedMentorId = mentor.mentorProfile?.mentorId;
+      if (!matchedMentorId) continue;
+      
+      const channelName = generateChannelName(studentId as string, matchedMentorId);
+      
+      const session = await prisma.callSession.create({
+        data: {
+          student_id: studentId as string,
+          mentor_id: matchedMentorId,
+          agoraChannelId: channelName,
+          status: 'calling',
+          is_free: true,
+          startedAt: new Date()
+        }
       });
+      
+      createdSessionIds.push(session.id);
+      
+      // Map session to broadcast group
+      await redis.set(`broadcast_member:${session.id}`, broadcastGroupId, 'EX', 35);
+      
+      const agoraConvId = `${studentId}_${matchedMentorId}`;
+      const chatSession = await chatSessionService.getOrCreateSession(studentId as string, matchedMentorId, agoraConvId);
+      
+      const mentorFcmToken = await prisma.fCMToken.findFirst({
+        where: { userId: matchedMentorId },
+        orderBy: { updatedAt: 'desc' },
+        select: { token: true }
+      });
+      
+      if (mentorFcmToken?.token) {
+        await sendCallSignalingMessage(mentorFcmToken.token, {
+          callId: session.id,
+          channelName: channelName as string,
+          callerName: req.user?.name || 'Student',
+          callerPhoto: req.user?.photo_url,
+          chatSessionId: chatSession.id
+        });
+      }
+      
+      scheduleMissedCallTimeout(session.id, studentId as string, matchedMentorId);
     }
+    
+    await redis.set(`broadcast_members_list:${broadcastGroupId}`, JSON.stringify(createdSessionIds), 'EX', 35);
 
-    scheduleMissedCallTimeout(session.id, studentId as string, matchedMentorId as string);
-
-    res.json({
-      sessionId: session.id,
-      channelName,
-      studentToken,
-      mentorToken,
-      isFree: true,
-      maxDurationSeconds: maxAllowedSeconds,
-      mentorPhoto: mentor.photo_url,
-      chatSessionId: chatSession.id,
-      mentorName: mentor.name
+    // 4. Polling loop: Wait for a mentor to claim the call
+    let claimedCallId: string | null = null;
+    for (let i = 0; i < 30; i++) { // wait up to 30 seconds
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const status = await redis.get(`broadcast:${broadcastGroupId}`);
+      if (status && status.startsWith('claimed:')) {
+        claimedCallId = status.split(':')[1];
+        break;
+      }
+    }
+    
+    if (claimedCallId) {
+      // Someone accepted!
+      const winningSession = await prisma.callSession.findUnique({
+        where: { id: claimedCallId },
+        include: { mentor: { select: { photo_url: true, name: true } } }
+      });
+      
+      if (winningSession) {
+        const studentToken = generateToken(winningSession.agoraChannelId as string, studentId as string);
+        const mentorToken = generateToken(winningSession.agoraChannelId as string, winningSession.mentor_id);
+        const agoraConvId = `${studentId}_${winningSession.mentor_id}`;
+        const chatSession = await chatSessionService.getOrCreateSession(studentId as string, winningSession.mentor_id, agoraConvId);
+        
+        // Lock winning mentor to busy
+        await lockToBusy(winningSession.mentor_id);
+        
+        return res.json({
+          sessionId: winningSession.id,
+          channelName: winningSession.agoraChannelId,
+          studentToken,
+          mentorToken,
+          isFree: true,
+          maxDurationSeconds: maxAllowedSeconds,
+          mentorPhoto: winningSession.mentor?.photo_url,
+          chatSessionId: chatSession.id,
+          mentorName: winningSession.mentor?.name
+        });
+      }
+    }
+    
+    // 5. Timeout - No one answered
+    // Cancel all sessions
+    await prisma.callSession.updateMany({
+      where: { id: { in: createdSessionIds } },
+      data: { status: 'missed' }
     });
+    
+    for (const sessionId of createdSessionIds) {
+      const session = await prisma.callSession.findUnique({
+        where: { id: sessionId },
+        select: { mentor_id: true }
+      });
+      if (session) {
+        const mentorFcm = await prisma.fCMToken.findFirst({
+          where: { userId: session.mentor_id },
+          orderBy: { updatedAt: 'desc' }
+        });
+        if (mentorFcm?.token) {
+          await sendCallCancelledMessage(mentorFcm.token, sessionId);
+        }
+        emitToUser(session.mentor_id, 'call_status_changed', { callId: sessionId, status: 'missed' });
+      }
+    }
+    
+    return res.status(404).json({ error: 'No mentors answered. Please try again later!' });
+    
   } catch (error) {
     console.error('Free matchmaking error:', error);
     res.status(500).json({ error: 'Failed to process free matchmaking' });
