@@ -77,8 +77,17 @@ export async function sendCallSignalingMessage(fcmToken: string, data: { callId:
   try {
     await admin.messaging().send({
       token: fcmToken,
+      // Adding a notification block forces the Android OS to display a standard heads-up 
+      // push notification while the app is in the background. This bypasses the need for 
+      // the frontend to manually trigger the full-screen intent (which is currently crashing).
+      notification: {
+        title: `Incoming call from ${data.callerName}`,
+        body: 'Tap to answer the call',
+      },
       data: { 
-        type: 'incoming_call_v2',
+        // We change this to 'incoming_call_fallback' so the buggy frontend code 
+        // inside index.js ignores it and doesn't crash the background process. 
+        type: 'incoming_call_fallback',
         callId: data.callId,
         channelName: data.channelName,
         callerName: data.callerName,
@@ -88,6 +97,9 @@ export async function sendCallSignalingMessage(fcmToken: string, data: { callId:
       android: {
         priority: 'high',
         ttl: 60 * 1000,
+        notification: {
+          channelId: 'incoming_calls_v2', // Will play custom ringtone if channel was successfully created
+        }
       },
       apns: {
         payload: {
