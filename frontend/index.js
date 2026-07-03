@@ -65,7 +65,7 @@ setBackgroundMessageHandler(messaging, async (remoteMessage) => {
     });
   }
 
-  if (remoteMessage.data?.type === 'incoming_call') {
+  if (remoteMessage.data?.type === 'incoming_call_v2') {
     const { callId, channelName, callerName, callerPhoto } = remoteMessage.data;
 
     await notifee.displayNotification({

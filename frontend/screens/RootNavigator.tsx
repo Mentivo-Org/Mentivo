@@ -753,10 +753,10 @@ export default function RootNavigator() {
         }
       };
 
-      socketManager.on("incoming_call", socketHandler);
+      socketManager.on("incoming_call_v2", socketHandler);
       socketManager.on("call_status_changed", globalStatusHandler);
       return () => {
-        socketManager.off("incoming_call", socketHandler);
+        socketManager.off("incoming_call_v2", socketHandler);
         socketManager.off("call_status_changed", globalStatusHandler);
       };
     };

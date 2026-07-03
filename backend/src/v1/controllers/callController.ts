@@ -131,7 +131,7 @@ export const initiateCall = async (req: Request, res: Response) => {
     }
 
     // 8a. Socket emission for instant ringing
-    emitToUser(mentorId, 'incoming_call', {
+    emitToUser(mentorId, 'incoming_call_v2', {
       callId: session.id,
       channelName,
       callerName: student?.name || 'Student',

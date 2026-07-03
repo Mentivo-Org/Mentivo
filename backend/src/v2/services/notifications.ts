@@ -53,7 +53,7 @@ async function sendIncomingCallAlert(fcmToken: string, studentName: string, chan
         title: 'Incoming Call',
         body: `${studentName} is calling you!`,
       },
-      data: { type: 'incoming_call', channelName },
+      data: { type: 'incoming_call_v2', channelName },
     });
   } catch(e) {}
 }
@@ -78,7 +78,7 @@ export async function sendCallSignalingMessage(fcmToken: string, data: { callId:
     await admin.messaging().send({
       token: fcmToken,
       data: { 
-        type: 'incoming_call',
+        type: 'incoming_call_v2',
         callId: data.callId,
         channelName: data.channelName,
         callerName: data.callerName,
