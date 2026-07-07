@@ -174,7 +174,7 @@ export default function LandingPage() {
           <div className="w-px h-12 bg-slate-700 mx-2 hidden sm:block" />
 
           {/* Play Store Logo (Inline SVG) */}
-          <svg xmlns="http://www.w3.org/2000/svg" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" image-rendering="optimizeQuality" fill-rule="evenodd" clip-rule="evenodd"
+          <svg xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision" textRendering="geometricPrecision" imageRendering="optimizeQuality" fillRule="evenodd" clipRule="evenodd"
 viewBox="0 0 466 511.98" width={50} height={50}>
  <g id="Layer_x0020_1">
   <path fill="#EA4335" fill-rule="nonzero" d="M199.9 237.8l-198.5 232.37c7.22,24.57 30.16,41.81 55.8,41.81 11.16,0 20.93,-2.79 29.3,-8.37l0 0 244.16 -139.46 -130.76 -126.35z"/>

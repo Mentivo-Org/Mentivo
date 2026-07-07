@@ -16,6 +16,7 @@ import partnerRoutes from './routes/partners.ts';
 import configRoutes from './routes/config.ts';
 import logRoutes from './routes/logs.ts';
 import databaseRoutes from './routes/database.ts';
+import voucherRoutes from './routes/vouchers.ts';
 import prisma from './config/db.ts';
 
 dotenv.config();
@@ -99,6 +100,7 @@ app.use('/api/partners', partnerRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/database', databaseRoutes);
+app.use('/api/vouchers', voucherRoutes);
 
 // Global Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

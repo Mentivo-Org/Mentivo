@@ -4,6 +4,7 @@ import "./globals.css";
 import { LoadingProvider } from "@/context/LoadingContext";
 import ApiInterceptor from "./components/ApiInterceptor";
 import AppWrapper from "./components/AppWrapper";
+import GoogleAuthProviderWrapper from "./components/GoogleAuthProviderWrapper";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const fraunces = Fraunces({ subsets: ["latin"], weight: ["300", "500", "600"], variable: "--font-fraunces" });
@@ -62,9 +63,11 @@ export default function RootLayout({
       <body className={`${inter.variable} ${fraunces.variable} ${jetBrainsMono.variable} font-sans bg-[#f8fafc] text-slate-900 antialiased`}>
         <LoadingProvider>
           <ApiInterceptor>
-            <AppWrapper isMaintenanceMode={isMaintenanceMode}>
-              {children}
-            </AppWrapper>
+            <GoogleAuthProviderWrapper>
+              <AppWrapper isMaintenanceMode={isMaintenanceMode}>
+                {children}
+              </AppWrapper>
+            </GoogleAuthProviderWrapper>
           </ApiInterceptor>
         </LoadingProvider>
       </body>

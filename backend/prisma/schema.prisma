@@ -76,7 +76,30 @@ model User {
   questions           Question[]
   answers             Answer[]
 
+  voucherEligible     Boolean @default(false)
+  voucherSubscriptions VoucherSubscription[]
+
   @@map("users")
+}
+
+model VoucherSubscription {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @db.Uuid
+  plan              String    // "3000" or "6000"
+  amountPaid        Decimal   @db.Decimal(10, 2)
+  totalCredit       Decimal   @db.Decimal(10, 2)
+  installmentsRemaining Int   @default(6)
+  amountPerInstallment  Decimal @db.Decimal(10, 2)
+  status            String    @default("active")  // active, completed, cancelled
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  nextCreditDate    DateTime?
+  purchasedAt       DateTime  @default(now())
+  completedAt       DateTime?
+  
+  user              User      @relation(fields: [userId], references: [id])
+  
+  @@map("voucher_subscriptions")
 }
 
 model FCMToken {

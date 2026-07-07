@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, ShieldCheck, Mail, LayoutDashboard, Bell, TrendingUp, UserMinus, Share2, Settings, Terminal, Database } from "lucide-react";
+import { Users, ShieldCheck, Mail, LayoutDashboard, Bell, TrendingUp, UserMinus, Share2, Settings, Terminal, Database, Ticket } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { motion } from "framer-motion";
@@ -15,6 +15,7 @@ const navItems = [
   { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
   { name: "Profile", href: "/dashboard/profile", icon: Users },
   { name: "Partner Referrals", href: "/dashboard/partners", icon: Share2 },
+  { name: "Vouchers", href: "/dashboard/vouchers", icon: Ticket },
   { name: "Communication", href: "/dashboard/communication", icon: Mail },
   { name: "Deletion Hub", href: "/dashboard/deletion-hub", icon: UserMinus, isRed: true },
   { name: "Developer Options", href: "/dashboard/developer-options", icon: Database },
