@@ -95,7 +95,7 @@ router.post('/send-invite', async (req: AuthRequest, res: Response) => {
         <p>You have been specially selected for our Mentivo Voucher program!</p>
         <p>Purchase a <strong>₹3,000</strong> or <strong>₹6,000</strong> plan and get an extra <strong>10%</strong> in session credits automatically distributed over 6 months.</p>
         <p>To claim this offer and purchase your voucher, log in to your account:</p>
-        <a href="https://mentivo.in/login?redirect=/student/home" style="display: inline-block; padding: 12px 24px; background-color: #0077CB; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 16px;">Log In & View Offer</a>
+        <a href="https://www.mentivo.in/login?redirect=/student/home" style="display: inline-block; padding: 12px 24px; background-color: #0077CB; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 16px;">Log In & View Offer</a>
         <p style="margin-top: 32px; font-size: 12px; color: #666;">If you have any questions, feel free to reply to this email or contact support.</p>
       </div>
     `;
