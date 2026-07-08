@@ -14,7 +14,7 @@ export default function ReferralPage() {
   const [isMobile, setIsMobile] = useState(false);
 
   // Play Store URL for the app
-  const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=in.mentivo.app';
+  const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.mentivo.in';
   // Deep link back to referral activation in the app
   const DEEP_LINK_URL = `https://mentivo.in/referral/${rawCode}`;
 

@@ -95,7 +95,7 @@ router.post('/create', async (req: AuthRequest, res) => {
     await redis.setex(`partner_invite:${token}`, 24 * 60 * 60, JSON.stringify({ email, userId: partner.id }));
 
     // Send email using Resend
-    const inviteLink = `https://mentivo.in/setup-password?token=${token}`;
+    const inviteLink = `https://www.mentivo.in/setup-password?token=${token}`;
     
     await resend.emails.send({
       from: 'Mentivo Admin <admin@mentivo.in>',
