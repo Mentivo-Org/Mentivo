@@ -9,6 +9,10 @@ jobs:
     permissions:
       contents: write # Required to create a release and upload assets
 
+    defaults:
+      run:
+        working-directory: ./frontend/android
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -40,6 +44,7 @@ jobs:
 
     - name: Generate Release Tag
       id: tag
+      working-directory: ${{ github.workspace }}
       run: echo "release_tag=v${{ github.run_number }}" >> $GITHUB_OUTPUT
 
     - name: Create Release and Upload Binaries
@@ -50,5 +55,5 @@ jobs:
         draft: false
         prerelease: false
         files: |
-          **/build/outputs/**/*.apk
-          **/build/outputs/**/*.aab
+          frontend/android/**/build/outputs/**/*.apk
+          frontend/android/**/build/outputs/**/*.aab
