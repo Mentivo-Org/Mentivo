@@ -60,7 +60,7 @@ jobs:
         cat gradle.properties | grep -E "RELEASE_STORE_FILE|RELEASE_KEY_ALIAS|RELEASE_KEY_PASSWORD|RELEASE_STORE_PASSWORD" | sed 's/PASSWORD=.*/PASSWORD=******/'
 
     - name: Build Release Binary and Bundle
-      run: ./gradlew assembleRelease bundleRelease
+      run: ./gradlew bundleRelease
 
     - name: Generate Release Tag
       id: tag
