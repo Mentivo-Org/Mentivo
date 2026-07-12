@@ -29,7 +29,7 @@ jobs:
         run: pnpm install
 
       - name: Check Pending Migrations Status
-        run: pnpm run prisma migrate status
+        run: pnpm exec prisma migrate status
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
