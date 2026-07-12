@@ -4,6 +4,7 @@ import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PermissionsAndroid, Platform, DeviceEventEmitter } from 'react-native';
 import api from './services/api';
+import { MentorEndpoints } from './constants/endpoint';
 
 import App from './App';
 
@@ -21,7 +22,7 @@ async function setupNotifee() {
     name: 'Ongoing Calls',
     importance: AndroidImportance.LOW,
     vibration: false,
-    sound: null,
+    sound: 'default',
   });
   await notifee.createChannel({
     id: 'messages',
@@ -32,17 +33,35 @@ async function setupNotifee() {
   });
 }
 
-setupNotifee();
+setupNotifee().catch(e => console.error('[Notifee Setup Error]', e));
 
 // Background FCM Message Handler
-const messaging = getMessaging();
-setBackgroundMessageHandler(messaging, async (remoteMessage) => {
-  console.log('--- [FCM MESSAGE RECEIVED (BACKGROUND)] ---');
-  console.log('Message ID:', remoteMessage.messageId);
-  console.log('Payload:', JSON.stringify(remoteMessage, null, 2));
+try {
+  const messaging = getMessaging();
+  setBackgroundMessageHandler(messaging, async (remoteMessage) => {
+    console.log('--- [FCM MESSAGE RECEIVED (BACKGROUND)] ---');
+    console.log('Message ID:', remoteMessage.messageId);
+    console.log('Payload:', JSON.stringify(remoteMessage, null, 2));
 
   if (remoteMessage.data?.source === 'admin-dashboard') {
     console.log('>>> DETECTED: Push notification from Admin Dashboard');
+  }
+
+  if (remoteMessage.data?.type === 'ping') {
+    console.log('>>> DETECTED: Ping message from server. Sending pong.');
+    try {
+      await api.post(MentorEndpoints.pong);
+    } catch (e) {
+      console.error('Failed to send pong to server:', e);
+    }
+    // We don't need to display a notification for this
+    return;
+  }
+
+  if (remoteMessage.data?.type === 'marked_offline') {
+    // The server has marked the mentor offline, we can show a notification if not already handled by 'marked_offline' payload title/body
+    // The backend actually sends a 'notification' payload with this, so the OS handles it automatically if the app is killed/backgrounded
+    console.log('>>> DETECTED: marked_offline message');
   }
 
   if (remoteMessage.data?.type === 'chat') {
@@ -68,44 +87,51 @@ setBackgroundMessageHandler(messaging, async (remoteMessage) => {
   if (remoteMessage.data?.type === 'incoming_call_v2') {
     const { callId, channelName, callerName, callerPhoto } = remoteMessage.data;
 
-    await notifee.displayNotification({
-      id: callId, // Use callId as notification ID to allow easy cancellation
-      title: `Incoming call from ${callerName}`,
-      body: 'Tap to answer',
-      data: { callId, channelName, callerName, callerPhoto },
-      android: {
-        channelId: 'incoming_calls_v2',
-        importance: AndroidImportance.HIGH,
-        priority: 'high',
-        category: 'call',
-        ongoing: true,
-        autoCancel: false,
-        loopSound: true,
-        sound: 'custom_ringtone', 
-        showWhenLocked: true,
-        turnScreenOn: true,
-        fullScreenAction: {
-          id: 'default',
-          launchActivity: 'default',
+    try {
+      await setupNotifee();
+      await notifee.displayNotification({
+        id: callId, // Use callId as notification ID to allow easy cancellation
+        title: `Incoming call from ${callerName}`,
+        body: 'Tap to answer',
+        data: { callId, channelName, callerName, callerPhoto },
+        android: {
+          channelId: 'incoming_calls_v2',
+          importance: AndroidImportance.HIGH,
+          priority: 'high',
+          category: 'call',
+          autoCancel: false,
+          loopSound: true,
+          sound: 'custom_ringtone', 
+          showWhenLocked: true,
+          turnScreenOn: true,
+          pressAction: {
+            id: 'default',
+            launchActivity: 'default'
+          },
+          fullScreenAction: {
+            id: 'default',
+            launchActivity: 'default',
+          },
+          actions: [
+            {
+              title: 'Accept',
+              pressAction: {
+                id: 'accept',
+                launchActivity: 'default',
+              },
+            },
+            {
+              title: 'Reject',
+              pressAction: {
+                id: 'reject',
+              },
+            },
+          ],
         },
-        asForegroundService: true,
-        actions: [
-          {
-            title: 'Accept',
-            pressAction: {
-              id: 'accept',
-              launchActivity: 'default',
-            },
-          },
-          {
-            title: 'Reject',
-            pressAction: {
-              id: 'reject',
-            },
-          },
-        ],
-      },
-    });
+      });
+    } catch (error) {
+      console.error('[Notifee Display Error]', error);
+    }
   }
 
   if (remoteMessage.data?.type === 'call_cancelled') {
@@ -117,7 +143,22 @@ setBackgroundMessageHandler(messaging, async (remoteMessage) => {
       console.error('Failed to remove pending call data:', e);
     }
   }
-});
+
+  if (remoteMessage.data?.type === 'call_status_changed') {
+    const { callId, status } = remoteMessage.data;
+    if (status === 'rejected' || status === 'missed' || status === 'completed' || status === 'cancelled') {
+      await notifee.cancelNotification(callId);
+      try {
+        await AsyncStorage.removeItem('pendingCallData');
+      } catch (e) {
+        console.error('Failed to remove pending call data:', e);
+      }
+    }
+  }
+  });
+} catch (e) {
+  console.error('[FCM Background Handler Setup Error]', e);
+}
 
 // Background Notification Event Handler
 notifee.onBackgroundEvent(async ({ type, detail }) => {

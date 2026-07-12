@@ -18,7 +18,7 @@ interface AuthContextType {
   setUser: (value: any) => void;
   mentorlevel: string | null;
   verificationStatus: string | null;
-  checkLoginStatus: () => Promise<void>;
+  checkLoginStatus: (forceFetch?: boolean) => Promise<void>;
   handleLogout: () => Promise<void>;
   requestNotificationPermissions: () => Promise<void>;
   isLoading: boolean;
@@ -45,9 +45,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const checkLoginStatus = async () => {
+  const checkLoginStatus = async (forceFetch: boolean = false) => {
     console.log("Checking login status...");
     try {
+      if (forceFetch) {
+        try {
+          const response = await api.get(LoginEndpoints.whoAmI);
+          if (response.status === 200 && response.data?.user) {
+            await setUser(response.data.user);
+          }
+        } catch (apiError) {
+          console.error("Failed to force fetch user:", apiError);
+        }
+      }
+
       const access = await AsyncStorage.getItem('accessToken');
       const refresh = await AsyncStorage.getItem('refreshToken');
       const userJson = await AsyncStorage.getItem('user');
@@ -65,16 +76,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setRole(storedRole);
       console.log("Logged in status: ", !!(access && refresh && userJson && verifiedEmail) ? "ACTIVE" : "LOGGED OUT")
 
-      // Fetch fresh user profile in background to sync details like verificationStatus
-      if (access && refresh && verifiedEmail && parsedUser) {
-        api.get(LoginEndpoints.whoAmI).then(async (res) => {
-          if (res.status === 200 && res.data?.user) {
-            await setUser(res.data.user);
-          }
-        }).catch((err) => {
-          console.error("Failed to sync fresh user profile from backend:", err);
-        });
-      }
     } catch (e) {
       console.error("AsyncStorage Error:", e);
       setIsSignedIn(false); 
@@ -199,46 +200,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const messaging = getMessaging();
 
-    // Listen to foreground notifications
-    const unsubscribeOnMessage = onMessage(messaging, async (remoteMessage) => {
-      console.log('--- [FCM MESSAGE RECEIVED (FOREGROUND)] ---');
-      console.log('Payload:', JSON.stringify(remoteMessage, null, 2));
-
-      if (remoteMessage.data?.source === 'admin-dashboard') {
-        console.log('>>> DETECTED: Push notification from Admin Dashboard');
-      }
-
-      const title = remoteMessage.notification?.title || remoteMessage.data?.title;
-      const body = remoteMessage.notification?.body || remoteMessage.data?.body;
-
-      if (title || body) {
-        console.log('>>> ATTEMPTING: Displaying notification via Notifee');
-        try {
-          // Check/Request Notifee specific permission for Android 13+
-          const settings = await notifee.requestPermission();
-          console.log('Notifee Permission Status:', settings.authorizationStatus);
-
-          await notifee.displayNotification({
-            title: title as string || 'Mentivo Notification',
-            body: body as string|| 'You have a new message',
-            data: remoteMessage.data,
-            android: {
-              channelId: 'default',
-              importance: AndroidImportance.HIGH,
-              pressAction: {
-                id: 'default',
-              },
-            },
-          });
-          console.log('>>> SUCCESS: notifee.displayNotification called');
-        } catch (err) {
-          console.error('>>> ERROR: notifee.displayNotification failed', err);
-        }
-      } else {
-        console.log('>>> SKIPPED: No title or body found in message payload');
-      }
-    });
-
     let unsubscribeTokenRefresh: (() => void) | undefined;
     
     try {
@@ -265,7 +226,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => {
       if (unsubscribeTokenRefresh) unsubscribeTokenRefresh();
-      unsubscribeOnMessage();
     };
   }, [isSignedIn]);
 

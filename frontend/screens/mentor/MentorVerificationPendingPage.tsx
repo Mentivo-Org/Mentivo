@@ -22,7 +22,7 @@ const MentorVerificationPendingPage = () => {
   const handleCheckStatus = async () => {
     setLoading(true);
     try {
-      await checkLoginStatus();
+      await checkLoginStatus(true);
     } catch (err: any) {
       console.error(err);
     } finally {

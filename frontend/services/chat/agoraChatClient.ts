@@ -17,10 +17,15 @@ class AgoraChatService {
   async init() {
     if (this.isInitialized) return;
 
+    if (!AGORA_CHAT_APP_KEY || !AGORA_CHAT_APP_KEY.includes('#')) {
+      console.warn('[Agora Chat] Invalid appKey — skipping SDK init');
+      return;
+    }
+
     try {
       await ChatClient.getInstance().init(
         new ChatOptions({
-          appKey: AGORA_CHAT_APP_KEY.includes('#') ? AGORA_CHAT_APP_KEY : '',
+          appKey: AGORA_CHAT_APP_KEY,
           autoLogin: false,
           debugModel: true,
         })

@@ -30,11 +30,12 @@ import api from "../../services/api";
 import { WalletEndpoints, MentorEndpoints, LoginEndpoints, CallEndpoints, ConfigEndpoint } from "../../constants/endpoint";
 import useSWR, { mutate } from "swr";
 import { Skeleton } from "../../components/Skeleton";
+import { useSettings } from "../../context/SettingsContext";
 
 const { width, height } = Dimensions.get("window");
 
 export default function StudentHomePage() {
-  const { handleLogout } = useAuth();
+  const { handleLogout, user: authUser } = useAuth();
   const { showLoading, hideLoading } = useLoading();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -77,7 +78,7 @@ export default function StudentHomePage() {
   const [onlineCount, setOnlineCount] = useState(0);
   const [upcomingCall, setUpcomingCall] = useState<any>(null);
   const [syncCountdown, setSyncCountdown] = useState<string>("");
-  const [settings, setSettings] = useState<any>({});
+  const { settings } = useSettings();
   const [isFirstCallFree, setIsFirstCallFree] = useState(false);
   const [showSyncButton, setShowSyncButton] = useState(false);
   const LIMIT = 10;
@@ -127,15 +128,9 @@ export default function StudentHomePage() {
 
   const fetchSettingsAndEligibility = async () => {
     try {
-      const [settingsRes, sessionsRes] = await Promise.all([
-        api.get(ConfigEndpoint.settings),
-        api.get(CallEndpoints.getStudentSessions)
-      ]);
-      if (settingsRes.status === 200) {
-        setSettings(settingsRes.data);
-      }
-      if (sessionsRes.status === 200) {
-        setIsFirstCallFree(sessionsRes.data.length === 0);
+      const whoAmIRes = await api.get(LoginEndpoints.whoAmI);
+      if (whoAmIRes.status === 200) {
+        setIsFirstCallFree(whoAmIRes.data.user?.isFreeAvailable === true);
       }
     } catch (err) {
       console.error("Failed to fetch settings/eligibility:", err);
@@ -297,6 +292,21 @@ export default function StudentHomePage() {
     }
   }, [route.params?.showMissedFreeCallAlert]);
 
+  useEffect(() => {
+    if (route.params?.showCallRejectedAlert) {
+      setAlertData({
+        title: "Call Declined",
+        message: "The mentor is currently busy and declined the call.",
+        primaryButtonText: "OK",
+        onPrimaryPress: () => {
+          setAlertVisible(false);
+          navigation.setParams({ showCallRejectedAlert: undefined });
+        }
+      });
+      setAlertVisible(true);
+    }
+  }, [route.params?.showCallRejectedAlert]);
+
   const syncFavorites = async () => {
     try {
       // 1. Load from AsyncStorage immediately for fast UI
@@ -305,12 +315,11 @@ export default function StudentHomePage() {
         setFavoriteIds(JSON.parse(localFavs));
       }
 
-      // 2. Fetch from server in background
-      const response = await api.get(LoginEndpoints.whoAmI);
-      if (response.status === 200 && response.data.user) {
-        const serverFavs = response.data.user.favouriteMentors || [];
+      // Read from AuthContext (already synced from server by RootNavigator)
+      const serverFavs = authUser?.favouriteMentors ?? [];
+      if (serverFavs.length > 0 || !localFavs) {
         setFavoriteIds(serverFavs);
-        await AsyncStorage.setItem("favouriteMentors", JSON.stringify(serverFavs));
+        await AsyncStorage.setItem('favouriteMentors', JSON.stringify(serverFavs));
       }
     } catch (error) {
       console.error("Failed to sync favorites:", error);
@@ -590,7 +599,7 @@ export default function StudentHomePage() {
         
         <View style={styles.separator} />
 
-        {isFirstCallFree ? (
+        {isFirstCallFree && settings?.free_call_enabled !== 'false' ? (
           <TouchableOpacity style={styles.freeCallBanner} onPress={handleFreeMatchmaking}>
             <View style={styles.freeCallRow}>
               <Image source={require("../../app-assets/clock.svg")} style={styles.freeCallIcon} tintColor="white" />

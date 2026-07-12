@@ -46,8 +46,8 @@ const IncomingCallScreen = () => {
 
     // Listen for remote cancellation or timeout
     const statusHandler = (data: any) => {
-      if (data.callId === callId && (data.status === 'completed' || data.status === 'rejected' || data.status === 'missed')) {
-        console.log('[Socket] Incoming call closed remotely:', data.status);
+      if (data.callId === callId && (data.status === 'completed' || data.status === 'rejected' || data.status === 'missed' || data.status === 'cancelled')) {
+        console.log('[Socket/FCM] Incoming call closed remotely:', data.status);
         InCallManager.stopRingtone();
         InCallManager.setKeepScreenOn(false);
         notifee.cancelNotification(callId).catch(err => console.error('Failed to cancel notification:', err));
@@ -56,11 +56,16 @@ const IncomingCallScreen = () => {
     };
 
     socketManager.on('call_status_changed', statusHandler);
+    
+    // Listen for FCM call cancellations
+    const { DeviceEventEmitter } = require('react-native');
+    const fcmSub = DeviceEventEmitter.addListener('call_status_changed_fcm', statusHandler);
 
     return () => {
       InCallManager.stopRingtone();
       InCallManager.setKeepScreenOn(false);
       socketManager.off('call_status_changed', statusHandler);
+      fcmSub.remove();
     };
   }, [callId]);
 

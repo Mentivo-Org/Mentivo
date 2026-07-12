@@ -49,7 +49,7 @@ const CompleteProfile = () => {
   const [alertData, setAlertData] = useState<any>({title: '', message: ''});
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
 
-  const {setIsSignedIn, handleLogout, requestNotificationPermissions, setRole} = useAuth();
+  const {setIsSignedIn, handleLogout, requestNotificationPermissions, setRole, setUser} = useAuth();
 
   const handleAndroidOverlayPermissionPrompt = async () => {
     if (Platform.OS === 'android') {
@@ -168,7 +168,7 @@ const CompleteProfile = () => {
         setAlertData({title: 'Error in completing profile', message: response.data.error});
         setAlertVisible(true);
       } else {
-        await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+        await setUser(response.data.user);
         await AsyncStorage.setItem('role', 'mentor');
         setRole('mentor');
         requestNotificationPermissions();
@@ -203,7 +203,7 @@ const CompleteProfile = () => {
         setAlertData({title: 'Error in completing profile', message: response.data.error});
         setAlertVisible(true);
       } else {
-        await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+        await setUser(response.data.user);
         await AsyncStorage.setItem('role', response.data.user.role);
         setRole(response.data.user.role);
         requestNotificationPermissions();

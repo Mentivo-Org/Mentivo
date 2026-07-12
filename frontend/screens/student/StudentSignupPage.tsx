@@ -24,6 +24,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLoading } from '../../context/LoadingContext';
 import { PasswordInput } from '../../components/PasswordInput';
 import DialogBox from '../../components/DialogBox';
+import { useAuth } from '../../services/retrieveKeys';
 
 const StudentSignupPage = () => {
   const navigation = useNavigation<any>();
@@ -50,6 +51,7 @@ const StudentSignupPage = () => {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [referralCode, setReferralCode] = useState("");
+  const { setUser } = useAuth();
 
   const openBrowser = async (url: string) => {
     try {
@@ -242,12 +244,23 @@ const StudentSignupPage = () => {
       const idToken = userInfo?.data?.idToken; 
       if(idToken) {
         showLoading("Fetching your profile info...");
-        const response = await api.post(LoginEndpoints.googleLogin, { idToken, mode: "sign-up" })
+        const response = await api.post(LoginEndpoints.googleLogin, { 
+          idToken, 
+          mode: "sign-up",
+          referredByReferralCode: referralCode || undefined
+        })
         hideLoading();
         if (response.status === 202) {
+          if (referralCode) {
+            try {
+              await AsyncStorage.removeItem('referredByCode');
+            } catch (e) {
+              console.error("Failed to remove referredByCode from storage:", e);
+            }
+          }
           await AsyncStorage.setItem('accessToken', response.data.accessToken);
           await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
-          await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+          await setUser(response.data.user);
           await AsyncStorage.setItem('verifiedEmail', 'true');
         navigation.replace("CompleteProfile", {
           full_name: response.data.user?.name,

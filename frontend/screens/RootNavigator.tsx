@@ -363,17 +363,6 @@ export default function RootNavigator() {
   const [alertData, setAlertData] = useState({ title: "", message: "" });
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
 
-  const prefetchMentorStats = async () => {
-    try {
-      const statsRes = await api.get(MentorEndpoints.getMeStats);
-      if (statsRes.status === 200) {
-        await AsyncStorage.setItem("stats", JSON.stringify(statsRes.data));
-      }
-    } catch (statsErr) {
-      console.error("Failed to prefetch mentor stats:", statsErr);
-    }
-  };
-
   const setupUncompletedProfile = async (user: any) => {
     setProfileData({
       full_name: user.name,
@@ -437,34 +426,6 @@ export default function RootNavigator() {
     };
     createChannels();
 
-    // Initialize Agora Chat
-    const initAgoraChat = async () => {
-      try {
-        console.log("[Agora Chat] Starting initialization...");
-        const userJson = await AsyncStorage.getItem("user");
-        if (userJson) {
-          const user = JSON.parse(userJson);
-          console.log("[Agora Chat] Fetching token for user:", user.id);
-          const data = await chatSessionManager.getChatToken();
-
-          if (!data || !data.token || !data.userId) {
-            console.error("[Agora Chat] Invalid token response:", data);
-            return;
-          }
-
-          const { token, userId: agoraUserId } = data;
-          console.log("[Agora Chat] Logging in with Agora ID:", agoraUserId);
-          await agoraChatService.login(agoraUserId, token);
-          console.log("[Agora Chat] Logged in successfully");
-        } else {
-          console.warn("[Agora Chat] No user data found in storage");
-        }
-      } catch (e) {
-        console.error("[Agora Chat] Initialization/Login failed:", e);
-      }
-    };
-    initAgoraChat();
-
     // 2. Foreground notification press
     const unsubscribeForeground = notifee.onForegroundEvent(
       async ({ type, detail }) => {
@@ -510,7 +471,7 @@ export default function RootNavigator() {
           } else if (data.source === "admin-dashboard") {
             const { actionType, actionTarget } = data;
             if (actionType === "EXTERNAL_URL" && actionTarget) {
-              Linking.openURL(actionTarget).catch(err => console.error("Failed to open URL:", err));
+              Linking.openURL(actionTarget as string).catch(err => console.error("Failed to open URL:", err));
             } else if (actionType === "IN_APP" && actionTarget) {
               navigate(actionTarget as any);
             }
@@ -572,6 +533,7 @@ export default function RootNavigator() {
     const unsubscribeFcmForeground = onMessage(
       messaging,
       async (remoteMessage) => {
+        console.log(remoteMessage);
         if (remoteMessage.data?.type === "chat") {
           const { sessionId, senderId, senderName, title, body } =
             remoteMessage.data as any;
@@ -603,6 +565,32 @@ export default function RootNavigator() {
               asForegroundService: false,
             },
           });
+        } else if (remoteMessage.data?.type === "incoming_call_v2") {
+          const { callId, channelName, callerName, callerPhoto } = remoteMessage.data as any;
+          navigate("IncomingCall", { callId, channelName, callerName, callerPhoto });
+        } else if (remoteMessage.data?.source === "admin-dashboard") {
+          const { title, body, priority } = remoteMessage.data as any;
+          await notifee.displayNotification({
+            id: `admin-dash_${Date.now()}`,
+            title: title || "Admin Notification",
+            body: body || "Notification",
+            data: {source: "admin-dashboard"},
+            android: {
+              channelId: "messages",
+              importance: priority==="high" ? AndroidImportance.HIGH : AndroidImportance.DEFAULT,
+              pressAction: {id: "default", launchActivity: "default" }
+            }
+          })
+        } else if (remoteMessage.data?.type === "call_status_changed") {
+          const { callId, status } = remoteMessage.data as any;
+          if (status === 'rejected' || status === 'missed' || status === 'completed' || status === 'cancelled') {
+            await notifee.cancelNotification(callId);
+          }
+          DeviceEventEmitter.emit("call_status_changed_fcm", { callId, status });
+        } else if (remoteMessage.data?.type === "call_cancelled") {
+          const { callId } = remoteMessage.data as any;
+          await notifee.cancelNotification(callId);
+          DeviceEventEmitter.emit("call_status_changed_fcm", { callId, status: 'cancelled' });
         }
       },
     );
@@ -610,7 +598,20 @@ export default function RootNavigator() {
     // 3. Cold start - app opened from killed state
     const checkInitialNotification = async () => {
       const initialNotification = await notifee.getInitialNotification();
+
+      // NOTE: getInitialNotification() returns { notification, pressAction } at
+      // the TOP level — pressAction is NOT nested inside notification. Verify
+      // this on a real device with the console.log below if routing misbehaves.
+      console.log(
+        "[checkInitialNotification] raw result:",
+        JSON.stringify(initialNotification, null, 2),
+      );
+
       const data = initialNotification?.notification?.data || {};
+      // pressAction lives at the top level of the result, NOT inside notification.data
+      const pressActionId: string | undefined =
+        (initialNotification as any)?.pressAction?.id;
+
       const {
         callId,
         channelName,
@@ -622,17 +623,34 @@ export default function RootNavigator() {
         senderName,
         questionId,
       } = data;
+
       if (callId) {
-        if (data.screen === "InCall") {
+        if (pressActionId === "accept") {
+          // User tapped the Accept action button from killed state.
+          // Skip IncomingCall and go straight to InCall.
+          console.log("[checkInitialNotification] Accept action → navigating to InCall");
           navigate("InCall", {
             callId,
             channelName,
             callerName,
-            role: data.role,
-            initialToken: data.initialToken,
+            role: "callee",
             mentorPhoto: callerPhoto,
           });
+        } else if (pressActionId === "reject") {
+          // User tapped Reject from killed state.
+          // onBackgroundEvent will have already called the reject API and
+          // cancelled the notification in most cases, but the app was still
+          // launched (launchActivity is absent on reject, so this branch is
+          // unlikely — kept as a safety net).
+          console.log("[checkInitialNotification] Reject action → no navigation");
+          // Do NOT navigate anywhere.
         } else {
+          // pressActionId === 'default' (body tap) OR undefined (edge case).
+          // Navigate to IncomingCall so the user can accept/reject from the screen.
+          console.log(
+            "[checkInitialNotification] Default/body tap (pressActionId=%s) → navigating to IncomingCall",
+            pressActionId,
+          );
           navigate("IncomingCall", {
             callId,
             channelName,
@@ -649,7 +667,7 @@ export default function RootNavigator() {
       } else if (data.source === "admin-dashboard") {
         const { actionType, actionTarget } = data;
         if (actionType === "EXTERNAL_URL" && actionTarget) {
-          Linking.openURL(actionTarget).catch(err => console.error("Failed to open URL:", err));
+          Linking.openURL(actionTarget as string).catch(err => console.error("Failed to open URL:", err));
         } else if (actionType === "IN_APP" && actionTarget) {
           navigate(actionTarget as any);
         }
@@ -657,24 +675,17 @@ export default function RootNavigator() {
         navigate("QuestionDetail", { questionId: questionId });
       }
 
-      // Also check pending call from background press
-      const pendingCallData = await AsyncStorage.getItem("pendingCallData");
-      if (pendingCallData) {
-        await AsyncStorage.removeItem("pendingCallData");
-        const {
-          callId: pCallId,
-          channelName: pChannelName,
-          callerName: pCallerName,
-          callerPhoto: pCallerPhoto,
-        } = JSON.parse(pendingCallData);
-        navigate("InCall", {
-          callId: pCallId,
-          channelName: pChannelName,
-          callerName: pCallerName,
-          role: "callee",
-          mentorPhoto: pCallerPhoto,
-        });
-      }
+      // AsyncStorage pendingCallData is still needed for the warm-start /
+      // backgrounded-but-not-killed case (AppState 'active' listener below).
+      // When the app is backgrounded (not killed), onBackgroundEvent fires and
+      // writes pendingCallData. The app then resumes and handleAppStateChange
+      // picks it up. getInitialNotification() returns null in that scenario, so
+      // we still need this roundtrip for that path.
+      // Do NOT check pendingCallData here in addition to getInitialNotification —
+      // both can fire on a cold-start 'accept', causing a double-navigate to
+      // InCall. The onBackgroundEvent for 'accept' writes pendingCallData only
+      // when the app is in the background/killed; on cold-start, getInitialNotification
+      // already handles it, so we skip the AsyncStorage check here.
     };
     checkInitialNotification();
 
@@ -693,6 +704,21 @@ export default function RootNavigator() {
             callerName,
             role: "callee",
             mentorPhoto: callerPhoto,
+          });
+          return;
+        }
+
+        const displayed = await notifee.getDisplayedNotifications();
+        const callNotif = displayed.find(n => n.notification.data?.type === 'incoming_call_v2' || !!n.notification.data?.callId);
+
+        if (callNotif && callNotif.notification.data?.callId) {
+          console.log("[AppState] Found active call notification, opening IncomingCall screen");
+          const { callId, channelName, callerName, callerPhoto } = callNotif.notification.data as any;
+          navigate("IncomingCall", {
+            callId,
+            channelName,
+            callerName,
+            callerPhoto,
           });
         }
       }
@@ -791,10 +817,6 @@ export default function RootNavigator() {
           const user = response.data?.user;
           console.log("user information ", user);
 
-          if (user.role === "mentor") {
-            await prefetchMentorStats();
-          }
-
           if (user.profile_completed === false) {
             await setupUncompletedProfile(user);
           } else {
@@ -815,9 +837,6 @@ export default function RootNavigator() {
         if (userJson) {
           try {
             const user = JSON.parse(userJson);
-            if (user.role === "mentor") {
-              await prefetchMentorStats();
-            }
             if (user.profile_completed === false) {
               await setupUncompletedProfile(user);
             } else {

@@ -177,7 +177,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
             channelId: ONGOING_CALL_CHANNEL,
             ongoing: true,
             asForegroundService: true,
-            foregroundServiceTypes: [(AndroidForegroundServiceType as any).MICROPHONE],
+            // foregroundServiceTypes: [AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_MICROPHONE],
             onlyAlertOnce: true,
             pressAction: { id: 'default', launchActivity: 'default' },
             actions: [
@@ -192,12 +192,12 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
             timestamp: Date.now(),
           },
           data: { 
-            callId: activeCallId, 
-            channelName: currentChannelName, 
-            callerName: currentCallerName, 
-            role: currentRole, 
-            initialToken: currentToken, 
-            mentorPhoto: currentMentorPhoto || undefined, 
+            callId: String(activeCallId || ''), 
+            channelName: String(currentChannelName || ''), 
+            callerName: String(currentCallerName || ''), 
+            role: String(currentRole || ''), 
+            initialToken: String(currentToken || ''), 
+            mentorPhoto: String(currentMentorPhoto || ''), 
             screen: 'InCall' 
           },
         });
@@ -398,6 +398,11 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
             screen: 'Home',
             params: { showMissedFreeCallAlert: true }
           });
+        } else if (activeRole === 'caller' && remoteStatus === 'rejected') {
+          navigate('Main', {
+            screen: 'Home',
+            params: { showCallRejectedAlert: true }
+          });
         } else {
           navigate('Main', { screen: 'Home' });
         }
@@ -405,34 +410,69 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Socket listener for call changes
+  // Socket and FCM listeners for call changes
   useEffect(() => {
     const statusHandler = (data: any) => {
       const activeCallId = stateRef.current.callId;
       if (!activeCallId || data.callId !== activeCallId) return;
 
-      if (['completed', 'rejected', 'missed'].includes(data.status)) {
-        console.log(`[Socket Context] Call ${data.status} remotely`);
+      if (['completed', 'rejected', 'missed', 'cancelled'].includes(data.status)) {
+        console.log(`[Socket/FCM Context] Call ${data.status} remotely`);
         notifee.cancelNotification(activeCallId).catch(err =>
           console.error('Failed to cancel notification:', err)
         );
         endCallSession(false, data.status);
       } else if (data.status === 'ringing' && callStatusRef.current === 'calling') {
-        console.log('[Socket Context] Mentor phone is ringing');
+        console.log('[Socket/FCM Context] Mentor phone is ringing');
         setCallStatus('ringing');
       } else if (data.status === 'active' && callStatusRef.current !== 'active') {
-        console.log('[Socket Context] Call is now active');
+        console.log('[Socket/FCM Context] Call is now active');
         setCallStatus('active');
         startTimer();
       }
     };
 
     socketManager.on('call_status_changed', statusHandler);
+    const fcmSub = DeviceEventEmitter.addListener('call_status_changed_fcm', statusHandler);
 
     return () => {
       socketManager.off('call_status_changed', statusHandler);
+      fcmSub.remove();
     };
   }, [callId]);
+
+  // Polling mechanism for pre-active states
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    const activeCallId = callId;
+    
+    if (activeCallId && (callStatus === 'calling' || callStatus === 'ringing')) {
+      interval = setInterval(async () => {
+        try {
+          const res = await api.get(CallEndpoints.status(activeCallId));
+          const currentStatus = res.data.status;
+          
+          if (['completed', 'rejected', 'missed', 'cancelled'].includes(currentStatus)) {
+            console.log(`[Polling Context] Call ${currentStatus} remotely`);
+            endCallSession(false, currentStatus);
+          } else if (currentStatus === 'ringing' && callStatusRef.current === 'calling') {
+            console.log('[Polling Context] Mentor phone is ringing');
+            setCallStatus('ringing');
+          } else if (currentStatus === 'active' && callStatusRef.current !== 'active') {
+             console.log('[Polling Context] Call is now active');
+             setCallStatus('active');
+             startTimer();
+          }
+        } catch (e) {
+          console.error('[Polling Context] Failed to fetch call status:', e);
+        }
+      }, 3000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [callId, callStatus]);
 
   // Listener for End Call action events from notifications
   useEffect(() => {

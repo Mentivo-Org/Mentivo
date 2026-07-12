@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../services/api';
 import { MentorEndpoints } from '../../constants/endpoint';
 import { Skeleton } from '../../components/Skeleton';
+import { agoraChatService } from '../../services/chat/agoraChatClient';
 
 const { width } = Dimensions.get('window');
 
@@ -28,6 +29,20 @@ const ChatListPage = () => {
         setCurrentUserId(user.id);
         setRole(user.role);
       }
+      
+      // Initialize Agora Chat lazily
+      const initAgoraChat = async () => {
+        try {
+          if (!userJson) return;
+          const data = await chatSessionManager.getChatToken();
+          if (!data?.token || !data?.userId) return;
+          await agoraChatService.login(data.userId, data.token);
+        } catch (e) {
+          console.error('[Agora Chat] Lazy init failed:', e);
+        }
+      };
+      
+      initAgoraChat();
       fetchData();
     };
     init();

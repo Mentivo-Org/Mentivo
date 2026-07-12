@@ -9,6 +9,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import notifee from "@notifee/react-native";
 import { Linking } from "react-native";
 import DialogBox from "../../components/DialogBox";
+import { useSettings } from "../../context/SettingsContext";
 
 const { width } = Dimensions.get("window");
 
@@ -38,7 +39,7 @@ export default function MentorHomePage() {
   const [refreshing, setRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
   const [expandedLevel, setExpandedLevel] = useState<string | null>(null);
-  const [settings, setSettings] = useState<any>(null);
+  const { settings } = useSettings();
 
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertData, setAlertData] = useState<{
@@ -142,11 +143,10 @@ export default function MentorHomePage() {
   const fetchData = async (silent = false) => {
     if (!silent) setRefreshing(true);
     try {
-      const [statsRes, historyRes, conditionsRes, settingsRes] = await Promise.all([
+      const [statsRes, historyRes, conditionsRes] = await Promise.all([
         api.get(MentorEndpoints.getMeStats),
         api.get(`${CallEndpoints.getMentorSessions}?limit=3`),
-        api.get(MentorEndpoints.getPromotionConditions),
-        api.get(ConfigEndpoint.settings)
+        api.get(MentorEndpoints.getPromotionConditions)
       ]);
       
       if (statsRes.status === 200) {
@@ -163,10 +163,6 @@ export default function MentorHomePage() {
       if (conditionsRes.status === 200) {
           // Conditions from dedicated endpoint
           // We can use these to override the ones in stats data if needed
-      }
-
-      if (settingsRes && settingsRes.status === 200) {
-        setSettings(settingsRes.data);
       }
     } catch (err) {
       console.error("Failed to fetch mentor stats/settings", err);

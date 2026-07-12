@@ -46,6 +46,7 @@ export const MentorEndpoints = {
     getPromotionConditions: `${baseUrl}/mentors/promotion-conditions`,
     updateProfile: `${baseUrl}/mentors/me/profile`,
     reapply: `${baseUrl}/mentors/me/reapply`,
+    pong: `${baseUrl}/mentors/me/pong`,
 }
 
 export const WalletEndpoints = {

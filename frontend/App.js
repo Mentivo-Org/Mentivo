@@ -8,19 +8,23 @@ import RootNavigator from './screens/RootNavigator';
 import { StatusBar } from 'expo-status-bar';
 
 
+import { SettingsProvider } from './context/SettingsContext';
+
 export default function App() {
   
   return (
     <SafeAreaProvider>
       <VersionProvider>
-        <LoadingProvider>
-          <AuthProvider>
-            <CallProvider>
-              <StatusBar style='dark'/>
-              <RootNavigator/>
-            </CallProvider>
-          </AuthProvider>
-        </LoadingProvider>
+        <SettingsProvider>
+          <LoadingProvider>
+            <AuthProvider>
+              <CallProvider>
+                <StatusBar style='dark'/>
+                <RootNavigator/>
+              </CallProvider>
+            </AuthProvider>
+          </LoadingProvider>
+        </SettingsProvider>
       </VersionProvider>
     </SafeAreaProvider>
   );

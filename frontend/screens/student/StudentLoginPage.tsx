@@ -34,7 +34,7 @@ const StudentLoginPage = () => {
   // on PasswordInput can bail out when the parent re-renders for other reasons.
   const handleEmailChange = useCallback((text: string) => setEmail(text), []);
   const handlePasswordChange = useCallback((text: string) => { passwordRef.current = text; }, []);
-  const { setIsSignedIn, setRole, requestNotificationPermissions } = useAuth();
+  const { setIsSignedIn, setRole, requestNotificationPermissions, setUser } = useAuth();
   const {showLoading, hideLoading}  = useLoading();
 
   const [alertData, setAlertData] = useState({title: '', message: ''});
@@ -75,7 +75,7 @@ const StudentLoginPage = () => {
 
       await AsyncStorage.setItem('accessToken', accessToken);
       await AsyncStorage.setItem('refreshToken', refreshToken);
-      await AsyncStorage.setItem('user', JSON.stringify(user));
+      await setUser(user);
       await AsyncStorage.setItem('role', user.role);
       setRole(user.role);
 
@@ -137,7 +137,7 @@ const StudentLoginPage = () => {
         const { accessToken, refreshToken, user } = response.data;
         await AsyncStorage.setItem('accessToken', accessToken);
         await AsyncStorage.setItem('refreshToken', refreshToken);
-        await AsyncStorage.setItem('user', JSON.stringify(user));
+        await setUser(user);
         await AsyncStorage.setItem('role', response.data.user.role);
         setRole(response.data.user.role)
         requestNotificationPermissions();
