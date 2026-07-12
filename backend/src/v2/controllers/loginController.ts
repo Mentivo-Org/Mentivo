@@ -6,6 +6,7 @@ import {
   generateAuthTokens,
 } from "../utils/jwt.ts";
 import { emailValidator } from "../utils/mailIdLoader.ts";
+import { processReferralBonus } from "../services/referralService.ts";
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -282,7 +283,7 @@ export const loginWithEmail = async (req: Request, res: Response) => {
 };
 
 export const handleNativeGoogle = async (req: Request, res: Response) => {
-  const { idToken, role, mode } = req.body;
+  const { idToken, role, mode, referredByReferralCode } = req.body;
 
   if(!idToken) {
     return res.status(401).json({
@@ -318,6 +319,7 @@ export const handleNativeGoogle = async (req: Request, res: Response) => {
             phone: null,
             isEmailVerified: true,
             authProvider: "google",
+            referredByReferralCode: referredByReferralCode || null,
           },
         });
       } catch (dbError) {
@@ -499,8 +501,16 @@ export const updateUserProfile = async (req: Request, res: Response) => {
         name: name !== undefined ? name : undefined,
         phone: phone !== undefined ? phone : undefined,
         grade: grade !== undefined ? grade : undefined,
+        profile_completed: true, // Assuming this sets profile to completed
       },
     });
+
+    if (updatedUser.referredByReferralCode) {
+      // Process referral bonus asynchronously
+      processReferralBonus(updatedUser.id, updatedUser.referredByReferralCode).catch((err) => {
+        console.error("Failed to process referral bonus in background:", err);
+      });
+    }
 
     await invalidateCache(`user:profile:${userId}`);
 

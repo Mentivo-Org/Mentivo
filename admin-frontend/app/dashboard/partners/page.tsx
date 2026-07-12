@@ -48,6 +48,7 @@ export default function PartnersPage() {
     referralCode: "",
     commissionMethod: "per_signup",
     commissionValue: "50",
+    studentBonusValue: "0",
     coachingCenterId: "",
   });
   const [createLoading, setCreateLoading] = useState(false);
@@ -58,6 +59,7 @@ export default function PartnersPage() {
   const [commissionForm, setCommissionForm] = useState({
     commissionMethod: "per_signup",
     commissionValue: "50",
+    studentBonusValue: "0",
   });
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState("");
@@ -97,6 +99,7 @@ export default function PartnersPage() {
       await api.post("/partners/create", {
         ...createForm,
         commissionValue: Number(createForm.commissionValue) || 0,
+        studentBonusValue: Number(createForm.studentBonusValue) || 0,
         coachingCenterId: createForm.role === "coaching_partner" ? createForm.coachingCenterId : undefined,
       });
 
@@ -109,6 +112,7 @@ export default function PartnersPage() {
         referralCode: "",
         commissionMethod: "per_signup",
         commissionValue: "50",
+        studentBonusValue: "0",
         coachingCenterId: "",
       });
       fetchPartners();
@@ -129,6 +133,7 @@ export default function PartnersPage() {
       await api.put(`/partners/${editingPartner.id}/commission`, {
         commissionMethod: commissionForm.commissionMethod,
         commissionValue: Number(commissionForm.commissionValue) || 0,
+        studentBonusValue: Number(commissionForm.studentBonusValue) || 0,
       });
 
       setEditingPartner(null);
@@ -145,6 +150,7 @@ export default function PartnersPage() {
     setCommissionForm({
       commissionMethod: partner.commissionMethod || "per_signup",
       commissionValue: partner.commissionValue?.toString() || "0",
+      studentBonusValue: partner.studentBonusValue?.toString() || "0",
     });
   };
 
@@ -404,6 +410,18 @@ export default function PartnersPage() {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5 mt-4">Student Bonus Value (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={createForm.studentBonusValue}
+                  onChange={(e) => setCreateForm({ ...createForm, studentBonusValue: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                  placeholder="e.g. 20"
+                />
+              </div>
+
               <div className="flex gap-3 justify-end pt-4">
                 <button
                   type="button"
@@ -464,6 +482,18 @@ export default function PartnersPage() {
                   onChange={(e) => setCommissionForm({ ...commissionForm, commissionValue: e.target.value })}
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
                   placeholder="e.g. 50"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5 mt-4">Student Bonus Value (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={commissionForm.studentBonusValue}
+                  onChange={(e) => setCommissionForm({ ...commissionForm, studentBonusValue: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                  placeholder="e.g. 20"
                 />
               </div>
 

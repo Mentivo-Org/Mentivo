@@ -16,7 +16,8 @@
     "dev:lb": "cd load-balancer && set PORT=8080&& set MAIN_INSTANCE_URL=http://localhost:3000&& set WORKER_URLS=http://localhost:3002&& pnpm start",
     "dev:admin": "cd admin-frontend && pnpm dev -p 5001",
     "dev:web": "cd website && pnpm dev -p 3001",
-    "dev:cluster": "concurrently --color always --names \"backend-main,backend-worker,load-balancer\" --prefix-colors \"blue,cyan,yellow\" \"npm run dev:backend-main\" \"npm run dev:backend-worker\" \"npm run dev:lb\""
+    "dev:cluster": "concurrently --color always --names \"backend-main,backend-worker,load-balancer\" --prefix-colors \"blue,cyan,yellow\" \"npm run dev:backend-main\" \"npm run dev:backend-worker\" \"npm run dev:lb\"",
+    "clean:all": "node clean.js"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

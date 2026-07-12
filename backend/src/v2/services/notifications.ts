@@ -77,17 +77,13 @@ export async function sendCallSignalingMessage(fcmToken: string, data: { callId:
   try {
     await admin.messaging().send({
       token: fcmToken,
-      // Adding a notification block forces the Android OS to display a standard heads-up 
-      // push notification while the app is in the background. This bypasses the need for 
-      // the frontend to manually trigger the full-screen intent (which is currently crashing).
-      notification: {
-        title: `Incoming call from ${data.callerName}`,
-        body: 'Tap to answer the call',
-      },
+      // We removed the notification block so that this becomes a data-only message.
+      // Data-only messages wake up the React Native background handler (index.js),
+      // allowing it to trigger the custom full-screen Notifee incoming call UI.
       data: { 
         // We change this to 'incoming_call_fallback' so the buggy frontend code 
         // inside index.js ignores it and doesn't crash the background process. 
-        type: 'incoming_call_fallback',
+        type: 'incoming_call_v2',
         callId: data.callId,
         channelName: data.channelName,
         callerName: data.callerName,
@@ -110,6 +106,7 @@ export async function sendCallSignalingMessage(fcmToken: string, data: { callId:
         },
       },
     });
+    console.log("Sent notification to", fcmToken);
   } catch (error) {
     console.error('Failed to send call signaling message:', error);
   }
@@ -137,6 +134,32 @@ export async function sendCallCancelledMessage(fcmToken: string, callId: string)
     });
   } catch (error) {
     console.error('Failed to send call cancelled message:', error);
+  }
+}
+
+export async function sendCallStatusMessage(fcmToken: string, callId: string, status: string) {
+  if (!admin.apps.length || !fcmToken) return;
+  try {
+    await admin.messaging().send({
+      token: fcmToken,
+      data: { 
+        type: 'call_status_changed',
+        callId,
+        status,
+      },
+      android: {
+        priority: 'high',
+      },
+      apns: {
+        payload: {
+          aps: {
+            'content-available': 1,
+          },
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Failed to send call status message:', error);
   }
 }
 

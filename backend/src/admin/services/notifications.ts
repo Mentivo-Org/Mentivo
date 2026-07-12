@@ -6,21 +6,20 @@ export async function sendPushNotification(tokens: string[], title: string, body
   try {
     const payloadData = { 
       ...(data || {}), 
-      source: 'admin-dashboard' 
+      source: 'admin-dashboard',
+      priority
     };
 
     if (tokens.length === 1) {
       await admin.messaging().send({
         token: tokens[0],
-        notification: { title, body },
-        data: payloadData,
+        data: { ...payloadData, title, body },
         android: { priority }
       });
     } else {
       await admin.messaging().sendEachForMulticast({
         tokens,
-        notification: { title, body },
-        data: payloadData,
+        data: { ...payloadData, title, body },
         android: { priority }
       });
     }

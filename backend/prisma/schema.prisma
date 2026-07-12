@@ -55,6 +55,7 @@ model User {
   referredByReferralCode String?
   commissionMethod       String?   // 'per_signup' or 'percent_revenue'
   commissionValue        Decimal?  @db.Decimal(10, 2)
+  studentBonusValue      Decimal?  @db.Decimal(10, 2)
   createdBy              String?   // Email of admin who created it
 
   referredBy             User?     @relation("UserReferrals", fields: [referredByReferralCode], references: [referralCode])

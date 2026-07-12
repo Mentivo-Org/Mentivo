@@ -507,4 +507,40 @@ router.post('/me/reapply', authenticateUser, async (req: Request, res: Response)
   }
 });
 
+// POST /api/mentors/me/pong
+router.post('/me/pong', authenticateUser, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id as string;
+    if (req.user?.role !== 'mentor') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const redis = (await import('../config/redis.ts')).default;
+    const now = new Date();
+    // Use the exact hour to map back to the time slot
+    const hour = now.getHours();
+    const timeSlot = `${hour}h`;
+    const dateStr = now.toISOString().split('T')[0];
+
+    const redisKey = `mentor:daily_ping:${dateStr}:${userId}`;
+    
+    // We update the specific time slot if it was pending
+    const existing = await redis.hget(redisKey, timeSlot);
+    if (existing) {
+        await redis.hset(redisKey, timeSlot, 'responded');
+    } else {
+        // Fallback: Just mark any pending as responded, or set a generic 'responded' for the current hour
+        await redis.hset(redisKey, timeSlot, 'responded');
+    }
+
+    // Also explicitly set available
+    await setAvailable(userId);
+
+    res.json({ success: true, message: 'Pong received' });
+  } catch (err) {
+    console.error('Error in mentor pong:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 export default router;

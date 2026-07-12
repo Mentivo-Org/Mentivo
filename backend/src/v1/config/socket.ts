@@ -153,5 +153,6 @@ const getIO = () => {
 export const emitToUser = (userId: string, event: string, data: any) => {
   if (io) {
     io.to(userId).emit(event, data);
+    console.log("Socket event emitted to ", userId);
   }
 };

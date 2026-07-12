@@ -3,6 +3,7 @@ import prisma from '../config/db.ts';
 import { settleBilling } from '../services/billing.ts';
 import { setAvailable } from '../services/presence.ts';
 import { startPromotionJob } from './promotionJob.ts';
+import { pingOnlineMentors, checkMentorPings } from '../services/pingMentors.ts';
 
 /**
  * Abandoned Call Sweeper
@@ -229,6 +230,64 @@ async function cleanupPendingWalletTransactions() {
     }
 }
 
+async function processVoucherInstallments() {
+    try {
+        console.log('[Voucher] Checking for voucher installments due...');
+        const now = new Date();
+        const dueSubscriptions = await prisma.voucherSubscription.findMany({
+            where: {
+                status: 'active',
+                installmentsRemaining: { gt: 0 },
+                nextCreditDate: { lte: now }
+            }
+        });
+
+        for (const sub of dueSubscriptions) {
+            try {
+                await prisma.$transaction(async (tx) => {
+                    const nextDate = new Date(sub.nextCreditDate!);
+                    nextDate.setMonth(nextDate.getMonth() + 1);
+                    const remaining = sub.installmentsRemaining - 1;
+                    
+                    await tx.voucherSubscription.update({
+                        where: { id: sub.id },
+                        data: {
+                            installmentsRemaining: remaining,
+                            nextCreditDate: remaining > 0 ? nextDate : null,
+                            status: remaining === 0 ? 'completed' : 'active',
+                            completedAt: remaining === 0 ? new Date() : null
+                        }
+                    });
+
+                    await tx.wallet.upsert({
+                        where: { userId: sub.userId },
+                        create: { userId: sub.userId, balance: sub.amountPerInstallment },
+                        update: { balance: { increment: sub.amountPerInstallment } }
+                    });
+
+                    await tx.walletTransaction.create({
+                        data: {
+                            userId: sub.userId,
+                            amount: sub.amountPerInstallment,
+                            type: 'voucher_installment',
+                            status: 'success'
+                        }
+                    });
+                });
+                console.log(`[Voucher] Successfully processed installment for user ${sub.userId}, sub: ${sub.id}`);
+            } catch (e) {
+                console.error(`[Voucher] Failed to process installment for sub ${sub.id}:`, e);
+            }
+        }
+        
+        if (dueSubscriptions.length > 0) {
+            console.log(`[Voucher] Processed ${dueSubscriptions.length} voucher installments.`);
+        }
+    } catch (err: any) {
+        console.error('[Voucher] Error in processVoucherInstallments:', err);
+    }
+}
+
 // Schedule repeatable jobs
 export function startJobs() {
     console.log('Initializing background jobs with node-cron (Redis-free scheduler)...');
@@ -270,6 +329,24 @@ export function startJobs() {
         }
     });
     console.log('Initialised Top Mentors Recalculation job, scheduled at 0 1 * * * (daily at 1:00 AM)');
+
+    // 7. Process voucher installments daily at 12:15 AM
+    cron.schedule('15 0 * * *', () => {
+        processVoucherInstallments().catch(err => console.error('Unhandled Voucher Installments error:', err));
+    });
+    console.log('Initialised Voucher Installments job, scheduled at 15 0 * * * (daily at 12:15 AM)');
+
+    // 8. Ping online mentors daily at 9 AM, 2 PM, 5 PM
+    cron.schedule('0 9,14,17 * * *', () => {
+        pingOnlineMentors().catch(err => console.error('Unhandled pingOnlineMentors error:', err));
+    }, { timezone: 'Asia/Kolkata' });
+    console.log('Initialised Ping Mentors job, scheduled at 0 9,14,17 * * * (Asia/Kolkata)');
+
+    // 9. Check mentor pings daily at 2 AM
+    cron.schedule('0 2 * * *', () => {
+        checkMentorPings().catch(err => console.error('Unhandled checkMentorPings error:', err));
+    }, { timezone: 'Asia/Kolkata' });
+    console.log('Initialised Check Mentor Pings job, scheduled at 0 2 * * * (Asia/Kolkata)');
 
     // No need to return a promise that resolves after adding jobs since they are in-memory
     return Promise.resolve();

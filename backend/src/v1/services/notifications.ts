@@ -98,6 +98,7 @@ export async function sendCallSignalingMessage(fcmToken: string, data: { callId:
         },
       },
     });
+    console.log("Sent notification to", fcmToken);
   } catch (error) {
     console.error('Failed to send call signaling message:', error);
   }
@@ -125,6 +126,32 @@ export async function sendCallCancelledMessage(fcmToken: string, callId: string)
     });
   } catch (error) {
     console.error('Failed to send call cancelled message:', error);
+  }
+}
+
+export async function sendCallStatusMessage(fcmToken: string, callId: string, status: string) {
+  if (!admin.apps.length || !fcmToken) return;
+  try {
+    await admin.messaging().send({
+      token: fcmToken,
+      data: { 
+        type: 'call_status_changed',
+        callId,
+        status,
+      },
+      android: {
+        priority: 'high',
+      },
+      apns: {
+        payload: {
+          aps: {
+            'content-available': 1,
+          },
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Failed to send call status message:', error);
   }
 }
 

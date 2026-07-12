@@ -2,14 +2,14 @@ import type { Request, Response } from 'express';
 import { generateToken, generateChannelName } from '../services/agora.ts';
 import { lockToBusy, getPresenceState, setAvailable, setOffline, getAvailableMentors } from '../services/presence.ts';
 import { settleBilling } from '../services/billing.ts';
-import { sendCallSignalingMessage, sendCallCancelledMessage, sendChatPushNotification } from '../services/notifications.ts';
+import { sendCallSignalingMessage, sendCallCancelledMessage, sendChatPushNotification, sendCallStatusMessage } from '../services/notifications.ts';
 import { emitToUser } from '../config/socket.ts';
 import prisma from '../config/db.ts';
 import redis from '../config/redis.ts';
 import { chatSessionService } from '../services/chat/chatSession.ts';
 import { chatMessageService } from '../services/chat/chatMessage.ts';
 import { agoraChatRestService } from '../services/agoraChat.ts';
-import { getMentorActiveRate, getMentorActiveRateByProfile, getFreeCallDurationMins } from '../utils/pricing.ts';
+import { getMentorActiveRate, getMentorActiveRateByProfile, getFreeCallDurationMins, isFreeCallEnabled } from '../utils/pricing.ts';
 import { toAgoraUserId } from '../utils/agoraUtils.ts';
 import crypto from 'crypto';
 
@@ -44,6 +44,16 @@ export function scheduleMissedCallTimeout(sessionId: string, studentId: string, 
           await sendCallCancelledMessage(mentorFcmToken.token, sessionId);
         }
         
+        // Send FCM status to caller
+        const studentFcmTokens = await prisma.fCMToken.findMany({
+          where: { userId: studentId },
+          orderBy: { updatedAt: 'desc' },
+          select: { token: true }
+        });
+        for (const t of studentFcmTokens) {
+          await sendCallStatusMessage(t.token, sessionId, 'missed');
+        }
+
         console.log(`[Timeout] Call ${sessionId} marked as missed after 60s.`);
       }
     } catch (err) {
@@ -70,10 +80,11 @@ export const initiateCall = async (req: Request, res: Response) => {
       return res.status(402).json({ error: 'Insufficient wallet balance (Minimum ₹10)' });
     }
 
-    // 3. Check if first call (free)
-    const pastCalls = await prisma.callSession.count({ where: { student_id: studentId } });
-    const isFree = pastCalls === 0;
-
+    // 3. Check if free call is available on user profile
+    const freeEnabled = await isFreeCallEnabled();
+    const temp_student = await prisma.user.findUnique({where: {id: studentId}})
+    const isFree = freeEnabled && temp_student?.isFreeAvailable === true;
+    
     // 4. Lock Mentor
     await lockToBusy(mentorId);
 
@@ -92,7 +103,7 @@ export const initiateCall = async (req: Request, res: Response) => {
         is_free: isFree
       }
     });
-
+    
     // 6. Calculate Max Affordable Duration
     const { ratePerMin } = await getMentorActiveRate(mentorId);
     const affordableMinutes = Math.floor(Number(wallet.balance) / ratePerMin);
@@ -104,7 +115,7 @@ export const initiateCall = async (req: Request, res: Response) => {
     // 7. Generate Agora Tokens
     const studentToken = generateToken(channelName, studentId as string, maxAllowedSeconds);
     const mentorToken = generateToken(channelName, mentorId, 3600);
-
+    
     // 8. Trigger Signaling (Socket.io + FCM)
     const [student, mentor] = await Promise.all([
       prisma.user.findUnique({ where: { id: studentId }, select: { name: true, photo_url: true } }),
@@ -140,13 +151,12 @@ export const initiateCall = async (req: Request, res: Response) => {
     });
 
     // 8b. FCM push for background wake-up
-    const mentorFcmToken = await prisma.fCMToken.findFirst({
+    const mentorFcmTokens = await prisma.fCMToken.findMany({
       where: { userId: mentorId },
-      orderBy: { updatedAt: 'desc' },
       select: { token: true }
     });
 
-    if (!mentorFcmToken || !mentorFcmToken.token) {
+    if (!mentorFcmTokens || mentorFcmTokens.length === 0) {
       console.warn(`[initiateCall] FCM token not found for mentor ${mentorId}. Setting mentor to offline.`);
       await setOffline(mentorId);
       await prisma.callSession.update({
@@ -156,13 +166,15 @@ export const initiateCall = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Mentor FCM token not found. Mentor is offline.' });
     }
 
-    await sendCallSignalingMessage(mentorFcmToken.token, {
-      callId: session.id,
-      channelName,
-      callerName: student?.name || 'Student',
-      callerPhoto: student?.photo_url,
-      chatSessionId
-    });
+    for (const tokenObj of mentorFcmTokens) {
+      await sendCallSignalingMessage(tokenObj.token, {
+        callId: session.id,
+        channelName,
+        callerName: student?.name || 'Student',
+        callerPhoto: student?.photo_url,
+        chatSessionId
+      });
+    }
 
     // 9. Start Missed Call Timeout (60s)
     scheduleMissedCallTimeout(session.id, studentId as string, mentorId);
@@ -512,6 +524,16 @@ export const setCallRinging = async (req: Request, res: Response) => {
       console.log(`[Ringing] Call ${session.id} status updated to ringing`);
       // Notify the student that mentor's phone is ringing
       emitToUser(session.student_id, 'call_status_changed', { callId: session.id, status: 'ringing' });
+      
+      // Notify the student that mentor's phone is ringing via FCM
+      const callerFcmTokens = await prisma.fCMToken.findMany({
+        where: { userId: session.student_id },
+        orderBy: { updatedAt: 'desc' },
+        select: { token: true }
+      });
+      for (const t of callerFcmTokens) {
+        await sendCallStatusMessage(t.token, session.id, 'ringing');
+      }
     }
 
     res.sendStatus(200);
@@ -551,6 +573,16 @@ export async function performEndCall(sessionId: string) {
   });
   if (mentorFcmToken) {
     await sendCallCancelledMessage(mentorFcmToken.token, session.id);
+  }
+
+  // Send FCM status to caller
+  const studentFcmTokens = await prisma.fCMToken.findMany({
+    where: { userId: session.student_id },
+    orderBy: { updatedAt: 'desc' },
+    select: { token: true }
+  });
+  for (const t of studentFcmTokens) {
+    await sendCallStatusMessage(t.token, session.id, finalStatus);
   }
 
   // Atomic billing
@@ -649,6 +681,16 @@ export const rejectCall = async (req: Request, res: Response) => {
     });
     if (mentorFcmToken) {
       await sendCallCancelledMessage(mentorFcmToken.token, session.id);
+    }
+    
+    // Send FCM to caller
+    const callerFcmTokens = await prisma.fCMToken.findMany({
+      where: { userId: callerId },
+      orderBy: { updatedAt: 'desc' },
+      select: { token: true }
+    });
+    for (const t of callerFcmTokens) {
+      await sendCallStatusMessage(t.token, session.id, 'rejected');
     }
 
     res.sendStatus(200);
@@ -817,6 +859,12 @@ export const rateCall = async (req: Request, res: Response) => {
 export const freeMatchmaking = async (req: Request, res: Response) => {
   const studentId = req.user?.id;
   try {
+    // 0. Check if free call scheme is globally enabled
+    const freeEnabled = await isFreeCallEnabled();
+    if (!freeEnabled) {
+      return res.status(400).json({ error: 'The free call scheme is currently unavailable.' });
+    }
+
     // 1. Verify eligibility
     const student = await prisma.user.findFirst({
       where: { id: studentId }

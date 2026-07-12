@@ -46,3 +46,11 @@ export async function getFreeCallDurationMins(): Promise<number> {
   }
   return Number(setting.value);
 }
+
+export async function isFreeCallEnabled(): Promise<boolean> {
+  const setting = await prisma.appSetting.findUnique({
+    where: { key: 'free_call_enabled' }
+  });
+  if (!setting) return true; // Default to true if not set
+  return setting.value !== 'false';
+}

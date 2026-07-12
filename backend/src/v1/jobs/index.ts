@@ -3,6 +3,7 @@ import prisma from '../config/db.ts';
 import { settleBilling } from '../services/billing.ts';
 import { setAvailable } from '../services/presence.ts';
 import { startPromotionJob } from './promotionJob.ts';
+import { pingOnlineMentors, checkMentorPings } from '../services/pingMentors.ts';
 
 /**
  * Abandoned Call Sweeper
@@ -334,6 +335,18 @@ export function startJobs() {
         processVoucherInstallments().catch(err => console.error('Unhandled Voucher Installments error:', err));
     });
     console.log('Initialised Voucher Installments job, scheduled at 15 0 * * * (daily at 12:15 AM)');
+
+    // 8. Ping online mentors daily at 9 AM, 2 PM, 5 PM
+    cron.schedule('0 9,14,17 * * *', () => {
+        pingOnlineMentors().catch(err => console.error('Unhandled pingOnlineMentors error:', err));
+    }, { timezone: 'Asia/Kolkata' });
+    console.log('Initialised Ping Mentors job, scheduled at 0 9,14,17 * * * (Asia/Kolkata)');
+
+    // 9. Check mentor pings daily at 2 AM
+    cron.schedule('0 2 * * *', () => {
+        checkMentorPings().catch(err => console.error('Unhandled checkMentorPings error:', err));
+    }, { timezone: 'Asia/Kolkata' });
+    console.log('Initialised Check Mentor Pings job, scheduled at 0 2 * * * (Asia/Kolkata)');
 
     // No need to return a promise that resolves after adding jobs since they are in-memory
     return Promise.resolve();

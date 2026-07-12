@@ -20,6 +20,7 @@ router.post('/create', async (req: AuthRequest, res) => {
     role, 
     commissionMethod, 
     commissionValue, 
+    studentBonusValue,
     referralCode, 
     coachingCenterId 
   } = req.body;
@@ -79,6 +80,7 @@ router.post('/create', async (req: AuthRequest, res) => {
         referralCode,
         commissionMethod: commissionMethod || null,
         commissionValue: commissionValue ? Number(commissionValue) : null,
+        studentBonusValue: studentBonusValue ? Number(studentBonusValue) : null,
         coachingCenterId: coachingCenterId || null,
         createdBy: adminEmail,
         isEmailVerified: true,
@@ -149,14 +151,15 @@ router.get('/list', async (req, res) => {
 // Update commission settings
 router.put('/:id/commission', async (req, res) => {
   const { id } = req.params;
-  const { commissionMethod, commissionValue } = req.body;
+  const { commissionMethod, commissionValue, studentBonusValue } = req.body;
 
   try {
     const updated = await prisma.user.update({
       where: { id },
       data: {
         commissionMethod,
-        commissionValue: commissionValue ? Number(commissionValue) : null
+        commissionValue: commissionValue ? Number(commissionValue) : null,
+        studentBonusValue: studentBonusValue ? Number(studentBonusValue) : null
       }
     });
 

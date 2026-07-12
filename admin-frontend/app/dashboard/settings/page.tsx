@@ -13,6 +13,7 @@ export default function SettingsPage() {
   // App Settings (Promotions & Announcements)
   const [promotionalText, setPromotionalText] = useState<string>("");
   const [announcement, setAnnouncement] = useState<string>("");
+  const [freeCallEnabled, setFreeCallEnabled] = useState<boolean>(true);
   const [freeCallDurationMins, setFreeCallDurationMins] = useState<number>(5);
 
   // Mentor Level Prices & Discounts
@@ -59,6 +60,7 @@ export default function SettingsPage() {
       // Set App Settings
       setPromotionalText(settingsData.promotionalText || "");
       setAnnouncement(settingsData.announcement || "");
+      setFreeCallEnabled(settingsData.free_call_enabled !== 'false');
       setFreeCallDurationMins(Number(settingsData.free_call_duration_mins || 5));
 
       // Set Mentor Pricing & Discounts
@@ -111,6 +113,7 @@ export default function SettingsPage() {
             discount_Signature: discountSignature,
             price_Fellow: priceFellow,
             discount_Fellow: discountFellow,
+            free_call_enabled: freeCallEnabled ? 'true' : 'false',
             free_call_duration_mins: freeCallDurationMins.toString(),
             top_mentors_min_rating: topMentorsMinRating,
             top_mentors_min_calls: topMentorsMinCalls,
@@ -419,6 +422,26 @@ export default function SettingsPage() {
           <div className="bg-card rounded-xl border border-gray-200 shadow-sm p-6 space-y-6">
             <h2 className="text-lg font-bold text-text border-b border-gray-100 pb-2">Call Settings</h2>
             <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-xl border border-gray-100">
+                <div>
+                  <label className="block text-sm font-semibold text-text mb-1">
+                    Free First-Call Scheme
+                  </label>
+                  <p className="text-xs text-secondary">
+                    Enable or disable the first-call-free promotional scheme for new students globally.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={freeCallEnabled}
+                    onChange={(e) => setFreeCallEnabled(e.target.checked)}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                </label>
+              </div>
+
               <div>
                 <label className="block text-sm font-semibold text-text mb-2">
                   First-Call Free Duration (Minutes)

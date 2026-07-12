@@ -95,10 +95,12 @@ router.get('/tables', authenticateAdmin, async (req: AuthRequest, res: Response)
           // ignore counting error
         }
         
-        const mappedFields = model.fields.map((f: any) => ({
-          ...f,
-          isId: f.name === pkFieldName
-        }));
+        const mappedFields = model.fields
+          .filter((f: any) => f.kind !== 'object')
+          .map((f: any) => ({
+            ...f,
+            isId: f.name === pkFieldName
+          }));
 
         return {
           name: model.name,
