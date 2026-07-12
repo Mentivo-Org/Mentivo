@@ -1,0 +1,45 @@
+name: Deploy Multi-Account Services
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_lb:
+        description: 'Deploy Load Balancer'
+        required: false
+        type: boolean
+        default: false
+      deploy_backend:
+        description: 'Deploy Backend Admin(Main)'
+        required: false
+        type: boolean
+        default: false
+      deploy_workers:
+        description: 'Deploy Backend Workers'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  trigger-deploys:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy Load Balancer
+        if: ${{ github.event.inputs.deploy_lb == 'true' }}
+        run: |
+          echo "Triggering Load Balancer deployment..."
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_LB }}"
+
+      - name: Deploy Backend Admin(Main)
+        if: ${{ github.event.inputs.deploy_backend == 'true' }}
+        run: |
+          echo "Triggering Admin Backend deployment..."
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_ADMIN }}"
+
+      - name: Deploy Backend Workers
+        if: ${{ github.event.inputs.deploy_workers == 'true' }}
+        run: |
+          echo "Triggering Worker 1 deployment..."
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_WORKER_1 }}"
+
+          echo "Triggering Worker 2 deployment..."
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_WORKER_2 }}"
