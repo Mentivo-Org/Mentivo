@@ -17,6 +17,21 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install packages
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: Run Expo Prebuild
+      working-directory: ./frontend
+      run: npx expo prebuild --platform android
+
     - name: Set up JDK
       uses: actions/setup-java@v4
       with:
@@ -29,11 +44,14 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
+    - name: Decode Keystore
+      run: echo "${{ secrets.MY_KEYSTORE_BASE64 }}" | base64 --decode > app/mentivo.keystore
+
     - name: Inject Secrets into gradle.properties
       run: |
         # Replace the placeholders in gradle.properties with actual GitHub Secrets
-        sed -i 's|RELEASE_KEY_PASSWORD=my_key_store_password|RELEASE_KEY_PASSWORD=${{ secrets.MY_KEY_PASSWORD }}|g' gradle.properties
-        sed -i 's|RELEASE_STORE_PASSWORD=my_key_store_password|RELEASE_STORE_PASSWORD=${{ secrets.MY_STORE_PASSWORD }}|g' gradle.properties
+        sed -i 's|^RELEASE_KEY_PASSWORD=.*|RELEASE_KEY_PASSWORD=${{ secrets.MY_KEY_PASSWORD }}|' gradle.properties
+        sed -i 's|^RELEASE_STORE_PASSWORD=.*|RELEASE_STORE_PASSWORD=${{ secrets.MY_STORE_PASSWORD }}|' gradle.properties
         
         # Verify the injection worked without exposing the actual passwords in the logs
         echo "=== Verifying gradle.properties signing configuration (Masked) ==="
