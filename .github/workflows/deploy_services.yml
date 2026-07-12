@@ -18,6 +18,16 @@ on:
         required: false
         type: boolean
         default: false
+      deploy_admin_frontend:
+        description: 'Deploy Admin Frontend (Vercel)'
+        required: false
+        type: boolean
+        default: false
+      deploy_website:
+        description: 'Deploy Website (Vercel)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   trigger-deploys:
@@ -43,3 +53,15 @@ jobs:
 
           echo "Triggering Worker 2 deployment..."
           curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_WORKER_2 }}"
+
+      - name: Deploy Admin Frontend
+        if: ${{ github.event.inputs.deploy_admin_frontend == 'true' }}
+        run: |
+          echo "Triggering Admin Frontend deployment on Vercel..."
+          curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK_ADMIN_FRONTEND }}"
+
+      - name: Deploy Website
+        if: ${{ github.event.inputs.deploy_website == 'true' }}
+        run: |
+          echo "Triggering Website deployment on Vercel..."
+          curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK_WEBSITE }}"
