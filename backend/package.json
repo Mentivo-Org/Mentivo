@@ -27,6 +27,7 @@
     "dev": "nodemon src/app.ts",
     "build": "tsc",
     "prisma:generate": "prisma generate",
+    "prisma:migrate-deploy": "prisma migrate deploy",
     "verify": "tsc --noEmit",
     "snapshot:v1": "node scripts/snapshot.js",
     "render:build": "bash scripts/render-build.sh"
