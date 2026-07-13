@@ -5,6 +5,7 @@ import { LoadingProvider } from "@/context/LoadingContext";
 import ApiInterceptor from "./components/ApiInterceptor";
 import AppWrapper from "./components/AppWrapper";
 import GoogleAuthProviderWrapper from "./components/GoogleAuthProviderWrapper";
+import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -71,6 +72,7 @@ export default function RootLayout({
             </GoogleAuthProviderWrapper>
           </ApiInterceptor>
         </LoadingProvider>
+        <Analytics />
         <SpeedInsights />
       </body>
     </html>
