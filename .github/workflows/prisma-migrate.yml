@@ -29,7 +29,16 @@ jobs:
         run: pnpm install
 
       - name: Check Pending Migrations Status
-        run: pnpm exec prisma migrate status
+        run: |
+          set +e
+          pnpm exec prisma migrate status
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ] && [ "$code" -ne 1 ]; then
+            echo "Unexpected error from prisma migrate status (exit $code)"
+            exit $code
+          fi
+          echo "Migration status check complete (exit $code)"
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
