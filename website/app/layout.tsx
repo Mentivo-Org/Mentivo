@@ -6,6 +6,7 @@ import ApiInterceptor from "./components/ApiInterceptor";
 import AppWrapper from "./components/AppWrapper";
 import GoogleAuthProviderWrapper from "./components/GoogleAuthProviderWrapper";
 import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const fraunces = Fraunces({ subsets: ["latin"], weight: ["300", "500", "600"], variable: "--font-fraunces" });
@@ -72,6 +73,7 @@ export default function RootLayout({
           </ApiInterceptor>
         </LoadingProvider>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
