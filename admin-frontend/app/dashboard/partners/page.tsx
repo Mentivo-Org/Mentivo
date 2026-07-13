@@ -13,6 +13,7 @@ interface Partner {
   role: string;
   referralCode: string | null;
   commissionMethod: string | null;
+  studentBonusValue: number | null;
   commissionValue: any | null;
   createdBy: string | null;
   created_at: string;
