@@ -1,13 +1,17 @@
 import admin from '../config/firebase.ts';
 import prisma from '../config/db.ts';
 import redis from '../config/redis.ts';
+import { getAvailableMentors } from './presence.ts';
+import { setOffline } from './presence.ts';
 
 export async function pingOnlineMentors() {
     try {
         console.log('[PingMentors] Starting routine ping to online mentors...');
-        // Get all mentors who are currently marked as online
+        const availableIds = await getAvailableMentors();
+
+        // Get all mentors who are currently marked as online in Redis
         const onlineMentors = await prisma.mentorProfile.findMany({
-            where: { isOnline: true },
+            where: { mentorId: { in: availableIds } },
             select: { mentorId: true, user: { select: { fcmTokens: { select: { token: true } } } } }
         });
 
@@ -112,8 +116,9 @@ export async function checkMentorPings() {
 export async function triggerManualPing() {
     try {
         console.log('[PingMentors] Admin triggered manual ping to online mentors...');
+        const availableIds = await getAvailableMentors();
         const onlineMentors = await prisma.mentorProfile.findMany({
-            where: { isOnline: true },
+            where: { mentorId: { in: availableIds } },
             select: { mentorId: true, user: { select: { fcmTokens: { select: { token: true } } } } }
         });
 
@@ -170,10 +175,7 @@ export async function checkManualPings() {
 
                 if (mentor && mentor.isOnline) {
                     console.log(`[PingMentors] Mentor ${mentorId} failed manual ping. Marking offline.`);
-                    await prisma.mentorProfile.update({
-                        where: { mentorId },
-                        data: { isOnline: false }
-                    });
+                    await setOffline(mentorId);
 
                     const tokens = mentor.user?.fcmTokens?.map(t => t.token) || [];
                     if (tokens.length > 0 && admin.apps.length) {
