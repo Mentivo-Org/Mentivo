@@ -7,6 +7,7 @@ import admin from '../config/firebase.ts';
 import resend from '../services/resend.ts';
 import fs from 'fs';
 import path from 'path';
+import { triggerManualPing } from '../../v1/services/pingMentors.ts';
 
 const router = Router();
 
@@ -44,6 +45,17 @@ router.post('/top-mentors/preview', async (req, res) => {
     });
 
     res.json(mentors);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Internal Server Error' });
+  }
+});
+
+// Trigger manual ping to online mentors
+router.post('/manual-ping', async (req, res) => {
+  try {
+    // Fire and forget
+    triggerManualPing().catch(err => console.error('[Admin] Manual ping error:', err));
+    res.json({ success: true, message: 'Manual ping process started. Unresponsive mentors will be marked offline in 5 minutes.' });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Internal Server Error' });
   }
