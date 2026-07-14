@@ -378,7 +378,7 @@ export default function EmailCenterPage() {
                       if (e.target.files) {
                         const newFiles = Array.from(e.target.files);
                         setAttachments([...attachments, ...newFiles]);
-                        // Reset input so same file can be selected again if removed
+                        // Reset input so same file can be selected again if removed...
                         e.target.value = '';
                       }
                     }}
