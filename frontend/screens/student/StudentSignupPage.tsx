@@ -18,6 +18,7 @@ import { Image } from 'expo-image';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import * as Clipboard from 'expo-clipboard';
 import * as WebBrowser from 'expo-web-browser';
+import * as Application from 'expo-application';
 import api from '../../services/api';
 import { LoginEndpoints, PartnerEndpoints } from '../../constants/endpoint';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -99,33 +100,60 @@ const StudentSignupPage = () => {
 
   useFocusEffect(
     useCallback(() => {
-      const checkClipboard = async () => {
+      const checkReferralSources = async () => {
         try {
-          const hasString = await Clipboard.hasStringAsync();
-          if (hasString) {
-            const content = await Clipboard.getStringAsync();
-            if (content.startsWith('MENTIVO-')) {
-              const code = content.replace('MENTIVO-', '').trim();
-              if (code && code !== referralCode) {
-                setAlertData({
-                  title: "Referral Detected",
-                  message: `Do you want to apply the referral code "${code}" from your clipboard?`,
-                  primaryButtonText: "Apply",
-                  onPrimaryPress: () => setReferralCode(code),
-                  secondaryButtonText: "Cancel",
-                  onSecondaryPress: () => {},
-                  onClose: () => {}
-                });
-                setAlertVisible(true);
+          let detectedCode: string | null = null;
+
+          // 1. Check Install Referrer (Android only)
+          if (Platform.OS === 'android') {
+            try {
+              const referrer = await Application.getInstallReferrerAsync();
+              if (referrer && referrer.includes('MENTIVO-')) {
+                const match = referrer.match(/MENTIVO-([A-Z0-9]+)/i);
+                if (match) {
+                  detectedCode = match[1];
+                }
               }
+            } catch (err) {
+              console.error("Failed to get install referrer:", err);
             }
           }
+
+          // 2. Check Clipboard (Fallback for iOS or side-loaded)
+          if (!detectedCode) {
+            try {
+              const hasString = await Clipboard.hasStringAsync();
+              if (hasString) {
+                const content = await Clipboard.getStringAsync();
+                if (content.startsWith('MENTIVO-')) {
+                  detectedCode = content.replace('MENTIVO-', '').trim();
+                }
+              }
+            } catch (err) {
+              console.error("Failed to read clipboard:", err);
+            }
+          }
+
+          // 3. Prompt user if a new code is detected
+          if (detectedCode && detectedCode !== referralCode) {
+            setAlertData({
+              title: "Referral Detected",
+              message: `Do you want to apply the referral code "${detectedCode}"?`,
+              primaryButtonText: "Apply",
+              onPrimaryPress: () => setReferralCode(detectedCode!),
+              secondaryButtonText: "Cancel",
+              onSecondaryPress: () => {},
+              onClose: () => {}
+            });
+            setAlertVisible(true);
+          }
+
         } catch (err) {
-          console.error("Failed to read clipboard:", err);
+          console.error("Error in checkReferralSources:", err);
         }
       };
 
-      checkClipboard();
+      checkReferralSources();
     }, [referralCode])
   );
 

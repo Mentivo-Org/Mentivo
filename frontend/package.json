@@ -24,6 +24,7 @@
     "agora-rtc-sdk-ng": "^4.24.4",
     "axios": "^1.15.2",
     "expo": "~54.0.33",
+    "expo-application": "~7.0.8",
     "expo-clipboard": "~8.0.8",
     "expo-document-picker": "~14.0.8",
     "expo-image": "~3.0.11",
