@@ -4,13 +4,25 @@ import resend from '../services/resend.ts';
 import { authenticateAdmin } from '../middleware/auth.ts';
 import type { AuthRequest } from '../middleware/auth.ts';
 import { Prisma } from '@prisma/client';
+import multer from 'multer';
+
+const storage = multer.memoryStorage();
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB
+  }
+});
 
 const router = Router();
 
 router.use(authenticateAdmin);
 
 // Helper to get dynamic signature
-const getSignature = (email: string) => {
+const getSignature = (email: string, isHtml: boolean = false) => {
+    if (isHtml) {
+        return `<br><br>--<br>Mentivo Admin Team<br>${email}`;
+    }
     return `\n\n--\nMentivo Admin Team\n${email}`;
 };
 
@@ -38,9 +50,16 @@ router.get('/search-users', async (req, res) => {
 });
 
 // Send email to a single user
-router.post('/send', async (req: AuthRequest, res) => {
-  const { to, subject, body } = req.body;
+router.post('/send', upload.array('attachments'), async (req: AuthRequest, res) => {
+  const { to, subject, body, isHtml: isHtmlStr } = req.body;
   const adminEmail = req.user?.email;
+  const isHtml = isHtmlStr === 'true' || isHtmlStr === true;
+  
+  const files = (req as any).files as Express.Multer.File[] | undefined;
+  const attachments = files ? files.map(f => ({
+      filename: f.originalname,
+      content: f.buffer
+  })) : undefined;
 
   if (!to || !subject || !body || !adminEmail) {
     return res.status(400).json({ error: 'Recipient, subject, and body are required.' });
@@ -59,13 +78,17 @@ router.post('/send', async (req: AuthRequest, res) => {
       }
     });
 
-    const signature = await getSignature(adminEmail);
-    await resend.emails.send({
+    const signature = await getSignature(adminEmail, isHtml);
+    const emailPayload: any = {
       from: 'Mentivo Admin <admin@mentivo.in>',
       to,
       subject,
-      text: body + signature,
-    });
+    };
+    if (isHtml) emailPayload.html = body + signature;
+    else emailPayload.text = body + signature;
+    if (attachments && attachments.length > 0) emailPayload.attachments = attachments;
+
+    await resend.emails.send(emailPayload);
     res.json({ message: 'Email sent successfully.' });
   } catch (err: any) {
     console.error('Resend Error:', err);
@@ -74,9 +97,20 @@ router.post('/send', async (req: AuthRequest, res) => {
 });
 
 // Send email to a specific list of users
-router.post('/send-batch', async (req: AuthRequest, res) => {
-  const { emails, subject, body } = req.body;
+router.post('/send-batch', upload.array('attachments'), async (req: AuthRequest, res) => {
+  let { emails, subject, body, isHtml: isHtmlStr } = req.body;
   const adminEmail = req.user?.email;
+  const isHtml = isHtmlStr === 'true' || isHtmlStr === true;
+
+  if (typeof emails === 'string') {
+    try { emails = JSON.parse(emails); } catch(e) {}
+  }
+
+  const files = (req as any).files as Express.Multer.File[] | undefined;
+  const attachments = files ? files.map(f => ({
+      filename: f.originalname,
+      content: f.buffer
+  })) : undefined;
 
   if (!emails || !Array.isArray(emails) || emails.length === 0 || !subject || !body || !adminEmail) {
     return res.status(400).json({ error: 'Recipients list, subject, and body are required.' });
@@ -99,17 +133,22 @@ router.post('/send-batch', async (req: AuthRequest, res) => {
       }
     });
 
-    const signature = await getSignature(adminEmail);
+    const signature = await getSignature(adminEmail, isHtml);
     const batchSize = 100;
     for (let i = 0; i < emails.length; i += batchSize) {
         const batch = emails.slice(i, i + batchSize);
         await resend.batch.send(
-            batch.map(email => ({
-                from: 'Mentivo Admin <admin@mentivo.in>',
-                to: email,
-                subject,
-                text: body + signature,
-            }))
+            batch.map(email => {
+                const payload: any = {
+                    from: 'Mentivo Admin <admin@mentivo.in>',
+                    to: email,
+                    subject,
+                };
+                if (isHtml) payload.html = body + signature;
+                else payload.text = body + signature;
+                if (attachments && attachments.length > 0) payload.attachments = attachments;
+                return payload;
+            })
         );
     }
     res.json({ message: `Emails sent to ${emails.length} users.` });
@@ -142,9 +181,20 @@ router.post('/preview-group', async (req, res) => {
 });
 
 // Send group emails
-router.post('/send-group', async (req: AuthRequest, res) => {
-  const { filters, subject, body } = req.body;
+router.post('/send-group', upload.array('attachments'), async (req: AuthRequest, res) => {
+  let { filters, subject, body, isHtml: isHtmlStr } = req.body;
   const adminEmail = req.user?.email;
+  const isHtml = isHtmlStr === 'true' || isHtmlStr === true;
+
+  if (typeof filters === 'string') {
+    try { filters = JSON.parse(filters); } catch(e) {}
+  }
+
+  const files = (req as any).files as Express.Multer.File[] | undefined;
+  const attachments = files ? files.map(f => ({
+      filename: f.originalname,
+      content: f.buffer
+  })) : undefined;
 
   if (!subject || !body || !adminEmail) {
     return res.status(400).json({ error: 'Subject and body are required.' });
@@ -173,17 +223,22 @@ router.post('/send-group', async (req: AuthRequest, res) => {
       }
     });
 
-    const signature = await getSignature(adminEmail);
+    const signature = await getSignature(adminEmail, isHtml);
     const batchSize = 100;
     for (let i = 0; i < emails.length; i += batchSize) {
         const batch = emails.slice(i, i + batchSize);
         await resend.batch.send(
-            batch.map(email => ({
-                from: 'Mentivo Admin <admin@mentivo.in>',
-                to: email,
-                subject,
-                text: body + signature,
-            }))
+            batch.map(email => {
+                const payload: any = {
+                    from: 'Mentivo Admin <admin@mentivo.in>',
+                    to: email,
+                    subject,
+                };
+                if (isHtml) payload.html = body + signature;
+                else payload.text = body + signature;
+                if (attachments && attachments.length > 0) payload.attachments = attachments;
+                return payload;
+            })
         );
     }
 
