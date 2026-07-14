@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { Send, Users, Mail, AlertTriangle, UserPlus, X } from "lucide-react";
+import { Send, Users, Mail, AlertTriangle, UserPlus, X, Paperclip } from "lucide-react";
 
 interface UserSuggestion {
   email: string;
@@ -27,6 +27,9 @@ export default function EmailCenterPage() {
   const [recipientCount, setCount] = useState<number | null>(null);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [isHtml, setIsHtml] = useState(false);
+  const [previewMode, setPreviewMode] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [counting, setCounting] = useState(false);
 
@@ -123,11 +126,24 @@ export default function EmailCenterPage() {
     setLoading(true);
     try {
       const endpoint = mode === "group" ? "/email/send-group" : "/email/send-batch";
-      const payload = mode === "group" 
-        ? { filters, subject, body } 
-        : { emails: selectedUsers.map(u => u.email), subject, body };
+      const formData = new FormData();
+      formData.append("subject", subject);
+      formData.append("body", body);
+      formData.append("isHtml", isHtml.toString());
+      
+      if (mode === "group") {
+        formData.append("filters", JSON.stringify(filters));
+      } else {
+        formData.append("emails", JSON.stringify(selectedUsers.map(u => u.email)));
+      }
 
-      await api.post(endpoint, payload);
+      attachments.forEach(file => {
+        formData.append("attachments", file);
+      });
+
+      await api.post(endpoint, formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
       
       alert("Email(s) sent successfully!");
       if (mode === "specific") {
@@ -136,6 +152,7 @@ export default function EmailCenterPage() {
       }
       setSubject("");
       setBody("");
+      setAttachments([]);
     } catch (err: any) {
       alert(err.response?.data?.error || "Failed to send email.");
     } finally {
@@ -317,23 +334,73 @@ export default function EmailCenterPage() {
                   />
                 </div>
 
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-text mb-1">Message Body</label>
-                  <textarea
-                    required
-                    rows={12}
-                    placeholder="Write your message here..."
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary transition-all font-sans resize-none"
-                    value={body}
-                    onChange={(e) => setBody(e.target.value)}
+                <div className="flex-1 flex flex-col">
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-sm font-medium text-text">Message Body</label>
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-1.5 text-xs text-secondary cursor-pointer">
+                        <input type="checkbox" checked={isHtml} onChange={e => setIsHtml(e.target.checked)} className="rounded border-gray-300 text-primary focus:ring-primary" />
+                        Send as HTML
+                      </label>
+                      {isHtml && (
+                        <div className="flex bg-gray-100 p-0.5 rounded-md">
+                           <button type="button" onClick={() => setPreviewMode(false)} className={`px-2 py-1 text-[10px] font-bold rounded ${!previewMode ? 'bg-white shadow text-primary' : 'text-gray-500'}`}>Code</button>
+                           <button type="button" onClick={() => setPreviewMode(true)} className={`px-2 py-1 text-[10px] font-bold rounded ${previewMode ? 'bg-white shadow text-primary' : 'text-gray-500'}`}>Preview</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {isHtml && previewMode ? (
+                    <div 
+                      className="flex-1 min-h-[280px] p-4 bg-white border border-gray-300 rounded-lg overflow-y-auto"
+                      dangerouslySetInnerHTML={{ __html: body || '<span class="text-gray-400">Empty preview...</span>' }}
+                    />
+                  ) : (
+                    <textarea
+                      required={!previewMode}
+                      rows={12}
+                      placeholder={isHtml ? "<h1>Write your HTML message here...</h1>" : "Write your message here..."}
+                      className="w-full flex-1 min-h-[280px] px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary transition-all font-sans resize-none"
+                      value={body}
+                      onChange={(e) => setBody(e.target.value)}
+                    />
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-text mb-1 flex items-center gap-2">
+                    <Paperclip size={16} /> Attachments
+                  </label>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        const newFiles = Array.from(e.target.files);
+                        setAttachments([...attachments, ...newFiles]);
+                        // Reset input so same file can be selected again if removed...
+                        e.target.value = '';
+                      }
+                    }}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer transition-all cursor-pointer"
                   />
+                  {attachments.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {attachments.map((f, i) => (
+                        <div key={i} className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-lg text-xs border border-gray-200">
+                          <span className="truncate max-w-[150px] font-medium" title={f.name}>{f.name}</span>
+                          <button type="button" onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))} className="text-gray-400 hover:text-red-500"><X size={14}/></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <p className="text-[10px] text-gray-400 uppercase font-bold mb-2">Signature Preview</p>
                     <p className="text-sm text-secondary whitespace-pre-line">
                         --{"\n"}
-                        Mentivo Admin Team{"\n"}
+                        Mentivo Admin Team{isHtml ? <br /> : "\n"}
                         {admin?.email || "admin@mentivo.in"}
                     </p>
                 </div>
