@@ -523,7 +523,14 @@ router.post('/me/pong', authenticateUser, async (req: Request, res: Response) =>
     const dateStr = now.toISOString().split('T')[0];
 
     const redisKey = `mentor:daily_ping:${dateStr}:${userId}`;
+    const manualPingKey = `mentor:manual_ping:${userId}`;
     
+    // Check manual ping
+    const manualPingExists = await redis.exists(manualPingKey);
+    if (manualPingExists) {
+        await redis.del(manualPingKey);
+    }
+
     // We update the specific time slot if it was pending
     const existing = await redis.hget(redisKey, timeSlot);
     if (existing) {

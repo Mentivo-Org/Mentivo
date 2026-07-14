@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Terminal, Database } from "lucide-react";
+import { Terminal, Database, Activity } from "lucide-react";
 import { motion } from "framer-motion";
+import { useState } from "react";
+import api from "@/lib/api";
 
 const containerVars = {
   hidden: { opacity: 0 },
@@ -37,11 +39,36 @@ export default function DeveloperOptionsLanding() {
     }
   ];
 
+  const [pinging, setPinging] = useState(false);
+
+  const handleManualPing = async () => {
+    if (pinging) return;
+    try {
+      setPinging(true);
+      await api.post("/mentors/manual-ping");
+      alert("Manual ping process started successfully! Unresponsive mentors will be marked offline in 5 minutes.");
+    } catch (err: any) {
+      alert(err.response?.data?.error || "Failed to trigger manual ping");
+    } finally {
+      setPinging(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-black text-text tracking-tight">Developer Tools</h1>
-        <p className="text-secondary mt-1 font-medium">Diagnostic utilities and live system consoles</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-black text-text tracking-tight">Developer Tools</h1>
+          <p className="text-secondary mt-1 font-medium">Diagnostic utilities and live system consoles</p>
+        </div>
+        <button 
+          onClick={handleManualPing}
+          disabled={pinging}
+          className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-5 py-2.5 rounded-xl font-bold transition-all disabled:opacity-50"
+        >
+          <Activity size={20} />
+          {pinging ? "Pinging..." : "Ping Online Mentors"}
+        </button>
       </div>
 
       <motion.div 

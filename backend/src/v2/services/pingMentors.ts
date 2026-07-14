@@ -106,3 +106,96 @@ export async function checkMentorPings() {
         console.error('[PingMentors] Error in checkMentorPings:', error);
     }
 }
+
+export async function triggerManualPing() {
+    try {
+        console.log('[PingMentors] Admin triggered manual ping to online mentors...');
+        const onlineMentors = await prisma.mentorProfile.findMany({
+            where: { isOnline: true },
+            select: { mentorId: true, user: { select: { fcmTokens: { select: { token: true } } } } }
+        });
+
+        if (onlineMentors.length === 0) {
+            console.log('[PingMentors] No online mentors found to ping manually.');
+            return;
+        }
+
+        for (const mentor of onlineMentors) {
+            const tokens = mentor.user?.fcmTokens?.map(t => t.token) || [];
+            
+            const redisKey = `mentor:manual_ping:${mentor.mentorId}`;
+            await redis.set(redisKey, 'pending', 'EX', 10 * 60); // 10 mins expiry just in case
+
+            if (tokens.length > 0 && admin.apps.length) {
+                try {
+                    await admin.messaging().sendEachForMulticast({
+                        tokens,
+                        data: { type: 'ping' },
+                        android: { priority: 'high' }
+                    });
+                } catch (err) {
+                    console.error(`[PingMentors] Failed to send manual FCM to mentor ${mentor.mentorId}:`, err);
+                }
+            }
+        }
+
+        // Schedule check after 5 minutes
+        setTimeout(() => {
+            checkManualPings().catch(err => console.error('Error in manual ping timeout:', err));
+        }, 5 * 60 * 1000);
+
+    } catch (error) {
+        console.error('[PingMentors] Error in triggerManualPing:', error);
+    }
+}
+
+export async function checkManualPings() {
+    try {
+        console.log('[PingMentors] Checking manual mentor pings (5 mins elapsed)...');
+        const keys = await redis.keys(`mentor:manual_ping:*`);
+
+        for (const key of keys) {
+            const mentorId = key.split(':').pop();
+            if (!mentorId) continue;
+
+            const status = await redis.get(key);
+            
+            if (status === 'pending') {
+                const mentor = await prisma.mentorProfile.findUnique({
+                    where: { mentorId },
+                    include: { user: { include: { fcmTokens: true } } }
+                });
+
+                if (mentor && mentor.isOnline) {
+                    console.log(`[PingMentors] Mentor ${mentorId} failed manual ping. Marking offline.`);
+                    await prisma.mentorProfile.update({
+                        where: { mentorId },
+                        data: { isOnline: false }
+                    });
+
+                    const tokens = mentor.user?.fcmTokens?.map(t => t.token) || [];
+                    if (tokens.length > 0 && admin.apps.length) {
+                        try {
+                            await admin.messaging().sendEachForMulticast({
+                                tokens,
+                                notification: {
+                                    title: 'Profile marked offline',
+                                    body: 'You missed an availability check. Your profile has been marked offline.'
+                                },
+                                data: { type: 'marked_offline' },
+                                android: { priority: 'high' }
+                            });
+                        } catch (err) {
+                            console.error(`[PingMentors] Failed to send marked_offline FCM to mentor ${mentorId}:`, err);
+                        }
+                    }
+                }
+            }
+            
+            // Clean up the key
+            await redis.del(key);
+        }
+    } catch (error) {
+        console.error('[PingMentors] Error in checkManualPings:', error);
+    }
+}
