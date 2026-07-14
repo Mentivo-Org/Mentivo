@@ -56,10 +56,8 @@ The Mentivo platform is hosted across **Render** and **Vercel** to ensure high a
 ## 📂 Project Structure
 
 ```text
-/
-├── backend/            # Express API, Prisma schema, services, and jobs
+├── backend/            # Express API, Prisma schema, services, and jobs + admin
 ├── frontend/           # React Native Expo application
-├── admin-backend/      # Admin-specific Express API with separate Prisma setup
 ├── admin-frontend/     # Next.js Admin Dashboard for platform management
 ├── website/            # Next.js web dashboards for partners and admins
 ├── supabase/           # Supabase configuration and database migrations
