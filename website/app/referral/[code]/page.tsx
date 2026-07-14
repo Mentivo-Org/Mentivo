@@ -10,7 +10,7 @@ export default function ReferralPage() {
   const referralCode = `MENTIVO-${rawCode}`;
   
   const [copied, setCopied] = useState(false);
-  const [countdown, setCountdown] = useState(5);
+  const [countdown, setCountdown] = useState(1);
 
   // Play Store URL for the app
   const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.mentivo.in';
@@ -20,7 +20,7 @@ export default function ReferralPage() {
     try {
       navigator.clipboard.writeText(referralCode);
       setCopied(true);
-      setTimeout(() => setCopied(false), 3000);
+      setTimeout(() => setCopied(false), 1000);
     } catch (err) {
       console.error('Failed to copy text: ', err);
     }
@@ -44,7 +44,7 @@ export default function ReferralPage() {
   const copyToClipboard = () => {
     navigator.clipboard.writeText(referralCode);
     setCopied(true);
-    setTimeout(() => setCopied(false), 3000);
+    setTimeout(() => setCopied(false), 1000);
   };
 
   return (
