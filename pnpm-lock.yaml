@@ -16,7 +16,7 @@ importers:
     dependencies:
       axios:
         specifier: ^1.6.8
-        version: 1.18.1(debug@4.4.3)
+        version: 1.18.1
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -92,7 +92,7 @@ importers:
         version: 2.0.5
       axios:
         specifier: ^1.15.2
-        version: 1.18.1(debug@4.4.3)
+        version: 1.18.1
       concurrently:
         specifier: ^10.0.3
         version: 10.0.3
@@ -246,10 +246,13 @@ importers:
         version: 4.24.5
       axios:
         specifier: ^1.15.2
-        version: 1.18.1(debug@4.4.3)
+        version: 1.18.1
       expo:
         specifier: ~54.0.33
         version: 54.0.35(@babel/core@7.29.7)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3)
+      expo-application:
+        specifier: ~7.0.8
+        version: 7.0.8(expo@54.0.35(@babel/core@7.29.7)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3))
       expo-clipboard:
         specifier: ~8.0.8
         version: 8.0.8(expo@54.0.35(@babel/core@7.29.7)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3))(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
@@ -361,7 +364,7 @@ importers:
         version: 2.0.0(next@16.2.9(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
       axios:
         specifier: ^1.16.0
-        version: 1.18.1(debug@4.4.3)
+        version: 1.18.1
       framer-motion:
         specifier: ^12.42.2
         version: 12.42.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -7301,7 +7304,7 @@ snapshots:
       '@agora-js/shared': 4.24.5
       agora-rte-extension: 1.2.4
       agora-rte-extension-ng: 1.0.3
-      axios: 1.18.1(debug@4.4.3)
+      axios: 1.18.1
       webrtc-adapter: 8.2.0
     transitivePeerDependencies:
       - debug
@@ -7322,14 +7325,14 @@ snapshots:
   '@agora-js/report@4.24.5':
     dependencies:
       '@agora-js/shared': 4.24.5
-      axios: 1.18.1(debug@4.4.3)
+      axios: 1.18.1
     transitivePeerDependencies:
       - debug
       - supports-color
 
   '@agora-js/shared@4.24.5':
     dependencies:
-      axios: 1.18.1(debug@4.4.3)
+      axios: 1.18.1
       ua-parser-js: 0.7.41
     transitivePeerDependencies:
       - debug
@@ -10380,7 +10383,7 @@ snapshots:
       '@agora-js/shared': 4.24.5
       agora-rte-extension: 1.2.4
       agora-rte-extension-ng: 1.0.3
-      axios: 1.18.1(debug@4.4.3)
+      axios: 1.18.1
       formdata-polyfill: 4.0.10
       pako: 2.2.0
       ua-parser-js: 0.7.41
@@ -10575,7 +10578,7 @@ snapshots:
 
   axe-core@4.12.1: {}
 
-  axios@1.18.1(debug@4.4.3):
+  axios@1.18.1:
     dependencies:
       follow-redirects: 1.16.0(debug@4.4.3)
       form-data: 4.0.6
@@ -14470,7 +14473,7 @@ snapshots:
 
   razorpay@2.9.6:
     dependencies:
-      axios: 1.18.1(debug@4.4.3)
+      axios: 1.18.1
     transitivePeerDependencies:
       - debug
       - supports-color
