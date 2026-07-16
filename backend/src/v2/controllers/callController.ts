@@ -94,18 +94,20 @@ export const initiateCall = async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Failed to generate channel ID' });
     }
 
+    // 6. Calculate Max Affordable Duration (fetch rate before creating session to persist it)
+    const { ratePerMin } = await getMentorActiveRate(mentorId);
+
     const session = await prisma.callSession.create({
       data: {
         student_id: studentId as string,
         mentor_id: mentorId as string,
         agoraChannelId: channelName,
         status: 'calling', // Set to calling immediately
-        is_free: isFree
+        is_free: isFree,
+        ratePerMin
       }
     });
     
-    // 6. Calculate Max Affordable Duration
-    const { ratePerMin } = await getMentorActiveRate(mentorId);
     const affordableMinutes = Math.floor(Number(wallet.balance) / ratePerMin);
     const bufferSeconds = 60;
     const freeMins = await getFreeCallDurationMins();
@@ -263,6 +265,8 @@ export const scheduleCall = async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Failed to generate channel ID' });
     }
 
+    const { ratePerMin: scheduledRatePerMin } = await getMentorActiveRate(mentorId as string);
+
     const session = await prisma.callSession.create({
       data: {
         student_id: studentId as string,
@@ -270,7 +274,8 @@ export const scheduleCall = async (req: Request, res: Response) => {
         agoraChannelId: channelName as string,
         status: 'scheduled',
         scheduledAt: scheduledDate,
-        scheduledDuration: parseInt(durationMins)
+        scheduledDuration: parseInt(durationMins),
+        ratePerMin: scheduledRatePerMin
       }
     });
 
@@ -911,6 +916,7 @@ export const freeMatchmaking = async (req: Request, res: Response) => {
       const matchedMentorId = mentor.mentorProfile?.mentorId;
       if (!matchedMentorId) continue;
       
+      const { ratePerMin: broadcastRate } = await getMentorActiveRateByProfile(mentor.mentorProfile);
       const channelName = generateChannelName(studentId as string, matchedMentorId);
       
       const session = await prisma.callSession.create({
@@ -920,7 +926,8 @@ export const freeMatchmaking = async (req: Request, res: Response) => {
           agoraChannelId: channelName,
           status: 'calling',
           is_free: true,
-          startedAt: new Date()
+          startedAt: new Date(),
+          ratePerMin: broadcastRate
         }
       });
       

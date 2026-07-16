@@ -15,6 +15,7 @@ interface AuditResult {
   mentorId: string;
   durationSecs: number;
   settledAt: string;
+  ratePerMin: number;
   stored: { amountCharged: number; mentorEarning: number; platformFee: number };
   expected: { amountCharged: number; mentorEarning: number; platformFee: number };
   delta: { studentDebit: number; mentorCredit: number; coachingCredit: number };
@@ -416,6 +417,7 @@ function AuditTable({
             <tr>
               <th className="px-6 py-4 text-xs font-bold text-secondary uppercase tracking-wider">Session</th>
               <th className="px-6 py-4 text-xs font-bold text-secondary uppercase tracking-wider text-right">Duration (s)</th>
+              <th className="px-6 py-4 text-xs font-bold text-secondary uppercase tracking-wider text-right">Rate (₹/min)</th>
               <th className="px-6 py-4 text-xs font-bold text-secondary uppercase tracking-wider text-right">Stored (₹)</th>
               <th className="px-6 py-4 text-xs font-bold text-secondary uppercase tracking-wider text-right">Expected (₹)</th>
               <th className="px-6 py-4 text-xs font-bold text-secondary uppercase tracking-wider text-right">Delta (₹)</th>
@@ -431,6 +433,7 @@ function AuditTable({
                   <div className="text-xs text-secondary mt-0.5">{new Date(res.settledAt).toLocaleString()}</div>
                 </td>
                 <td className="px-6 py-4 text-right font-medium text-text">{res.durationSecs}</td>
+                <td className="px-6 py-4 text-right font-medium text-text">₹{res.ratePerMin ?? '—'}</td>
                 <td className="px-6 py-4 text-right font-medium text-text">{res.stored.amountCharged}</td>
                 <td className="px-6 py-4 text-right font-medium text-text">{res.expected.amountCharged}</td>
                 <td className={`px-6 py-4 text-right font-bold ${res.delta.studentDebit > 0 ? "text-red-500" : res.delta.studentDebit < 0 ? "text-green-500" : "text-secondary"}`}>

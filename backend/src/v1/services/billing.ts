@@ -114,6 +114,7 @@ export async function settleBilling(sessionId: string, durationSecs: number, rec
           amountCharged: amountToCharge,
           mentorEarning: actualMentorEarning,
           platformFee: actualPlatformFee,
+          ratePerMin,
           recordingUrl,
           settledAt: new Date()
         }
@@ -129,6 +130,7 @@ export async function settleBilling(sessionId: string, durationSecs: number, rec
           amountCharged: 0,
           mentorEarning: 0,
           platformFee: 0,
+          ratePerMin,
           recordingUrl,
           settledAt: new Date()
         }
