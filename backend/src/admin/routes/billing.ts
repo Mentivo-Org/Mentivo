@@ -206,6 +206,8 @@ router.post('/correct', async (req, res) => {
 });
 
 // ─── Helper: compute audit result for a single session ───────────────────────
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 async function computeAuditResult(session: any, freeSeconds: number) {
   // Prefer the rate stored at settlement/creation time for historical accuracy.
   // Fall back to the mentor's current live rate only for legacy rows (pre-migration).
@@ -219,23 +221,19 @@ async function computeAuditResult(session: any, freeSeconds: number) {
 
   const billableSecs = isFree ? Math.max(0, durationSecs - freeSeconds) : durationSecs;
   const billableMins = Math.ceil(billableSecs / 60);
-  const expectedAmountCharged = billableMins * ratePerMin;
-  const expectedMentorEarning = expectedAmountCharged * MENTOR_SHARE;
-  const expectedPlatformFee = expectedAmountCharged - expectedMentorEarning;
+  const expectedAmountCharged = round2(billableMins * ratePerMin);
+  const expectedMentorEarning = round2(expectedAmountCharged * MENTOR_SHARE);
+  const expectedPlatformFee = round2(expectedAmountCharged - expectedMentorEarning);
 
-  const storedAmountCharged = Number(session.amountCharged || 0);
-  const storedMentorEarning = Number(session.mentorEarning || 0);
-
-  const deltaAmountCharged = expectedAmountCharged - storedAmountCharged;
-  const deltaMentorEarning = expectedMentorEarning - storedMentorEarning;
-  const deltaCoachingCredit = session.student?.coachingCenterId
-    ? (expectedAmountCharged * 0.05) - (storedAmountCharged * 0.05)
-    : 0;
+  const storedAmountCharged = round2(Number(session.amountCharged || 0));
+  const storedMentorEarning = round2(Number(session.mentorEarning || 0));
 
   const delta = {
-    studentDebit: deltaAmountCharged,
-    mentorCredit: deltaMentorEarning,
-    coachingCredit: deltaCoachingCredit
+    studentDebit: round2(expectedAmountCharged - storedAmountCharged),
+    mentorCredit: round2(expectedMentorEarning - storedMentorEarning),
+    coachingCredit: session.student?.coachingCenterId
+      ? round2((expectedAmountCharged * 0.05) - (storedAmountCharged * 0.05))
+      : 0
   };
 
   const hasMismatch = delta.studentDebit !== 0 || delta.mentorCredit !== 0 || delta.coachingCredit !== 0;
@@ -250,7 +248,7 @@ async function computeAuditResult(session: any, freeSeconds: number) {
     stored: {
       amountCharged: storedAmountCharged,
       mentorEarning: storedMentorEarning,
-      platformFee: Number(session.platformFee || 0)
+      platformFee: round2(Number(session.platformFee || 0))
     },
     expected: {
       amountCharged: expectedAmountCharged,
