@@ -1,0 +1,90 @@
+name: "CodeQL Advanced"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '44 19 * * 6'
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - language: actions
+          build-mode: none
+        - language: java-kotlin
+          build-mode: manual
+        - language: javascript-typescript
+          build-mode: none
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # --- Manual build prerequisites for java-kotlin (mirrors release.yml, minus signing) ---
+    - name: Set up Node.js
+      if: matrix.language == 'java-kotlin'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+
+    - name: Install frontend packages
+      if: matrix.language == 'java-kotlin'
+      working-directory: ./frontend
+      run: npm install
+
+    - name: Workaround Metro monorepo root resolution
+      if: matrix.language == 'java-kotlin'
+      run: ln -s frontend/node_modules node_modules
+      working-directory: ${{ github.workspace }}
+
+    - name: Run Expo Prebuild
+      if: matrix.language == 'java-kotlin'
+      working-directory: ./frontend
+      run: npx expo prebuild --platform android
+
+    - name: Set up JDK
+      if: matrix.language == 'java-kotlin'
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Setup Gradle
+      if: matrix.language == 'java-kotlin'
+      uses: gradle/actions/setup-gradle@v4
+
+    - name: Grant execute permission for gradlew
+      if: matrix.language == 'java-kotlin'
+      working-directory: ./frontend/android
+      run: chmod +x gradlew
+    # --- End manual build prerequisites ---
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v4
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+
+    - name: Run manual build steps
+      if: matrix.build-mode == 'manual'
+      shell: bash
+      working-directory: frontend/android
+      run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v4
+      with:
+        category: "/language:${{matrix.language}}"
