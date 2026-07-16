@@ -1,0 +1,73 @@
+name: Manage Render Load Balancer
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform on the service'
+        required: true
+        default: 'restart'
+        type: choice
+        options:
+          - stop
+          - resume
+          - restart
+      service_name:
+        description: 'Exact name of the service in Render'
+        required: true
+        default: 'load-balancer'
+        type: string
+
+jobs:
+  manage-service:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Service ID
+        id: get-service
+        run: |
+          echo "Fetching services to find ID for '${{ inputs.service_name }}'..."
+          RESPONSE=$(curl -s --request GET \
+            --url "https://api.render.com/v1/services?limit=100" \
+            --header "accept: application/json" \
+            --header "authorization: Bearer ${{ secrets.RENDER_API_KEY_LOAD_BALANCER }}")
+          
+          # Extract service ID using jq by matching the exact service name
+          SERVICE_ID=$(echo "$RESPONSE" | jq -r '.[] | select(.service.name == "${{ inputs.service_name }}") | .service.id' | head -n 1)
+          
+          if [ -z "$SERVICE_ID" ] || [ "$SERVICE_ID" == "null" ]; then
+            echo "::error::Could not find a service named '${{ inputs.service_name }}'. Please check the name or ensure the API key has access."
+            exit 1
+          fi
+          
+          echo "Found service ID: $SERVICE_ID"
+          echo "service_id=$SERVICE_ID" >> $GITHUB_OUTPUT
+
+      - name: Stop (Suspend) Service
+        if: ${{ inputs.action == 'stop' }}
+        run: |
+          echo "Suspending service ${{ steps.get-service.outputs.service_id }}..."
+          curl -s --fail --request POST \
+            --url "https://api.render.com/v1/services/${{ steps.get-service.outputs.service_id }}/suspend" \
+            --header "accept: application/json" \
+            --header "authorization: Bearer ${{ secrets.RENDER_API_KEY_LOAD_BALANCER }}"
+          echo "Service suspended successfully."
+
+      - name: Resume Service
+        if: ${{ inputs.action == 'resume' }}
+        run: |
+          echo "Resuming service ${{ steps.get-service.outputs.service_id }}..."
+          curl -s --fail --request POST \
+            --url "https://api.render.com/v1/services/${{ steps.get-service.outputs.service_id }}/resume" \
+            --header "accept: application/json" \
+            --header "authorization: Bearer ${{ secrets.RENDER_API_KEY_LOAD_BALANCER }}"
+          echo "Service resumed successfully."
+
+      - name: Restart Service
+        if: ${{ inputs.action == 'restart' }}
+        run: |
+          echo "Restarting service ${{ steps.get-service.outputs.service_id }}..."
+          curl -s --fail --request POST \
+            --url "https://api.render.com/v1/services/${{ steps.get-service.outputs.service_id }}/restart" \
+            --header "accept: application/json" \
+            --header "authorization: Bearer ${{ secrets.RENDER_API_KEY_LOAD_BALANCER }}"
+          echo "Service restarted successfully."
