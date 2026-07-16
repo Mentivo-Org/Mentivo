@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Terminal, Database, Activity } from "lucide-react";
+import { Terminal, Database, Activity, Receipt } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import api from "@/lib/api";
@@ -36,6 +36,13 @@ export default function DeveloperOptionsLanding() {
       href: "/dashboard/developer-options/database",
       icon: Database,
       color: "green"
+    },
+    {
+      name: "Billing Audit",
+      description: "Audit settled call sessions for billing discrepancies and apply wallet corrections.",
+      href: "/dashboard/developer-options/billing-audit",
+      icon: Receipt,
+      color: "amber"
     }
   ];
 
@@ -81,7 +88,9 @@ export default function DeveloperOptionsLanding() {
           const Icon = option.icon;
           const colorClasses = option.color === "blue" 
             ? "bg-blue-50 text-blue-600 group-hover:bg-blue-600" 
-            : "bg-green-50 text-green-600 group-hover:bg-green-600";
+            : option.color === "green" 
+            ? "bg-green-50 text-green-600 group-hover:bg-green-600"
+            : "bg-amber-50 text-amber-600 group-hover:bg-amber-600";
           
           return (
             <Link key={option.name} href={option.href}>
