@@ -12,11 +12,6 @@ on:
           - stop
           - resume
           - restart
-      service_name:
-        description: 'Exact name of the service in Render'
-        required: true
-        default: 'load-balancer'
-        type: string
 
 jobs:
   manage-service:
@@ -32,10 +27,10 @@ jobs:
             --header "authorization: Bearer ${{ secrets.RENDER_API_KEY_LOAD_BALANCER }}")
           
           # Extract service ID using jq by matching the exact service name
-          SERVICE_ID=$(echo "$RESPONSE" | jq -r '.[] | select(.service.name == "${{ inputs.service_name }}") | .service.id' | head -n 1)
+          SERVICE_ID=$(echo "$RESPONSE" | jq -r '.[] | select(.service.name == "Load Balancer") | .service.id' | head -n 1)
           
           if [ -z "$SERVICE_ID" ] || [ "$SERVICE_ID" == "null" ]; then
-            echo "::error::Could not find a service named '${{ inputs.service_name }}'. Please check the name or ensure the API key has access."
+            echo "::error::Could not find a service named 'Load Balancer'. Please check the name or ensure the API key has access."
             exit 1
           fi
           
