@@ -2,6 +2,11 @@ name: Manual Release Build
 
 on:
   workflow_dispatch: # Strictly manual trigger from the GitHub UI
+    inputs:
+      version:
+        description: 'Version number (e.g. 1.0.0)'
+        required: true
+        type: string
 
 jobs:
   build-and-release:
@@ -65,7 +70,7 @@ jobs:
     - name: Generate Release Tag
       id: tag
       working-directory: ${{ github.workspace }}
-      run: echo "release_tag=v${{ github.run_number }}" >> $GITHUB_OUTPUT
+      run: echo "release_tag=v${{ inputs.version }}" >> $GITHUB_OUTPUT
 
     - name: Create Release and Upload Binaries
       uses: softprops/action-gh-release@v2
