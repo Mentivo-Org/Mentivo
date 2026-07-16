@@ -205,4 +205,197 @@ router.post('/correct', async (req, res) => {
   }
 });
 
+// ─── Helper: compute audit result for a single session ───────────────────────
+async function computeAuditResult(session: any, freeSeconds: number) {
+  const { ratePerMin } = await getMentorActiveRateByProfile(session.mentor?.mentorProfile);
+  const isFree = session.is_free;
+  const durationSecs = session.durationSecs || 0;
+
+  const billableSecs = isFree ? Math.max(0, durationSecs - freeSeconds) : durationSecs;
+  const billableMins = Math.ceil(billableSecs / 60);
+  const expectedAmountCharged = billableMins * ratePerMin;
+  const expectedMentorEarning = expectedAmountCharged * MENTOR_SHARE;
+  const expectedPlatformFee = expectedAmountCharged - expectedMentorEarning;
+
+  const storedAmountCharged = Number(session.amountCharged || 0);
+  const storedMentorEarning = Number(session.mentorEarning || 0);
+
+  const deltaAmountCharged = expectedAmountCharged - storedAmountCharged;
+  const deltaMentorEarning = expectedMentorEarning - storedMentorEarning;
+  const deltaCoachingCredit = session.student?.coachingCenterId
+    ? (expectedAmountCharged * 0.05) - (storedAmountCharged * 0.05)
+    : 0;
+
+  const delta = {
+    studentDebit: deltaAmountCharged,
+    mentorCredit: deltaMentorEarning,
+    coachingCredit: deltaCoachingCredit
+  };
+
+  const hasMismatch = delta.studentDebit !== 0 || delta.mentorCredit !== 0 || delta.coachingCredit !== 0;
+
+  return {
+    sessionId: session.id,
+    studentId: session.student_id,
+    mentorId: session.mentor_id,
+    durationSecs,
+    settledAt: session.settledAt,
+    stored: {
+      amountCharged: storedAmountCharged,
+      mentorEarning: storedMentorEarning,
+      platformFee: Number(session.platformFee || 0)
+    },
+    expected: {
+      amountCharged: expectedAmountCharged,
+      mentorEarning: expectedMentorEarning,
+      platformFee: expectedPlatformFee
+    },
+    delta,
+    hasMismatch,
+    coachingCenterId: session.student?.coachingCenterId || null
+  };
+}
+
+// ─── POST /audit-all ───────────────────────────────────────────────────────────
+router.post('/audit-all', async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.body.limit) || 500, 2000);
+    const offset = Number(req.body.offset) || 0;
+
+    const [total, sessions] = await Promise.all([
+      prisma.callSession.count({ where: { status: 'settled' } }),
+      prisma.callSession.findMany({
+        where: { status: 'settled' },
+        include: {
+          mentor: { include: { mentorProfile: true } },
+          student: { include: { wallet: true } }
+        },
+        orderBy: { settledAt: 'desc' },
+        take: limit,
+        skip: offset
+      })
+    ]);
+
+    const freeMins = await getFreeCallDurationMins();
+    const freeSeconds = freeMins * 60;
+
+    const results = await Promise.all(
+      sessions.map((s) => computeAuditResult(s, freeSeconds))
+    );
+
+    const mismatches = results.filter((r) => r.hasMismatch);
+    const summary = {
+      totalScanned: results.length,
+      totalSettled: total,
+      mismatchCount: mismatches.length,
+      totalDeltaStudentDebit: mismatches.reduce((a, r) => a + r.delta.studentDebit, 0),
+      totalDeltaMentorCredit: mismatches.reduce((a, r) => a + r.delta.mentorCredit, 0),
+      totalDeltaCoachingCredit: mismatches.reduce((a, r) => a + r.delta.coachingCredit, 0)
+    };
+
+    res.json({ summary, results });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /correct-all ────────────────────────────────────────────────────────
+router.post('/correct-all', async (req, res) => {
+  try {
+    const { sessionIds } = req.body as { sessionIds: string[] };
+    if (!Array.isArray(sessionIds) || sessionIds.length === 0) {
+      return res.status(400).json({ error: 'Provide a non-empty sessionIds array' });
+    }
+
+    const freeMins = await getFreeCallDurationMins();
+    const freeSeconds = freeMins * 60;
+
+    let corrected = 0;
+    let skipped = 0;
+    const errors: { sessionId: string; error: string }[] = [];
+
+    for (const sessionId of sessionIds) {
+      try {
+        const session = await prisma.callSession.findUnique({
+          where: { id: sessionId },
+          include: {
+            mentor: { include: { mentorProfile: true } },
+            student: { include: { wallet: true } }
+          }
+        });
+
+        if (!session || session.status !== 'settled') {
+          skipped++;
+          continue;
+        }
+
+        const result = await computeAuditResult(session, freeSeconds);
+
+        if (!result.hasMismatch) {
+          skipped++;
+          continue;
+        }
+
+        const { delta, expected, coachingCenterId } = result;
+
+        await prisma.$transaction(async (tx) => {
+          if (delta.studentDebit !== 0) {
+            await tx.wallet.update({
+              where: { userId: session.student_id },
+              data: { balance: { decrement: delta.studentDebit } }
+            });
+          }
+          if (delta.mentorCredit !== 0) {
+            await tx.mentorBalance.update({
+              where: { mentorId: session.mentor_id },
+              data: {
+                pendingPayout: { increment: delta.mentorCredit },
+                totalEarned: { increment: delta.mentorCredit }
+              }
+            });
+          }
+          if (delta.coachingCredit !== 0 && coachingCenterId) {
+            await tx.coachingCenterBalance.update({
+              where: { centerId: coachingCenterId },
+              data: {
+                pendingPayout: { increment: delta.coachingCredit },
+                totalEarned: { increment: delta.coachingCredit }
+              }
+            });
+          }
+          await tx.callSession.update({
+            where: { id: sessionId },
+            data: {
+              amountCharged: expected.amountCharged,
+              mentorEarning: expected.mentorEarning,
+              platformFee: expected.platformFee
+            }
+          });
+          await tx.logEntry.create({
+            data: {
+              level: 'INFO',
+              source: 'admin',
+              message: `[bulk] Billing correction applied for call ${sessionId}`,
+              metadata: {
+                sessionId,
+                deltaAmountCharged: delta.studentDebit,
+                deltaMentorEarning: delta.mentorCredit,
+                deltaCoachingCredit: delta.coachingCredit
+              }
+            }
+          });
+        });
+
+        corrected++;
+      } catch (e: any) {
+        errors.push({ sessionId, error: e.message });
+      }
+    }
+
+    res.json({ corrected, skipped, errors });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
