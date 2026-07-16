@@ -235,6 +235,7 @@ model CallSession {
   amountCharged   Decimal   @default(0) @db.Decimal(10, 2) @map("amount_charged")
   mentorEarning   Decimal   @default(0) @db.Decimal(10, 2) @map("mentor_earning")
   platformFee     Decimal   @default(0) @db.Decimal(10, 2) @map("platform_fee")
+  ratePerMin      Decimal?  @default(0) @db.Decimal(10, 2) @map("rate_per_min")
   is_free         Boolean   @default(false)
   settledAt       DateTime? @map("settled_at")
   recordingUrl    String?   @map("recording_url")

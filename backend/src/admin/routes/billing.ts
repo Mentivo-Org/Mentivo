@@ -207,7 +207,13 @@ router.post('/correct', async (req, res) => {
 
 // ─── Helper: compute audit result for a single session ───────────────────────
 async function computeAuditResult(session: any, freeSeconds: number) {
-  const { ratePerMin } = await getMentorActiveRateByProfile(session.mentor?.mentorProfile);
+  // Prefer the rate stored at settlement/creation time for historical accuracy.
+  // Fall back to the mentor's current live rate only for legacy rows (pre-migration).
+  const storedRate = session.ratePerMin ? Number(session.ratePerMin) : null;
+  const { ratePerMin } = storedRate !== null && storedRate > 0
+    ? { ratePerMin: storedRate }
+    : await getMentorActiveRateByProfile(session.mentor?.mentorProfile);
+
   const isFree = session.is_free;
   const durationSecs = session.durationSecs || 0;
 
@@ -240,6 +246,7 @@ async function computeAuditResult(session: any, freeSeconds: number) {
     mentorId: session.mentor_id,
     durationSecs,
     settledAt: session.settledAt,
+    ratePerMin,
     stored: {
       amountCharged: storedAmountCharged,
       mentorEarning: storedMentorEarning,
