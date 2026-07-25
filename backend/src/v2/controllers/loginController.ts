@@ -310,6 +310,21 @@ export const handleNativeGoogle = async (req: Request, res: Response) => {
       // Race condition: Supabase succeeded but Prisma fails → no rollback needed for Google
       // (Supabase user is already real; they can retry and hit the `user exists` branch)
       try {
+        let validReferralCode: string | null = null;
+        if (referredByReferralCode) {
+          const partner = await prisma.user.findFirst({
+            where: {
+              referralCode: referredByReferralCode,
+              role: {
+                in: ["coaching_partner", "telegram_partner", "other_partner"]
+              }
+            }
+          });
+          if (partner) {
+            validReferralCode = partner.referralCode;
+          }
+        }
+
         user = await prisma.user.create({
           data: {
             id: sbData.user.id,
@@ -319,7 +334,7 @@ export const handleNativeGoogle = async (req: Request, res: Response) => {
             phone: null,
             isEmailVerified: true,
             authProvider: "google",
-            referredByReferralCode: referredByReferralCode || null,
+            referredByReferralCode: validReferralCode,
           },
         });
       } catch (dbError) {
