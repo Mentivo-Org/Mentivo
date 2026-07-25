@@ -16,8 +16,6 @@ export const useVersion = () => useContext(VersionContext);
 
 // Simple comparison: removes dots and compares as integers (e.g. 1.0.5 -> 105)
 const parseVersion = (v: string) => {
-  //skip the 10.0.0 version(read as 0)
-  if (v === '10.0.0') return 0;
 
   return parseInt(v.replace(/\./g, ''), 10);
 };
