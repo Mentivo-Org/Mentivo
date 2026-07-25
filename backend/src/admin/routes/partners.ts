@@ -5,11 +5,33 @@ import supabase from '../services/supabase.ts';
 import resend from '../services/resend.ts';
 import { authenticateAdmin } from '../middleware/auth.ts';
 import type { AuthRequest } from '../middleware/auth.ts';
+import { syncPartnerStats } from '../services/partnerSync.ts';
 
 const router = Router();
 
 // Protect all routes
 router.use(authenticateAdmin);
+
+// Sync partner stats (all or specific)
+router.post('/sync', async (req, res) => {
+  try {
+    const result = await syncPartnerStats();
+    res.json(result);
+  } catch (err: any) {
+    console.error('Error syncing partner stats:', err);
+    res.status(500).json({ error: 'Failed to sync partner stats.' });
+  }
+});
+
+router.post('/sync/:partnerId', async (req, res) => {
+  try {
+    const result = await syncPartnerStats(req.params.partnerId);
+    res.json(result);
+  } catch (err: any) {
+    console.error('Error syncing partner stats:', err);
+    res.status(500).json({ error: 'Failed to sync partner stats.' });
+  }
+});
 
 // Create a partner account and send invitation email
 router.post('/create', async (req: AuthRequest, res) => {
