@@ -9,82 +9,133 @@ on:
     - cron: '44 19 * * 6'
 
 jobs:
-  analyze:
-    name: Analyze (${{ matrix.language }})
-    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
+  # Detect which paths changed to determine which analyzers to run
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      javascript: ${{ steps.filter.outputs.javascript }}
+      java: ${{ steps.filter.outputs.java }}
+      actions: ${{ steps.filter.outputs.actions }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            javascript:
+              - 'backend/**'
+              - 'website/**'
+              - 'load-balancer/**'
+              - 'admin-frontend/**'
+            java:
+              - 'frontend/**'
+            actions:
+              - '.github/workflows/**'
+
+  analyze-actions:
+    needs: changes
+    if: ${{ needs.changes.outputs.actions == 'true' || github.event_name == 'schedule' }}
+    name: Analyze (actions)
+    runs-on: ubuntu-latest
     permissions:
       security-events: write
       packages: read
       actions: read
       contents: read
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - language: actions
-          build-mode: none
-        - language: java-kotlin
-          build-mode: manual
-        - language: javascript-typescript
-          build-mode: none
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: actions
+          build-mode: none
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:actions"
 
-    # --- Manual build prerequisites for java-kotlin (mirrors release.yml, minus signing) ---
-    - name: Set up Node.js
-      if: matrix.language == 'java-kotlin'
-      uses: actions/setup-node@v4
-      with:
-        node-version: '24'
+  analyze-javascript:
+    needs: changes
+    if: ${{ needs.changes.outputs.javascript == 'true' || github.event_name == 'schedule' }}
+    name: Analyze (javascript-typescript)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+          build-mode: none
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:javascript-typescript"
 
-    - name: Install frontend packages
-      if: matrix.language == 'java-kotlin'
-      working-directory: ./frontend
-      run: npm install
+  analyze-java:
+    needs: changes
+    if: ${{ needs.changes.outputs.java == 'true' || github.event_name == 'schedule' }}
+    name: Analyze (java-kotlin)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Workaround Metro monorepo root resolution
-      if: matrix.language == 'java-kotlin'
-      run: ln -s frontend/node_modules node_modules
-      working-directory: ${{ github.workspace }}
+      # --- Manual build prerequisites for java-kotlin ---
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
 
-    - name: Run Expo Prebuild
-      if: matrix.language == 'java-kotlin'
-      working-directory: ./frontend
-      run: npx expo prebuild --platform android
+      - name: Install frontend packages
+        working-directory: ./frontend
+        run: npm install
 
-    - name: Set up JDK
-      if: matrix.language == 'java-kotlin'
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
+      - name: Workaround Metro monorepo root resolution
+        run: ln -s frontend/node_modules node_modules
+        working-directory: ${{ github.workspace }}
 
-    - name: Setup Gradle
-      if: matrix.language == 'java-kotlin'
-      uses: gradle/actions/setup-gradle@v4
+      - name: Run Expo Prebuild
+        working-directory: ./frontend
+        run: npx expo prebuild --platform android
 
-    - name: Grant execute permission for gradlew
-      if: matrix.language == 'java-kotlin'
-      working-directory: ./frontend/android
-      run: chmod +x gradlew
-    # --- End manual build prerequisites ---
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v4
-      with:
-        languages: ${{ matrix.language }}
-        build-mode: ${{ matrix.build-mode }}
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-    - name: Run manual build steps
-      if: matrix.build-mode == 'manual'
-      shell: bash
-      working-directory: frontend/android
-      run: ./gradlew assembleDebug --no-daemon --stacktrace
+      - name: Grant execute permission for gradlew
+        working-directory: ./frontend/android
+        run: chmod +x gradlew
+      # --- End manual build prerequisites ---
 
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v4
-      with:
-        category: "/language:${{matrix.language}}"
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: java-kotlin
+          build-mode: manual
+
+      - name: Run manual build steps
+        shell: bash
+        working-directory: frontend/android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:java-kotlin"
