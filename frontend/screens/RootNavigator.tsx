@@ -569,12 +569,12 @@ export default function RootNavigator() {
           const { callId, channelName, callerName, callerPhoto } = remoteMessage.data as any;
           navigate("IncomingCall", { callId, channelName, callerName, callerPhoto });
         } else if (remoteMessage.data?.source === "admin-dashboard") {
-          const { title, body, priority } = remoteMessage.data as any;
+          const { title, body, priority, actionType, actionTarget } = remoteMessage.data as any;
           await notifee.displayNotification({
             id: `admin-dash_${Date.now()}`,
             title: title || "Admin Notification",
             body: body || "Notification",
-            data: {source: "admin-dashboard"},
+            data: {source: "admin-dashboard", actionType, actionTarget},
             android: {
               channelId: "messages",
               importance: priority==="high" ? AndroidImportance.HIGH : AndroidImportance.DEFAULT,
