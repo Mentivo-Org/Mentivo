@@ -134,18 +134,14 @@ const StudentSignupPage = () => {
             }
           }
 
-          // 3. Prompt user if a new code is detected
+          // 3. Silently save detected code
           if (detectedCode && detectedCode !== referralCode) {
-            setAlertData({
-              title: "Referral Detected",
-              message: `Do you want to apply the referral code "${detectedCode}"?`,
-              primaryButtonText: "Apply",
-              onPrimaryPress: () => setReferralCode(detectedCode!),
-              secondaryButtonText: "Cancel",
-              onSecondaryPress: () => {},
-              onClose: () => {}
-            });
-            setAlertVisible(true);
+            setReferralCode(detectedCode);
+            try {
+              await AsyncStorage.setItem('referredByCode', detectedCode);
+            } catch (err) {
+              console.error("Failed to save referral code to storage:", err);
+            }
           }
 
         } catch (err) {
@@ -175,25 +171,6 @@ const StudentSignupPage = () => {
       return;
     }
 
-    // Verify referral code first if provided
-    if (referralCode) {
-      try {
-        showLoading("Verifying referral code...");
-        const valResponse = await api.post(PartnerEndpoints.validate, { code: referralCode });
-        if (!valResponse.data.valid) {
-          hideLoading();
-          setAlertData({title: 'Invalid Referral', message: 'The referral code is invalid.'});
-          setAlertVisible(true);
-          return;
-        }
-      } catch (valErr: any) {
-        hideLoading();
-        const errMsg = valErr.response?.data?.error || 'The referral code is invalid.';
-        setAlertData({title: 'Invalid Referral', message: errMsg});
-        setAlertVisible(true);
-        return;
-      }
-    }
     
     try {
       showLoading("Signing you up...");
@@ -218,39 +195,9 @@ const StudentSignupPage = () => {
       }
 
       if (data.requiresVerification) {
-        if (referralCode) {
-          setAlertData({
-            title: "Success",
-            message: "Referral code applied successfully. Please verify your email with the OTP sent.",
-            primaryButtonText: "OK",
-            onPrimaryPress: () => {
-              navigation.navigate("SendOtp", { email: email, name: fullName, role: "student", phone });
-            },
-            onClose: () => {
-              navigation.navigate("SendOtp", { email: email, name: fullName, role: "student", phone });
-            }
-          });
-          setAlertVisible(true);
-        } else {
-          navigation.navigate("SendOtp", { email: email, name: fullName, role: "student", phone });
-        }
+        navigation.navigate("SendOtp", { email: email, name: fullName, role: "student", phone });
       } else {
-        if (referralCode) {
-          setAlertData({
-            title: "Success",
-            message: "Referral code applied successfully.",
-            primaryButtonText: "OK",
-            onPrimaryPress: () => {
-              navigation.navigate("RoleSelection");
-            },
-            onClose: () => {
-              navigation.navigate("RoleSelection");
-            }
-          });
-          setAlertVisible(true);
-        } else {
-          navigation.navigate("RoleSelection");
-        }
+        navigation.navigate("RoleSelection");
       }
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -410,17 +357,7 @@ const StudentSignupPage = () => {
               </View>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Referral Code (Optional)</Text>
-              <TextInput 
-                style={styles.input} 
-                placeholder="MENTIVO-XXXX" 
-                placeholderTextColor="rgba(68,70,83,0.5)"
-                value={referralCode}
-                onChangeText={setReferralCode}
-                autoCapitalize="none"
-              />
-            </View>
+
 
             <TouchableOpacity 
               style={styles.createButton}
