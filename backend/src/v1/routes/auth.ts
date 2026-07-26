@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   handleNativeGoogle,
   loginWithEmail,
+  requestLoginOtp,
   refreshUserToken,
   resendOtp,
   signUpWithEmail,
@@ -24,6 +25,7 @@ app.get('/whoami', authenticateUser, whoAmI)
 // backend/routes/auth.js
 app.post("/signup", signUpWithEmail);
 app.post("/login", loginWithEmail);
+app.post("/login/request-otp", requestLoginOtp);
 app.post("/logout", logout);
 
 // FCM Tokens

@@ -18,22 +18,20 @@ import { useAuth } from '../../services/retrieveKeys';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLoading } from '../../context/LoadingContext';
 import { authStyles } from '../../styles/authStyles';
-import { PasswordInput } from '../../components/PasswordInput';
+
 import { AuthLayout } from '../../components/AuthLayout';
 import DialogBox from '../../components/DialogBox';
 
 const StudentLoginPage = () => {
   const navigation = useNavigation<any>();
   const [email, setEmail] = useState("");
-  // useRef instead of useState — reading the value on submit only,
-  // so typing never triggers a parent re-render.
-  const passwordRef = useRef("");
+
 
 
   // Stable callbacks — referentially equal across re-renders so React.memo
   // on PasswordInput can bail out when the parent re-renders for other reasons.
   const handleEmailChange = useCallback((text: string) => setEmail(text), []);
-  const handlePasswordChange = useCallback((text: string) => { passwordRef.current = text; }, []);
+
   const { setIsSignedIn, setRole, requestNotificationPermissions, setUser } = useAuth();
   const {showLoading, hideLoading}  = useLoading();
 
@@ -57,50 +55,20 @@ const StudentLoginPage = () => {
   };
 
   const handleLogin = async () => {
-    if (!email || !passwordRef.current) {
-      setAlertData({title:"Error", message: "Please fill in all fields"});
+    if (!email) {
+      setAlertData({title:"Error", message: "Please enter your email"});
       setAlertVisible(true);
+      return;
     } 
 
-    showLoading("Logging you  in...");
+    showLoading("Requesting OTP...");
     try {
-      const response = await api.post(LoginEndpoints.login, {
+      const response = await api.post(LoginEndpoints.requestLoginOtp, {
         email,
-        password: passwordRef.current,
         role: "student"
       });
 
-      const { data } = response;
-      const { accessToken, refreshToken, user } = data;
-
-      await AsyncStorage.setItem('accessToken', accessToken);
-      await AsyncStorage.setItem('refreshToken', refreshToken);
-      await setUser(user);
-      await AsyncStorage.setItem('role', user.role);
-      setRole(user.role);
-
-      if(user.isEmailVerified===false) {
-        const response = await api.post(LoginEndpoints.resendOtp, {
-          email: user.email
-        })
-        if(response.status===201) {
-          navigation.navigate("SendOtp", {email: user.email, name: user.name, role: "student", phone: user.phone});
-        }
-        else {
-          setAlertData({title: 'Error in sending OTP', message: response.data?.error})
-          setAlertVisible(true);
-        }
-      }
-      else {
-        if(user.profile_completed===false) {
-          navigation.navigate("CompleteProfile", {full_name: user.name, email: user.email, phone: user.phone, role: "student"})
-        }
-        else {
-          await AsyncStorage.setItem('verifiedEmail', 'true')
-          requestNotificationPermissions();
-          setIsSignedIn(true);
-        }
-      }
+      navigation.navigate("SendOtp", { email, role: "student", serverTime: response.data.serverTime });
     } catch (error: any) {
       console.error("Login error:", error);
       const errorMsg = error.response?.data?.error || "Login failed";
@@ -216,18 +184,7 @@ const StudentLoginPage = () => {
           />
         </View>
 
-        <View style={styles.inputGroup}>
-          <View style={styles.labelRow}>
-            <Text style={styles.label}>Password</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword', {role: "student"})}>
-              <Text style={styles.forgotPassword}>Forgot Password?</Text>
-            </TouchableOpacity>
-          </View>
-          <PasswordInput 
-            defaultValue=""
-            onChangeText={handlePasswordChange}
-          />
-        </View>
+
 
         <TouchableOpacity 
           style={styles.signInButton}

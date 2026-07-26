@@ -1,34 +1,9 @@
 import { Router } from 'express';
-import jwt from 'jsonwebtoken';
 import prisma from '../config/db.ts';
 import redis from '../config/redis.ts';
 import { supabaseAdmin } from '../lib/supabaseAdmin.ts';
 import { authenticateUser } from '../auth/authenticateUser.ts';
-import { generateRefreshToken } from '../utils/jwt.ts';
-
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your_access_token_secret';
-
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax',
-  path: '/',
-  domain: process.env.NODE_ENV === 'production' ? '.mentivo.in' : undefined,
-};
-
-const sendAuthResponse = (res: any, req: any, statusCode: number, data: any) => {
-  const isMobile = req.headers['x-client-type'] === 'mobile';
-  const { accessToken, refreshToken, user, message } = data;
-
-  if (isMobile) {
-    return res.status(statusCode).json({ accessToken, refreshToken, user, message });
-  } else {
-    if (accessToken) res.cookie('accessToken', accessToken, { ...COOKIE_OPTIONS, maxAge: 1 * 24 * 60 * 60 * 1000 }); // 1 day
-    if (refreshToken) res.cookie('refreshToken', refreshToken, { ...COOKIE_OPTIONS, maxAge: 60 * 24 * 60 * 60 * 1000 }); // 60 days
-    return res.status(statusCode).json({ user, message });
-  }
-};
 
 // Validate referral code (public route used during signup)
 router.post('/validate', async (req, res) => {
@@ -59,94 +34,60 @@ router.post('/validate', async (req, res) => {
   }
 });
 
-// Setup password using token from email invitation
+// Setup password - DEPRECATED: Partners now authenticate via email OTP
 router.post('/setup-password', async (req, res) => {
-  const { token, password } = req.body;
+  const { token } = req.body;
 
-  if (!token || !password) {
-    return res.status(400).json({ error: 'Token and password are required.' });
+  // Clean up any old Redis key if token provided
+  if (token) {
+    try {
+      await redis.del(`partner_invite:${token}`);
+    } catch (_) {}
   }
 
-  try {
-    const dataStr = await redis.get(`partner_invite:${token}`);
-    if (!dataStr) {
-      return res.status(400).json({ error: 'Invalid or expired setup link.' });
-    }
-
-    const { userId } = JSON.parse(dataStr);
-
-    // Update password in Supabase
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-      password: password
-    });
-
-    if (updateError) {
-      return res.status(400).json({ error: updateError.message });
-    }
-
-    // Remove token from Redis
-    await redis.del(`partner_invite:${token}`);
-
-    res.json({ message: 'Password configured successfully. You can now log in.' });
-  } catch (err: any) {
-    console.error('Setup password error:', err);
-    res.status(500).json({ error: 'Failed to configure password.' });
-  }
+  return res.status(200).json({
+    message: 'Password setup is no longer required. Please log in at mentivo.in/login using a one-time code sent to your email.',
+  });
 });
 
-// Partner Login
+// Partner Login - Request OTP
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { email } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required.' });
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required.' });
   }
 
   try {
-    // Authenticate with Supabase Auth
-    const { data: sbData, error: sbError } = await supabaseAdmin.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (sbError) {
-      return res.status(401).json({ error: sbError.message });
-    }
-
-    if (!sbData.user) {
-      return res.status(401).json({ error: 'Authentication failed.' });
-    }
-
-    // Verify user role in our DB is a partner
+    const partnerRoles = ['coaching_partner', 'telegram_partner', 'other_partner'];
     const user = await prisma.user.findUnique({
-      where: { id: sbData.user.id },
-      include: { partnerBalance: true }
+      where: { email },
     });
 
     if (!user) {
-      return res.status(404).json({ error: 'Account not found in local database.' });
+      return res.status(404).json({ error: 'No partner account found with this email.' });
     }
 
-    const partnerRoles = ['coaching_partner', 'telegram_partner', 'other_partner'];
     if (!partnerRoles.includes(user.role)) {
       return res.status(403).json({ error: 'Access denied. Account is not a registered partner.' });
     }
 
-    // Generate tokens
-    const payload = {
-      userId: user.id,
-      email: user.email,
-      phone: user.phone,
-      role: user.role
-    };
+    const { error: otpError } = await supabaseAdmin.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false },
+    });
 
-    // Access token valid for 1 day for partners
-    const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' });
-    const refreshToken = await generateRefreshToken(payload);
+    if (otpError) {
+      return res.status(500).json({ error: 'Failed to send OTP: ' + otpError.message });
+    }
 
-    return sendAuthResponse(res, req, 200, { accessToken, refreshToken, user });
+    return res.status(200).json({
+      message: 'OTP sent to your email. Please check your inbox.',
+      email,
+      serverTime: Date.now(),
+    });
   } catch (err: any) {
-    console.error('Partner login error:', err);
+    console.error('Partner login OTP error:', err);
     res.status(500).json({ error: 'Internal server error.' });
   }
 });

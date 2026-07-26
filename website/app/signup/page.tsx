@@ -3,37 +3,23 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, User, Phone, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Mail, User, Phone, Loader2 } from 'lucide-react';
 import api from '@/lib/api';
 import { AuthEndpoints } from '@/constants/endpoints';
 import { useAuthStore } from '@/store/useAuthStore';
-import { usePasswordMask } from '@/hooks/usePasswordMask';
 
 export default function StudentSignupPage() {
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
     name: '',
     phone: '',
     role: 'student'
   });
-  
-  const setPassword = (password: string) => setFormData(prev => ({ ...prev, password }));
-  const { displayValue: passwordDisplay, handleChange: handlePasswordChange } = usePasswordMask(formData.password, setPassword);
-  const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
-
-  const forceCursorToEnd = (e: React.SyntheticEvent<HTMLInputElement>) => {
-    const el = e.target as HTMLInputElement;
-    setTimeout(() => {
-      el.selectionStart = el.value.length;
-      el.selectionEnd = el.value.length;
-    }, 0);
-  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,34 +99,6 @@ export default function StudentSignupPage() {
                 className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue transition-all text-slate-900 font-medium"
                 placeholder="+91 9876543210"
               />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-              <input
-                type="text"
-                required
-                value={showPassword ? formData.password : passwordDisplay}
-                onChange={(e) => showPassword ? setPassword(e.target.value) : handlePasswordChange(e.target.value)}
-                onClick={forceCursorToEnd}
-                onSelect={forceCursorToEnd}
-                onKeyUp={forceCursorToEnd}
-                className="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue transition-all text-slate-900 font-medium"
-                placeholder="∗∗∗∗∗∗∗∗"
-                autoCapitalize="none"
-                autoComplete="off"
-                spellCheck={false}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-brand-blue transition-colors"
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
             </div>
           </div>
 

@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import prisma from '../config/db.ts';
-import redis from '../config/redis.ts';
 import supabase from '../services/supabase.ts';
 import resend from '../services/resend.ts';
 import { authenticateAdmin } from '../middleware/auth.ts';
@@ -77,13 +76,14 @@ router.post('/create', async (req: AuthRequest, res) => {
       }
     }
 
-    // Generate a secure temp password
-    const tempPassword = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + 'A1!';
+    // Auto-generate internal password — never shared with the partner
+    const crypto = await import('crypto');
+    const autoPassword = crypto.randomUUID() + crypto.randomUUID();
 
     // Create user in Supabase Auth
     const { data: sbData, error: sbError } = await supabase.auth.admin.createUser({
       email,
-      password: tempPassword,
+      password: autoPassword,
       email_confirm: true,
     });
 
@@ -112,28 +112,20 @@ router.post('/create', async (req: AuthRequest, res) => {
       }
     });
 
-    // Generate invitation token
-    const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    
-    // Store in Redis (expires in 24 hours)
-    await redis.setex(`partner_invite:${token}`, 24 * 60 * 60, JSON.stringify({ email, userId: partner.id }));
-
     // Send email using Resend
-    const inviteLink = `https://www.mentivo.in/setup-password?token=${token}`;
-    
     await resend.emails.send({
       from: 'Mentivo Admin <admin@mentivo.in>',
       to: email,
-      subject: 'Welcome to Mentivo Partner Program - Complete Your Registration',
+      subject: 'Welcome to Mentivo Partner Program - Your Account Is Ready',
       html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; borderRadius: 16px;">
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px;">
           <h2 style="color: #0077CB; margin-bottom: 16px;">Welcome to Mentivo, ${name}!</h2>
           <p>You have been registered as a <strong>${role.replace('_', ' ')}</strong> on the Mentivo Partner platform.</p>
-          <p>Please click the button below to set up your password and access your dashboard. This invitation link is valid for <strong>24 hours</strong> only.</p>
+          <p>Your account is now active. To access your partner dashboard, simply visit the link below and log in using a one-time code sent to this email address.</p>
           <div style="margin: 24px 0;">
-            <a href="${inviteLink}" style="background-color: #0077CB; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Set Up Your Password</a>
+            <a href="https://www.mentivo.in/login" style="background-color: #0077CB; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Access Your Dashboard</a>
           </div>
-          <p style="font-size: 12px; color: #64748b;">If you cannot click the button, copy and paste this link in your browser: <br/> ${inviteLink}</p>
+          <p style="font-size: 13px; color: #475569;">On the login page, select <strong>"I am a Coaching Partner"</strong>, enter this email address, and we will send you a verification code.</p>
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
           <p style="font-size: 12px; color: #94a3b8;">Mentivo Admin Team</p>
         </div>

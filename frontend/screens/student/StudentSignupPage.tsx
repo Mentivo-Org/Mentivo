@@ -23,7 +23,7 @@ import api from '../../services/api';
 import { LoginEndpoints, PartnerEndpoints } from '../../constants/endpoint';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLoading } from '../../context/LoadingContext';
-import { PasswordInput } from '../../components/PasswordInput';
+
 import DialogBox from '../../components/DialogBox';
 import { useAuth } from '../../services/retrieveKeys';
 
@@ -153,13 +153,11 @@ const StudentSignupPage = () => {
     }, [referralCode])
   );
 
-  // useRef for password — typing never triggers a parent re-render.
-  const passwordRef = useRef("");
-  const handlePasswordChange = useCallback((t: string) => { passwordRef.current = t; }, []);
+  // No password needed for OTP flow
   const {showLoading, hideLoading} = useLoading();
 
   const handleCreateAccount = async () => {
-    if (!fullName || !email || !passwordRef.current || !phone) {
+    if (!fullName || !email || !phone) {
       setAlertData({title: 'Error', message: 'Please fill in all the required fields'});
       setAlertVisible(true);
       return;
@@ -176,7 +174,6 @@ const StudentSignupPage = () => {
       showLoading("Signing you up...");
       const response = await api.post(LoginEndpoints.signup, {
         email,
-        password: passwordRef.current,
         name: fullName,
         phone: phone,
         role: "student",
@@ -343,19 +340,6 @@ const StudentSignupPage = () => {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Password</Text>
-              <PasswordInput 
-                defaultValue=""
-                onChangeText={handlePasswordChange}
-                style={styles.passwordContainer}
-                inputStyle={styles.passwordInput}
-              />
-              <View style={styles.hintContainer}>
-                <Image source={require('../../app-assets/info-dot.svg')} style={styles.hintIcon} />
-                <Text style={styles.hintText}>At least 8 characters</Text>
-              </View>
-            </View>
 
 
 
