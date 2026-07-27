@@ -148,11 +148,19 @@ const upsertPrismaUser = async (
 };
 
 export const signUpWithEmail = async (req: Request, res: Response) => {
-  const { email, password, name, role, phone, referredByReferralCode } = req.body;
+  const { email, name, role, phone, referredByReferralCode } = req.body;
 
-  if (!email || !password)
-    return res.status(400).json({ error: "Email and password are required" });
+  if (!email)
+    return res.status(400).json({ error: "Email is required" });
   if (!name) return res.status(400).json({ error: "Please enter your name" });
+
+  // For mentors, validate IIT email domain before doing anything
+  if (role === 'mentor') {
+    const iitName = await emailValidator(email);
+    if (!iitName) {
+      return res.status(400).json({ error: "Invalid email. Please use a valid IIT college email ID." });
+    }
+  }
 
   // Check if user already exists in DB
   const user = await prisma.user.findUnique({ where: { email } });
@@ -170,10 +178,14 @@ export const signUpWithEmail = async (req: Request, res: Response) => {
   }
 
   // --- New user flow ---
+  // Auto-generate a secure internal password (never exposed to the user)
+  const crypto = await import('crypto');
+  const autoPassword = crypto.randomUUID() + crypto.randomUUID();
+
   const { data: sbData, error: sbError } =
     await supabaseAdmin.auth.admin.createUser({
       email,
-      password,
+      password: autoPassword,
       email_confirm: false,
     });
 
@@ -511,4 +523,32 @@ export const updateUserProfile = async (req: Request, res: Response) => {
     console.error("Error updating user profile:", err);
     return res.status(500).json({ error: "Internal Server Error" });
   }
+};
+
+export const requestLoginOtp = async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: "Email is required" });
+  }
+
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    return res.status(404).json({ error: "No account found with this email. Please sign up first." });
+  }
+
+  const { error: otpError } = await supabaseAdmin.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: false },
+  });
+
+  if (otpError) {
+    return res.status(500).json({ error: "Failed to send OTP: " + otpError.message });
+  }
+
+  return res.status(200).json({
+    message: "OTP sent to your email. Please check your inbox.",
+    email,
+    serverTime: Date.now(),
+  });
 };

@@ -17,6 +17,7 @@ export const LoginEndpoints = {
     googleLogin: `${baseUrl}/auth/google-native`,
     refreshToken: `${baseUrl}/auth/refresh`,
     login: `${baseUrl}/auth/login`,
+    requestLoginOtp: `${baseUrl}/auth/login/request-otp`,
     signup: `${baseUrl}/auth/signup`,
     resendOtp: `${baseUrl}/auth/otp/resend`,
     verifyOtp: `${baseUrl}/auth/otp/verify`,

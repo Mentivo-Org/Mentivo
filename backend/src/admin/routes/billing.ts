@@ -40,59 +40,9 @@ router.post('/audit', async (req, res) => {
     const freeMins = await getFreeCallDurationMins();
     const freeSeconds = freeMins * 60;
     
-    const results = [];
-    for (const session of sessions) {
-      const { ratePerMin } = await getMentorActiveRateByProfile(session.mentor?.mentorProfile);
-      const isFree = session.is_free;
-      const durationSecs = session.durationSecs || 0;
-      
-      const billableSecs = isFree ? Math.max(0, durationSecs - freeSeconds) : durationSecs;
-      const billableMins = Math.ceil(billableSecs / 60);
-      const expectedTotalCharge = billableMins * ratePerMin;
-      
-      let expectedAmountCharged = 0;
-      if (expectedTotalCharge > 0) {
-        expectedAmountCharged = expectedTotalCharge;
-      }
-      
-      const expectedMentorEarning = expectedAmountCharged * MENTOR_SHARE;
-      const expectedPlatformFee = expectedAmountCharged - expectedMentorEarning;
-      const expectedCoachingShare = session.student.coachingCenterId ? expectedAmountCharged * 0.05 : 0;
-      
-      const storedAmountCharged = Number(session.amountCharged || 0);
-      const storedMentorEarning = Number(session.mentorEarning || 0);
-      
-      const deltaAmountCharged = expectedAmountCharged - storedAmountCharged;
-      const deltaMentorEarning = expectedMentorEarning - storedMentorEarning;
-      
-      const delta = {
-        studentDebit: deltaAmountCharged,
-        mentorCredit: deltaMentorEarning,
-        coachingCredit: session.student.coachingCenterId ? (expectedAmountCharged * 0.05) - (storedAmountCharged * 0.05) : 0
-      };
-
-      const hasMismatch = delta.studentDebit !== 0 || delta.mentorCredit !== 0 || delta.coachingCredit !== 0;
-      
-      results.push({
-        sessionId: session.id,
-        studentId: session.student_id,
-        mentorId: session.mentor_id,
-        durationSecs,
-        settledAt: session.settledAt,
-        stored: { 
-          amountCharged: storedAmountCharged, 
-          mentorEarning: storedMentorEarning, 
-          platformFee: Number(session.platformFee || 0)
-        },
-        expected: { 
-          amountCharged: expectedAmountCharged, 
-          mentorEarning: expectedMentorEarning, 
-          platformFee: expectedPlatformFee 
-        },
-        delta,
-        hasMismatch
-      });
-    }
+    const results = await Promise.all(
+      sessions.map((s) => computeAuditResult(s, freeSeconds))
+    );
 
     res.json(results);
   } catch (err: any) {

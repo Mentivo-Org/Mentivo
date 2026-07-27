@@ -44,8 +44,7 @@ const MentorSignupPage = () => {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+
   const [alertData, setAlertData] = useState({title:'', message: ''})
 
   const openBrowser = async (url: string) => {
@@ -64,7 +63,7 @@ const MentorSignupPage = () => {
   const {showLoading, hideLoading} = useLoading();
 
   const handleCreateAccount = async () => {
-    if (!fullName || !email || !password || !phone) {
+    if (!fullName || !email || !phone) {
       setAlertData({title: 'Error', message: 'Please fill in all the required fields'});
       setAlertVisible(true);
       return;
@@ -83,11 +82,6 @@ const MentorSignupPage = () => {
       return;
     }
     
-    if(password.length<8) {
-      setAlertData({title: 'Invalid password', message: 'Minimum allowed length of password is 8 characters'});
-      setAlertVisible(true);
-      return;
-    }
     try {
       showLoading("Validating email ID...");
       const response = await api.post(LoginEndpoints.getIIT, {email});
@@ -110,7 +104,6 @@ const MentorSignupPage = () => {
       showLoading("Signing you up...");
       const response = await api.post(LoginEndpoints.signup, {
         email,
-        password,
         name: fullName,
         phone: phone,
         role: "mentor"
@@ -200,37 +193,7 @@ const MentorSignupPage = () => {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.passwordContainer}>
-                <TextInput 
-                  style={styles.passwordInput} 
-                  placeholder="••••••••" 
-                  secureTextEntry={!showPassword}
-                  placeholderTextColor="rgba(68,70,83,0.2)"
-                  // value={password}
-                  onChangeText={(text)=>setPassword(text)}
-                  autoCapitalize="none"
-                  // selection={!showPassword ? { start: passwordDisplay.length, end: passwordDisplay.length } : undefined}
-                  autoCorrect={false}
-                  spellCheck={false}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeButton}
-                >
-                  <Ionicons
-                    name={showPassword ? "eye" : "eye-off"}
-                    size={20}
-                    color="#0077CB"
-                  />
-                </TouchableOpacity>
-              </View>
-              <View style={styles.hintContainer}>
-                <Image source={require('../../app-assets/info-dot.svg')} style={styles.hintIcon} tintColor="#444653" />
-                <Text style={styles.hintText}>At least 8 characters</Text>
-              </View>
-            </View>
+
 
             <TouchableOpacity 
               style={styles.createButton}

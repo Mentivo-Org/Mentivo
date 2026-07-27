@@ -19,10 +19,33 @@ import databaseRoutes from './routes/database.ts';
 import voucherRoutes from './routes/vouchers.ts';
 import billingRoutes from './routes/billing.ts';
 import prisma from './config/db.ts';
+import cron from 'node-cron';
+import { syncPartnerStats } from './services/partnerSync.ts';
 
 dotenv.config();
 
 const app = express();
+
+// Schedule partner stats sync every Sunday at 1:13 AM
+console.log('[Cron] Scheduling Partner Stats Sync for Sunday at 1:13 AM (13 1 * * 0)');
+cron.schedule('13 1 * * 0', async () => {
+  try {
+    console.log('[Cron] Starting partner stats sync...');
+    const result = await syncPartnerStats();
+    
+    await prisma.logEntry.create({
+      data: {
+        level: 'INFO',
+        source: 'admin-backend',
+        message: 'Partner stats sync completed via cron',
+        metadata: result
+      }
+    });
+    console.log('[Cron] Partner stats sync completed:', result);
+  } catch (err) {
+    console.error('[Cron] Partner stats sync failed:', err);
+  }
+});
 
 app.use(helmet());
 app.use(cookieParser());

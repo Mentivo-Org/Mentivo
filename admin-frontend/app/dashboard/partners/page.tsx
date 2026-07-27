@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import api from "@/lib/api";
-import { UserPlus, Settings, Loader2, Sparkles, Mail, Phone, Users, ShieldAlert, Award } from "lucide-react";
+import { UserPlus, Settings, Loader2, Sparkles, Mail, Phone, Users, ShieldAlert, Award, RefreshCcw, CheckCircle } from "lucide-react";
 import { Skeleton } from "@/components/Skeleton";
 
 interface Partner {
@@ -38,6 +38,10 @@ export default function PartnersPage() {
   const [coachingCenters, setCoachingCenters] = useState<CoachingCenter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Sync State
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ partnersProcessed: number, totalEarnedSynced: number, errors: any[] } | null>(null);
 
   // Create Partner Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -90,6 +94,21 @@ export default function PartnersPage() {
     fetchPartners();
     fetchCoachingCenters();
   }, []);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    setError("");
+    try {
+      const res = await api.post("/partners/sync");
+      setSyncResult(res.data);
+      fetchPartners();
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Failed to sync partner stats.");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -166,18 +185,45 @@ export default function PartnersPage() {
           </h1>
           <p className="text-gray-500 mt-1">Manage marketing partners, coaching centers, and telegram admin accounts.</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-3 rounded-2xl flex items-center gap-2 transition-all shadow-lg shadow-blue-500/20 active:scale-95"
-        >
-          <UserPlus size={20} />
-          Create Partner invite
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold px-5 py-3 rounded-2xl flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+          >
+            {syncing ? <RefreshCcw size={20} className="animate-spin text-blue-600" /> : <RefreshCcw size={20} className="text-gray-500" />}
+            {syncing ? "Syncing..." : "Sync Stats"}
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-3 rounded-2xl flex items-center gap-2 transition-all shadow-lg shadow-blue-500/20 active:scale-95"
+          >
+            <UserPlus size={20} />
+            Create Partner invite
+          </button>
+        </div>
       </div>
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl text-sm font-medium">
           {error}
+        </div>
+      )}
+
+      {syncResult && (
+        <div className="bg-green-50 border border-green-200 text-green-800 px-5 py-4 rounded-2xl flex items-start gap-3">
+          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+          <div>
+            <h3 className="font-bold">Sync Completed Successfully</h3>
+            <p className="text-sm mt-1">
+              Processed <strong>{syncResult.partnersProcessed}</strong> partners and synced a total of <strong>₹{syncResult.totalEarnedSynced.toFixed(2)}</strong> in earnings.
+            </p>
+            {syncResult.errors && syncResult.errors.length > 0 && (
+              <div className="mt-2 text-xs text-red-600 font-medium">
+                Encountered {syncResult.errors.length} errors during sync.
+              </div>
+            )}
+          </div>
         </div>
       )}
 
