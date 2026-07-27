@@ -28,6 +28,11 @@ on:
         required: false
         type: boolean
         default: false
+      update_dev:
+        description: 'Update Dev nodes'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   trigger-deploys:
@@ -65,3 +70,12 @@ jobs:
         run: |
           echo "Triggering Website deployment on Vercel..."
           curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK_WEBSITE }}"
+
+      - name: Update Dev System
+        if: ${{ github.event.inputs.update_dev == 'true'}}
+        run: |
+          echo "Triggering Dev Backend Update"
+          curl -X POST "${{ secrets.RENDER_DEV_BACKEND }}"
+
+          echo "Triggering Dev Frontend Update(Admin-frontend)"
+          curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK_DEV_ADMIN_FRONTEND }}"
