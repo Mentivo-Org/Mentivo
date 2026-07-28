@@ -10,10 +10,10 @@ const router = Router();
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax',
+  secure: process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production',
+  sameSite: (process.env.COOKIE_SAMESITE || (process.env.NODE_ENV === 'production' ? 'none' : 'lax')) as 'none' | 'lax',
   path: '/',
-  domain: process.env.NODE_ENV === 'production' ? '.mentivo.in' : undefined,
+  domain: process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === 'production' ? '.mentivo.in' : undefined),
 };
 
 const sendAuthResponse = (res: any, req: any, statusCode: number, data: any) => {

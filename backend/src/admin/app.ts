@@ -57,6 +57,7 @@ app.use(cors({
     const allowedOrigins = [
       'https://admin.mentivo.in',
       'https://www.admin.mentivo.in',
+      'https://dev.mentivo.in',
       'http://localhost:5001',
       'http://127.0.0.1:5001'
     ];
