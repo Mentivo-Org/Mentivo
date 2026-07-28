@@ -387,9 +387,15 @@ export const verifyOtp = async (req: Request, res: Response) => {
           },
         });
       } else {
+        // If user was previously verified or profile already completed,
+        // they're a returning user — skip CompleteProfile
+        const isReturningUser = user.isEmailVerified === true || user.profile_completed === true;
         user = await prisma.user.update({
           where: { email },
-          data: { isEmailVerified: true },
+          data: {
+            isEmailVerified: true,
+            ...(isReturningUser && { profile_completed: true }),
+          },
         });
       }
     } catch (dbError) {
