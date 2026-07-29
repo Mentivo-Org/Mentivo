@@ -16,11 +16,13 @@ import { Image } from "expo-image";
 import api from "../services/api";
 import { ForgotPassEndpoints, LoginEndpoints } from "../constants/endpoint";
 import { useLoading } from "../context/LoadingContext";
+import { useAuth } from "../services/retrieveKeys";
 import DialogBox from "../components/DialogBox";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SendOtpScreen = () => {
   const { showLoading, hideLoading } = useLoading();
+  const { setIsSignedIn, setRole, requestNotificationPermissions, setUser } = useAuth();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { email, name, role, phone, forgotPass, serverTime } = route.params;
@@ -127,40 +129,45 @@ const SendOtpScreen = () => {
           role,
         });
         if (response.status === 200) {
-          await AsyncStorage.setItem("accessToken", response.data.accessToken);
-          await AsyncStorage.setItem(
-            "refreshToken",
-            response.data.refreshToken,
-          );
-          //will be set after completeprofile
-          // await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+          const { accessToken, refreshToken, user } = response.data;
+          await AsyncStorage.setItem("accessToken", accessToken);
+          await AsyncStorage.setItem("refreshToken", refreshToken);
           await AsyncStorage.setItem("verifiedEmail", "true");
 
-          //if mentor, fetch IIT name using domain of email ID
-          if (role === "mentor") {
-            const iit = await api.post(LoginEndpoints.getIIT, { email });
-            if (iit.status === 200) {
+          // If profile is already completed, log them in directly
+          if (user?.profile_completed === true) {
+            await setUser(user);
+            await AsyncStorage.setItem("role", user.role);
+            setRole(user.role);
+            requestNotificationPermissions();
+            setIsSignedIn(true);
+          } else {
+            // New user — proceed to CompleteProfile
+            if (role === "mentor") {
+              const iit = await api.post(LoginEndpoints.getIIT, { email });
+              if (iit.status === 200) {
+                navigation.navigate("CompleteProfile", {
+                  full_name: name,
+                  role,
+                  email,
+                  phone,
+                  iit: iit.data?.name_of_iit,
+                });
+              } else {
+                setAlertData({
+                  title: "Could not fetch IIT name",
+                  message: iit.data?.error,
+                });
+                setAlertVisible(true);
+              }
+            } else {
               navigation.navigate("CompleteProfile", {
                 full_name: name,
                 role,
                 email,
                 phone,
-                iit: iit.data?.name_of_iit,
               });
-            } else {
-              setAlertData({
-                title: "Could not fetch IIT name",
-                message: iit.data?.error,
-              });
-              setAlertVisible(true);
             }
-          } else {
-            navigation.navigate("CompleteProfile", {
-              full_name: name,
-              role,
-              email,
-              phone,
-            });
           }
         }
         else {
