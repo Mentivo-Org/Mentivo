@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import DialogBox from '../../components/DialogBox';
 import { Image } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { resetToScreen } from '../../services/navigation';
 import Ionicons from "@react-native-vector-icons/ionicons";
 import api from '../../services/api';
 import { CallEndpoints } from '../../constants/endpoint';
@@ -36,7 +37,7 @@ export default function RatingScreen() {
 
       if (response.status === 200) {
         // Go back to home
-        navigation.navigate("Main", { screen: "Home" });
+        resetToScreen("Main", { screen: "Home" });
       } else {
         setAlertData({ title: 'Error', message: 'Failed to submit rating. Please try again.' });
         setAlertVisible(true);

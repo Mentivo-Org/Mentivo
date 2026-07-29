@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import ChatPage from './chat/ChatPage';
 import DialogBox from '../components/DialogBox';
 import { useCall } from '../context/CallContext';
+import { resetToScreen } from '../services/navigation';
 
 // Figma assets
 const imgIconstackIoProfileCircle = require('../app-assets/profile-circle.svg');
@@ -42,6 +43,15 @@ const InCallScreen = () => {
     message: string;
     onClose?: () => void;
   }>({ title: '', message: '' });
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if ((!callStatus || callStatus === 'ended') && callId !== activeCallId) {
+        console.log('[InCallScreen] Stale screen detected, redirecting to Home');
+        resetToScreen('Main', { screen: 'Home' });
+      }
+    }, [callId, activeCallId, callStatus])
+  );
 
   useEffect(() => {
     if (callId && callId !== activeCallId) {

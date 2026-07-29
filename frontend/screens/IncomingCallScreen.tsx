@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import InCallManager from 'react-native-incall-manager';
 import notifee from '@notifee/react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { resetToScreen } from '../services/navigation';
 import api from '../services/api';
 import { socketManager } from '../services/socketManager';
 import { CallEndpoints } from '../constants/endpoint';
@@ -51,7 +52,7 @@ const IncomingCallScreen = () => {
         InCallManager.stopRingtone();
         InCallManager.setKeepScreenOn(false);
         notifee.cancelNotification(callId).catch(err => console.error('Failed to cancel notification:', err));
-        navigation.goBack();
+        resetToScreen('Main', { screen: 'Home' });
       }
     };
 
@@ -96,7 +97,7 @@ const IncomingCallScreen = () => {
     } catch (error) {
       console.error('Failed to reject call:', error);
     }
-    navigation.goBack();
+    resetToScreen('Main', { screen: 'Home' });
   };
 
   return (
