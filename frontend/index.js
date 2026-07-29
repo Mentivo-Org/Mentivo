@@ -7,6 +7,17 @@ import api from './services/api';
 import { MentorEndpoints } from './constants/endpoint';
 
 import App from './App';
+import crashlytics from '@react-native-firebase/crashlytics';
+
+// Enable Crashlytics in development
+crashlytics().setCrashlyticsCollectionEnabled(true);
+
+// Set up global error handler for uncaught JS exceptions
+const defaultErrorHandler = global.ErrorUtils.getGlobalHandler();
+global.ErrorUtils.setGlobalHandler((error, isFatal) => {
+  crashlytics().recordError(error);
+  defaultErrorHandler(error, isFatal);
+});
 
 // Create Notifee channels
 async function setupNotifee() {
