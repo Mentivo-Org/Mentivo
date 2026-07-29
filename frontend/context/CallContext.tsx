@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { DeviceEventEmitter } from 'react-native';
+import { DeviceEventEmitter, AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { joinChannel, leaveChannel, getAgoraEngine, setSpeakerphoneOn } from '../services/agora';
 import api from '../services/api';
@@ -8,7 +8,7 @@ import { CallEndpoints } from '../constants/endpoint';
 import { requestMicrophonePermission } from '../services/permissions';
 import { chatSessionManager } from '../services/chat/chatSessionManager';
 import notifee, { AndroidImportance, AndroidForegroundServiceType } from '@notifee/react-native';
-import { navigate } from '../services/navigation';
+import { navigate, resetToScreen } from '../services/navigation';
 
 export type CallStatus = 'connecting' | 'calling' | 'ringing' | 'active' | 'ended';
 
@@ -71,6 +71,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const callStatusRef = useRef<CallStatus | null>(null);
   const durationRef = useRef<number>(0);
   const isEndingCallRef = useRef(false);
+  const isStartingRef = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
   const stateRef = useRef({ callId, role, callerName, mentorPhoto, isFreeCall });
@@ -177,7 +178,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
             channelId: ONGOING_CALL_CHANNEL,
             ongoing: true,
             asForegroundService: true,
-            // foregroundServiceTypes: [AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_MICROPHONE],
+            foregroundServiceTypes: [AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_MICROPHONE],
             onlyAlertOnce: true,
             pressAction: { id: 'default', launchActivity: 'default' },
             actions: [
@@ -234,6 +235,9 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // Reset flags
     isEndingCallRef.current = false;
+    
+    if (isStartingRef.current) return;
+    isStartingRef.current = true;
     
     setCallId(newCallId);
     setRole(newRole);
@@ -325,6 +329,8 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (isEndingCallRef.current) return;
       console.error('Failed to start call in Context:', error);
       await endCallSession(true);
+    } finally {
+      isStartingRef.current = false;
     }
   };
 
@@ -387,24 +393,24 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Navigate accordingly
     if (activeCallId) {
       if (activeRole === 'caller' && finalStatus === 'completed') {
-        navigate('RatingScreen', {
+        resetToScreen('RatingScreen', {
           callId: activeCallId,
           mentorName: activeCallerName || 'Mentor',
           mentorPhoto: activePhoto || undefined,
         });
       } else {
         if (activeRole === 'caller' && remoteStatus === 'missed' && stateRef.current.isFreeCall) {
-          navigate('Main', {
+          resetToScreen('Main', {
             screen: 'Home',
             params: { showMissedFreeCallAlert: true }
           });
         } else if (activeRole === 'caller' && remoteStatus === 'rejected') {
-          navigate('Main', {
+          resetToScreen('Main', {
             screen: 'Home',
             params: { showCallRejectedAlert: true }
           });
         } else {
-          navigate('Main', { screen: 'Home' });
+          resetToScreen('Main', { screen: 'Home' });
         }
       }
     }
@@ -440,6 +446,24 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       fcmSub.remove();
     };
   }, [callId]);
+
+  // AppState listener for Foreground Service Health Check
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState: string) => {
+      if (nextAppState === 'active' && stateRef.current.callId) {
+        console.log('[AppState Context] App returned to foreground during call');
+        const displayed = await notifee.getDisplayedNotifications();
+        const notificationExists = displayed.some(n => n.id === stateRef.current.callId);
+        if (!notificationExists) {
+          console.warn('[AppState Context] Foreground service notification missing! Service might have been killed by Android OS.');
+        } else {
+          console.log('[AppState Context] Foreground service is still active.');
+        }
+      }
+    };
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription.remove();
+  }, []);
 
   // Polling mechanism for pre-active states
   useEffect(() => {

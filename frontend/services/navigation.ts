@@ -1,4 +1,4 @@
-import { createNavigationContainerRef } from '@react-navigation/native';
+import { createNavigationContainerRef, CommonActions } from '@react-navigation/native';
 
 export const navigationRef = createNavigationContainerRef();
 
@@ -14,6 +14,17 @@ export function navigate(name: string, params?: any) {
     }, 100);
     // Timeout after 5 seconds to avoid memory leaks
     setTimeout(() => clearInterval(checkReady), 5000);
+  }
+}
+
+export function resetToScreen(name: string, params?: any) {
+  if (navigationRef.isReady()) {
+    navigationRef.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name, params }],
+      })
+    );
   }
 }
 
