@@ -72,10 +72,16 @@ jobs:
       working-directory: ${{ github.workspace }}
       run: echo "release_tag=v${{ inputs.version }}" >> $GITHUB_OUTPUT
 
+    - name: Delete existing tag if present
+      run: |
+        git push --delete origin "v${{ inputs.version }}" || true
+      working-directory: ${{ github.workspace }}
+
     - name: Create Release and Upload Binaries
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
+        target_commitish: ${{ github.sha }}
         name: Release ${{ steps.tag.outputs.release_tag }}
         draft: false
         prerelease: false
