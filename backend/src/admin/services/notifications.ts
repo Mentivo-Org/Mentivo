@@ -13,14 +13,22 @@ export async function sendPushNotification(tokens: string[], title: string, body
     if (tokens.length === 1) {
       await admin.messaging().send({
         token: tokens[0],
+        notification: { title, body },
         data: { ...payloadData, title, body },
-        android: { priority }
+        android: { 
+          priority,
+          notification: { channelId: 'messages' }
+        }
       });
     } else {
       await admin.messaging().sendEachForMulticast({
         tokens,
+        notification: { title, body },
         data: { ...payloadData, title, body },
-        android: { priority }
+        android: { 
+          priority,
+          notification: { channelId: 'messages' }
+        }
       });
     }
   } catch (error) {
