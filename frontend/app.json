@@ -56,7 +56,7 @@
         "FOREGROUND_SERVICE_MICROPHONE",
         "RECEIVE_BOOT_COMPLETED"
       ],
-      "versionCode": 22
+      "versionCode": 24
     },
     "web": {
       "favicon": "./assets/icon.png"
