@@ -1,10 +1,11 @@
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from './storage';
 import { baseUrl, LoginEndpoints } from '../constants/endpoint';
 import { socketManager } from './socketManager';
 
 const api = axios.create({
   baseURL: baseUrl,
+  timeout: 15000,
   headers: {
     'x-client-type': 'mobile'
   }
@@ -12,49 +13,57 @@ const api = axios.create({
 
 // Request Interceptor: Attach the access token to every request
 api.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem('accessToken');
+  const token = await storage.getItem('accessToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  
-  // Log request details
-  console.log('--- [API REQUEST START] ---');
-  console.log(`Method: ${config.method?.toUpperCase()}`);
-  console.log(`URL: ${config.url}`);
-  if(config.headers) {
-    console.log('Headers: ', JSON.stringify(config.headers, null, 2))
+
+  if (__DEV__) {
+    console.log(`[API REQUEST] ${config.method?.toUpperCase()} ${config.url}`);
   }
-  if (config.data) {
-    console.log('Payload:', JSON.stringify(config.data, null, 2));
-  }
-  console.log('---------------------------');
-  
+
   return config;
 }, (error) => {
   console.error('!!! [API REQUEST ERROR] !!!', error);
   return Promise.reject(error);
 });
 
+// Shared in-flight refresh call so concurrent 401s trigger one refresh, not one each.
+let refreshPromise: Promise<{ accessToken: string; refreshToken: string }> | null = null;
+
+function refreshTokens(refreshToken: string) {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      const { data } = await axios.post(LoginEndpoints.refreshToken, { refreshToken });
+      await storage.setItem('accessToken', data.accessToken);
+      await storage.setItem('refreshToken', data.refreshToken);
+      socketManager.reconnectWithNewToken(data.accessToken);
+      return data;
+    })().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
 // Response Interceptor: Handle 401 errors and log responses
 api.interceptors.response.use(
   (response) => {
-    console.log('--- [API RESPONSE SUCCESS] ---');
-    console.log(`Status: ${response.status}`);
-    console.log('Data:', JSON.stringify(response.data, null, 2));
-    console.log('------------------------------');
+    if (__DEV__) {
+      console.log(`[API RESPONSE] ${response.status} ${response.config.url}`);
+    }
     return response;
   },
   async (error) => {
-    console.log('--- [API RESPONSE ERROR] ---');
-    if (error.response) {
-      console.log(`Status: ${error.response.status}`);
-      console.log('Error Data:', JSON.stringify(error.response.data, null, 2));
-    } else if (error.request) {
-      console.log('No response received. Possible Network/CORS issue.');
-    } else {
-      console.log('Error Message:', error.message);
+    if (__DEV__) {
+      if (error.response) {
+        console.log(`[API RESPONSE ERROR] ${error.response.status} ${error.config?.url}`);
+      } else if (error.request) {
+        console.log('[API RESPONSE ERROR] No response received. Possible Network/CORS issue.');
+      } else {
+        console.log('[API RESPONSE ERROR]', error.message);
+      }
     }
-    console.log('----------------------------');
 
     const originalRequest = error.config;
 
@@ -65,20 +74,10 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = await AsyncStorage.getItem('refreshToken');
-        if (!refreshToken) return;
-        
-        // Call backend refresh endpoint
-        const { data } = await axios.post(LoginEndpoints.refreshToken, {
-          refreshToken,
-        });
+        const refreshToken = await storage.getItem('refreshToken');
+        if (!refreshToken) return Promise.reject(error);
 
-        // Store new tokens
-        await AsyncStorage.setItem('accessToken', data.accessToken);
-        await AsyncStorage.setItem('refreshToken', data.refreshToken);
-
-        // Re-authenticate the WebSocket connection with the new token
-        socketManager.reconnectWithNewToken(data.accessToken);
+        const data = await refreshTokens(refreshToken);
 
         // Update the header and retry the original request
         originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
@@ -86,7 +85,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         console.error('Refresh token failed:', refreshError);
         // Refresh token is also expired or invalid -> Force logout
-        await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
+        await storage.multiRemove(['accessToken', 'refreshToken', 'user']);
         return Promise.reject(refreshError);
       }
     }

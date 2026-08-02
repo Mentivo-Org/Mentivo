@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from './storage';
 import { getMessaging, requestPermission, getToken, onTokenRefresh, AuthorizationStatus, onMessage } from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import api from './api';
@@ -36,16 +36,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const mentorlevel = user?.mentorProfile?.mentorlevel || null;
   const verificationStatus = user?.mentorProfile?.verificationStatus || null;
 
-  const setUser = async (u: any) => {
+  const setUser = useCallback(async (u: any) => {
     setUserState(u);
     if (u) {
-      await AsyncStorage.setItem('user', JSON.stringify(u));
+      await storage.setItem('user', JSON.stringify(u));
     } else {
-      await AsyncStorage.removeItem('user');
+      await storage.removeItem('user');
     }
-  };
+  }, []);
 
-  const checkLoginStatus = async (forceFetch: boolean = false) => {
+  const checkLoginStatus = useCallback(async (forceFetch: boolean = false) => {
     console.log("Checking login status...");
     try {
       if (forceFetch) {
@@ -59,11 +59,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       }
 
-      const access = await AsyncStorage.getItem('accessToken');
-      const refresh = await AsyncStorage.getItem('refreshToken');
-      const userJson = await AsyncStorage.getItem('user');
-      const storedRole = await AsyncStorage.getItem('role');
-      var verifiedEmail = await AsyncStorage.getItem('verifiedEmail');
+      const access = await storage.getItem('accessToken');
+      const refresh = await storage.getItem('refreshToken');
+      const userJson = await storage.getItem('user');
+      const storedRole = await storage.getItem('role');
+      var verifiedEmail = await storage.getItem('verifiedEmail');
       if(verifiedEmail !== 'true') {
         verifiedEmail = null;
       }
@@ -78,14 +78,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     } catch (e) {
       console.error("AsyncStorage Error:", e);
-      setIsSignedIn(false); 
+      setIsSignedIn(false);
     }
-  };
+  }, [setUser]);
 
-  const handleLogout = async ()=> {
+  const handleLogout = useCallback(async ()=> {
     showLoading("Logging out...");
     try {
-      const currentRole = role || await AsyncStorage.getItem('role');
+      const currentRole = role || await storage.getItem('role');
       if (currentRole === 'mentor') {
         try {
           await api.post(MentorEndpoints.setStatus, { isOnline: false });
@@ -94,12 +94,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.error("Failed to update mentor status to offline on logout:", statusErr);
         }
       }
-      const fcmToken = await AsyncStorage.getItem('fcmToken');
+      const fcmToken = await storage.getItem('fcmToken');
       const response = await api.patch(NotificationEndpoints.syncFcmToken, {token: fcmToken});
       if(response.status!==200) {
         console.error("Error removing fcm token from database");
       }
-      await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user', 'verifiedEmail', 'fcmToken', 'role']);
+      await storage.multiRemove(['accessToken', 'refreshToken', 'user', 'verifiedEmail', 'fcmToken', 'role']);
       const isGoogleSignedIn = await GoogleSignin.hasPreviousSignIn();
       if(isGoogleSignedIn) {
         await GoogleSignin.signOut();
@@ -115,7 +115,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     finally {
       hideLoading();
     }
-  }
+  }, [role, showLoading, hideLoading]);
 
   // 2. Run this ONLY when the app starts
   useEffect(() => {
@@ -130,7 +130,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoading(false);
   }, []);
 
-  const requestNotificationPermissions = async () => {
+  const requestNotificationPermissions = useCallback(async () => {
     try {
       console.log('Requesting notification permissions...');
       await notifee.requestPermission();
@@ -157,7 +157,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.log('FCM Token obtained:', token);
           const response = await api.post(NotificationEndpoints.syncFcmToken, { token });
           if (response.status === 200 || response.status === 201) {
-            await AsyncStorage.setItem('fcmToken', token);
+            await storage.setItem('fcmToken', token);
             console.log('FCM token synced with backend');
           }
         }
@@ -165,7 +165,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (err) {
       console.error('Failed to request notification permissions:', err);
     }
-  };
+  }, []);
 
   // 3. FCM Token Management
   useEffect(() => {
@@ -178,13 +178,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const token = await getToken(messagingInstance);
         
         if (token) {
-          const storedToken = await AsyncStorage.getItem('fcmToken');
+          const storedToken = await storage.getItem('fcmToken');
           if (token !== storedToken) {
             console.log('Syncing FCM token with backend...');
             try {
               const response = await api.post(NotificationEndpoints.syncFcmToken, { token });
               if (response.status === 200 || response.status === 201) {
-                await AsyncStorage.setItem('fcmToken', token);
+                await storage.setItem('fcmToken', token);
               }
             } catch (err) {
               console.error('Failed to sync FCM token:', err);
@@ -206,13 +206,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       unsubscribeTokenRefresh = onTokenRefresh(messaging, async (newToken) => {
         console.log('FCM Token refreshed', newToken);
         try {
-          const oldToken = await AsyncStorage.getItem('fcmToken');
+          const oldToken = await storage.getItem('fcmToken');
           if (newToken !== oldToken) {
             console.log('Syncing refreshed FCM token with backend...');
             const response = await api.post(NotificationEndpoints.syncFcmToken, { token: newToken });
-            
+
             if (response.status === 200 || response.status === 201) {
-              await AsyncStorage.setItem('fcmToken', newToken);
+              await storage.setItem('fcmToken', newToken);
               console.log(`Refreshed FCM token synced (Status: ${response.status})`);
             }
           }
@@ -233,8 +233,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (isSignedIn) {
       const initSocket = async () => {
-        const token = await AsyncStorage.getItem('accessToken');
-        const userJson = await AsyncStorage.getItem('user');
+        const token = await storage.getItem('accessToken');
+        const userJson = await storage.getItem('user');
         const user = userJson ? JSON.parse(userJson) : null;
         
         if (token && user?.id) {
@@ -247,8 +247,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [isSignedIn]);
 
+  const value = useMemo(
+    () => ({ isSignedIn, setIsSignedIn, role, setRole, user, setUser, mentorlevel, verificationStatus, checkLoginStatus, handleLogout, requestNotificationPermissions, isLoading }),
+    [isSignedIn, role, user, mentorlevel, verificationStatus, setUser, checkLoginStatus, handleLogout, requestNotificationPermissions, isLoading]
+  );
+
   return (
-    <AuthContext.Provider value={{ isSignedIn, setIsSignedIn, role, setRole, user, setUser, mentorlevel, verificationStatus, checkLoginStatus, handleLogout, requestNotificationPermissions, isLoading }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

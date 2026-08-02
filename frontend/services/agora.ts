@@ -48,6 +48,7 @@ export const joinChannel = async (token: string, channelName: string, uid: numbe
 
 export const leaveChannel = () => {
   if (engine) {
+    engine.removeAllListeners();
     engine.leaveChannel();
     InCallManager.stop();
   }

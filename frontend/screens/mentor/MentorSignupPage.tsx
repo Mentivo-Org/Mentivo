@@ -1,17 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Keyboard,
   Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
@@ -19,28 +14,12 @@ import api from '../../services/api';
 import { LoginEndpoints } from '../../constants/endpoint';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { useLoading } from '../../context/LoadingContext';
+import { AuthLayout } from '../../components/AuthLayout';
 import DialogBox from '../../components/DialogBox';
 import {isEmail} from 'validator'
 
 const MentorSignupPage = () => {
   const navigation = useNavigation<any>();
-  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
-
-  useEffect(() => {
-    const showSubscription = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => setKeyboardVisible(true)
-    );
-    const hideSubscription = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardVisible(false)
-    );
-
-    return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
-  }, []);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -132,21 +111,7 @@ const MentorSignupPage = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : (isKeyboardVisible ? 'height' : undefined)}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === 'android' ? 70 : 0}
-      >
-        <ScrollView 
-          contentContainerStyle={styles.container} 
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.header}>
-             <Image source={require('../../app-assets/logo.svg')} style={styles.logo} />
-          </View>
-
+    <AuthLayout>
           <View style={styles.topSection}>
             <Text style={styles.mainTitle}>Create Account</Text>
             <Text style={styles.mainSubtitle}>Join the community of expert mentors and students</Text>
@@ -220,32 +185,12 @@ const MentorSignupPage = () => {
               <Text style={[styles.legalText, styles.underline]}>Privacy Policy</Text>
             </TouchableOpacity>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
       <DialogBox title={alertData.title} message={alertData.message} visible={alertVisible} onClose={()=> setAlertVisible(false)}/>
-    </SafeAreaView>
+    </AuthLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  container: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-  },
-  header: {
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  logo: {
-    width: 40,
-    height: 42,
-  },
   topSection: {
     alignItems: 'center',
     marginBottom: 14,

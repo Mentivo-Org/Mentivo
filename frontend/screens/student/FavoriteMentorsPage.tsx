@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   Text,
   View,
@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../../services/storage";
 import { useNavigation } from "@react-navigation/native";
 import MentorCard from "../../components/MentorCard";
 import api from "../../services/api";
@@ -29,7 +29,7 @@ export default function FavoriteMentorsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const syncFavoritesList = async () => {
+  const syncFavoritesList = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await api.get(MentorEndpoints.getFavoriteMentors);
@@ -52,7 +52,7 @@ export default function FavoriteMentorsPage() {
         setMentors(formatted);
         const ids = formatted.map(m => m.id);
         setFavoriteIds(ids);
-        await AsyncStorage.setItem("favouriteMentors", JSON.stringify(ids));
+        await storage.setItem("favouriteMentors", JSON.stringify(ids));
       }
     } catch (error) {
       console.error("Failed to fetch favorite mentors:", error);
@@ -60,16 +60,16 @@ export default function FavoriteMentorsPage() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, []);
 
-  const handleToggleFavorite = async (mentorId: string) => {
+  const handleToggleFavorite = useCallback(async (mentorId: string) => {
     // Optimistically remove from list
     const updatedMentors = mentors.filter(m => m.id !== mentorId);
     setMentors(updatedMentors);
     
     const updatedIds = favoriteIds.filter(id => id !== mentorId);
     setFavoriteIds(updatedIds);
-    await AsyncStorage.setItem("favouriteMentors", JSON.stringify(updatedIds));
+    await storage.setItem("favouriteMentors", JSON.stringify(updatedIds));
 
     try {
       await api.post(`${MentorEndpoints.toggleFavoriteMentor}${mentorId}/favorite`);
@@ -78,11 +78,25 @@ export default function FavoriteMentorsPage() {
       // Revert on failure
       syncFavoritesList();
     }
-  };
+  }, [mentors, favoriteIds, syncFavoritesList]);
+
+  const handleMentorPress = useCallback((mentor: any) => {
+    navigation.navigate("MentorProfile", { mentor: { ...mentor, isFavorite: true } });
+  }, [navigation]);
+
+  const renderMentorItem = useCallback(({ item }: { item: any }) => (
+    <MentorCard
+      {...item}
+      item={item}
+      isFavorite={favoriteIds.includes(item.id)}
+      onFavoritePress={handleToggleFavorite}
+      onPress={handleMentorPress}
+    />
+  ), [favoriteIds, handleToggleFavorite, handleMentorPress]);
 
   useEffect(() => {
     syncFavoritesList();
-  }, []);
+  }, [syncFavoritesList]);
 
   // Filter list locally based on search query
   useEffect(() => {
@@ -128,14 +142,7 @@ export default function FavoriteMentorsPage() {
       <FlatList
         data={displayedMentors}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <MentorCard
-            {...item}
-            isFavorite={favoriteIds.includes(item.id)}
-            onFavoritePress={() => handleToggleFavorite(item.id)}
-            onPress={() => navigation.navigate("MentorProfile", { mentor: { ...item, isFavorite: true } })}
-          />
-        )}
+        renderItem={renderMentorItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={

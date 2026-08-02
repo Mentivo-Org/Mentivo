@@ -5,10 +5,7 @@ import { Image } from "expo-image";
 import api from "../../services/api";
 import { MentorEndpoints, CallEndpoints, ConfigEndpoint } from "../../constants/endpoint";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import notifee from "@notifee/react-native";
-import { Linking } from "react-native";
-import DialogBox from "../../components/DialogBox";
+import { storage } from "../../services/storage";
 import { useSettings } from "../../context/SettingsContext";
 
 const { width } = Dimensions.get("window");
@@ -41,16 +38,6 @@ export default function MentorHomePage() {
   const [expandedLevel, setExpandedLevel] = useState<string | null>(null);
   const { settings } = useSettings();
 
-  const [alertVisible, setAlertVisible] = useState(false);
-  const [alertData, setAlertData] = useState<{
-    title: string;
-    message: string;
-    primaryButtonText?: string;
-    onPrimaryPress?: () => void;
-    secondaryButtonText?: string;
-    onSecondaryPress?: () => void;
-  }>({ title: '', message: '' });
-
   const getLevelRateDisplay = (levelName: string) => {
     const key = `price_${levelName}`;
     if (settings && settings[key] !== undefined && settings[key] !== null && settings[key] !== "") {
@@ -78,58 +65,9 @@ export default function MentorHomePage() {
     setExpandedLevel(expandedLevel === levelName ? null : levelName);
   };
 
-  // Check for Overlay permission (Display over other apps)
-  const checkOverlayPermission = async () => {
-    try {
-      console.log('[Overlay Check] Starting overlay permission check...');
-      
-      // If we are not on Android, we do not need overlay permission
-      if (Platform.OS !== 'android') {
-        console.log('[Overlay Check] Skipped check: Platform is not Android');
-        return;
-      }
-
-      // Check if we already prompted the user
-      const hasPrompted = await AsyncStorage.getItem('hasPromptedOverlay');
-      console.log('[Overlay Check] hasPromptedOverlay from storage:', hasPrompted);
-      
-      if (!hasPrompted) {
-        // Safely check power management info if needed, but wrap it
-        try {
-          const powerManagement = await notifee.getPowerManagerInfo();
-          console.log('[Overlay Check] Power management info:', powerManagement);
-        } catch (pmError) {
-          console.warn('[Overlay Check] Error fetching power management info:', pmError);
-        }
-
-        console.log('[Overlay Check] Displaying "Enable Full-Screen Calls" dialog');
-        setAlertData({
-            title: "Enable Full-Screen Calls",
-            message: "To receive incoming calls while using other apps or when your screen is locked, please enable 'Display over other apps' in your system settings.",
-            primaryButtonText: "Open Settings",
-            onPrimaryPress: async () => {
-                console.log('[Overlay Check] User clicked Open Settings');
-                await AsyncStorage.setItem('hasPromptedOverlay', 'true');
-                Linking.openSettings();
-            },
-            secondaryButtonText: "Maybe Later",
-            onSecondaryPress: async () => {
-                console.log('[Overlay Check] User clicked Maybe Later');
-                await AsyncStorage.setItem('hasPromptedOverlay', 'true');
-            }
-        });
-        setAlertVisible(true);
-      } else {
-        console.log('[Overlay Check] Prompt already shown previously');
-      }
-    } catch (err) {
-      console.error('[Overlay Check] Error in checkOverlayPermission:', err);
-    }
-  };
-
   const loadCachedData = async () => {
     try {
-      const cachedStats = await AsyncStorage.getItem("stats");
+      const cachedStats = await storage.getItem("stats");
       if (cachedStats) {
         const parsedData = JSON.parse(cachedStats);
         setData(parsedData);
@@ -153,7 +91,7 @@ export default function MentorHomePage() {
         const newData = statsRes.data;
         setData(newData);
         setIsOnline(newData.profile.isOnline || false);
-        await AsyncStorage.setItem("stats", JSON.stringify(newData));
+        await storage.setItem("stats", JSON.stringify(newData));
       }
 
       if (historyRes.status === 200) {
@@ -189,7 +127,6 @@ export default function MentorHomePage() {
   useEffect(() => {
     loadCachedData();
     fetchData(true); // Background fetch on mount
-    checkOverlayPermission(); // Prompt mentor for full-screen permission
   }, []);
 
   useEffect(() => {
@@ -419,22 +356,6 @@ export default function MentorHomePage() {
             />
         </View>
       </ScrollView>
-      <DialogBox
-        visible={alertVisible}
-        title={alertData.title}
-        message={alertData.message}
-        primaryButtonText={alertData.primaryButtonText}
-        onPrimaryPress={() => {
-            setAlertVisible(false);
-            alertData.onPrimaryPress?.();
-        }}
-        secondaryButtonText={alertData.secondaryButtonText}
-        onSecondaryPress={() => {
-            setAlertVisible(false);
-            alertData.onSecondaryPress?.();
-        }}
-        onClose={() => setAlertVisible(false)}
-      />
     </SafeAreaView>
   );
 }
@@ -456,34 +377,34 @@ function StatCard({ title, amount, subtitle }: any) {
   );
 }
 
+function getPlanBorderColor(lvl: string) {
+    if (lvl === 'Verified') return '#e0e0e0';
+    if (lvl === 'Standard') return '#0077c8';
+    if (lvl === 'Signature') return '#3b4b6b';
+    if (lvl === 'Fellow') return '#0a192f';
+    return '#0077c8';
+}
+
+function getPlanBgColor(lvl: string) {
+    if (lvl === 'Verified') return '#edf5ff';
+    if (lvl === 'Standard') return '#0077c8';
+    if (lvl === 'Signature') return '#3b4b6b';
+    if (lvl === 'Fellow') return '#0a192f';
+    return '#0077c8';
+}
+
+function getPlanTextColor(lvl: string) {
+    if (lvl === 'Verified') return '#0077c8';
+    return 'white';
+}
+
+function getLevelDisplayName(lvl: string) {
+    if (lvl === 'Signature') return 'SIGNATURE';
+    if (lvl === 'Fellow') return 'FELLOW';
+    return lvl.toUpperCase();
+}
+
 function PlanCard({ level, rate, requirements, benefits, active, isExpanded, onToggle }: any) {
-    const getPlanBorderColor = (lvl: string) => {
-        if (lvl === 'Verified') return '#e0e0e0';
-        if (lvl === 'Standard') return '#0077c8';
-        if (lvl === 'Signature') return '#3b4b6b';
-        if (lvl === 'Fellow') return '#0a192f';
-        return '#0077c8';
-    }
-
-    const getPlanBgColor = (lvl: string) => {
-        if (lvl === 'Verified') return '#edf5ff';
-        if (lvl === 'Standard') return '#0077c8';
-        if (lvl === 'Signature') return '#3b4b6b';
-        if (lvl === 'Fellow') return '#0a192f';
-        return '#0077c8';
-    }
-
-    const getPlanTextColor = (lvl: string) => {
-        if (lvl === 'Verified') return '#0077c8';
-        return 'white';
-    }
-
-    const getLevelDisplayName = (lvl: string) => {
-        if (lvl === 'Signature') return 'SIGNATURE';
-        if (lvl === 'Fellow') return 'FELLOW';
-        return lvl.toUpperCase();
-    }
-
     const textColor = getPlanTextColor(level);
 
     // Animation values

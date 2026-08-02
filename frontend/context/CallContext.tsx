@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { DeviceEventEmitter, AppState } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '../services/storage';
 import { joinChannel, leaveChannel, getAgoraEngine, setSpeakerphoneOn } from '../services/agora';
 import api from '../services/api';
 import { socketManager } from '../services/socketManager';
@@ -9,6 +9,7 @@ import { requestMicrophonePermission } from '../services/permissions';
 import { chatSessionManager } from '../services/chat/chatSessionManager';
 import notifee, { AndroidImportance, AndroidForegroundServiceType } from '@notifee/react-native';
 import { navigate, resetToScreen } from '../services/navigation';
+import { Routes } from '../constants/routes';
 
 export type CallStatus = 'connecting' | 'calling' | 'ringing' | 'active' | 'ended';
 
@@ -74,6 +75,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isStartingRef = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
+  const heartbeatInFlightRef = useRef(false);
   const stateRef = useRef({ callId, role, callerName, mentorPhoto, isFreeCall });
 
   // Sync refs to avoid stale closures in event listeners
@@ -108,10 +110,17 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const startHeartbeat = (activeCallId: string) => {
     if (heartbeatRef.current) return;
     heartbeatRef.current = setInterval(async () => {
+      if (heartbeatInFlightRef.current) {
+        console.log('[Heartbeat] Previous heartbeat still in flight, skipping this tick');
+        return;
+      }
+      heartbeatInFlightRef.current = true;
       try {
         await api.patch(CallEndpoints.heartbeat(activeCallId));
       } catch (error) {
         console.error('Heartbeat failed:', error);
+      } finally {
+        heartbeatInFlightRef.current = false;
       }
     }, 10000);
   };
@@ -121,6 +130,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       clearInterval(heartbeatRef.current);
       heartbeatRef.current = null;
     }
+    heartbeatInFlightRef.current = false;
   };
 
   const notifyCallStart = async (activeCallId: string) => {
@@ -316,7 +326,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setInitialToken(token);
       setChannelName(chanName);
 
-      const userJson = await AsyncStorage.getItem('user');
+      const userJson = await storage.getItem('user');
       const user = userJson ? JSON.parse(userJson) : null;
       if (isEndingCallRef.current) return;
       const uid = user?.id || Math.floor(Math.random() * 10000).toString();
@@ -393,24 +403,24 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Navigate accordingly
     if (activeCallId) {
       if (activeRole === 'caller' && finalStatus === 'completed') {
-        resetToScreen('RatingScreen', {
+        resetToScreen(Routes.ratingScreen, {
           callId: activeCallId,
           mentorName: activeCallerName || 'Mentor',
           mentorPhoto: activePhoto || undefined,
         });
       } else {
         if (activeRole === 'caller' && remoteStatus === 'missed' && stateRef.current.isFreeCall) {
-          resetToScreen('Main', {
-            screen: 'Home',
+          resetToScreen(Routes.main, {
+            screen: Routes.home,
             params: { showMissedFreeCallAlert: true }
           });
         } else if (activeRole === 'caller' && remoteStatus === 'rejected') {
-          resetToScreen('Main', {
-            screen: 'Home',
+          resetToScreen(Routes.main, {
+            screen: Routes.home,
             params: { showCallRejectedAlert: true }
           });
         } else {
-          resetToScreen('Main', { screen: 'Home' });
+          resetToScreen(Routes.main, { screen: Routes.home });
         }
       }
     }

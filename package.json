@@ -21,15 +21,5 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@firebase/util",
-      "@prisma/engines",
-      "prisma",
-      "protobufjs",
-      "sharp",
-      "unrs-resolver"
-    ]
   }
 }

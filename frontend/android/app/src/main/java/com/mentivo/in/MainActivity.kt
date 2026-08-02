@@ -1,8 +1,11 @@
 package com.mentivo.`in`
 import expo.modules.splashscreen.SplashScreenManager
 
+import android.app.KeyguardManager
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
@@ -21,6 +24,48 @@ class MainActivity : ReactActivity() {
     SplashScreenManager.registerOnActivity(this)
     // @generated end expo-splashscreen
     super.onCreate(null)
+    handleIncomingCallIntent(intent)
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+    handleIncomingCallIntent(intent)
+  }
+
+  /**
+   * Bypasses the lock screen for WhatsApp-style full-screen incoming call notifications.
+   * Must explicitly clear the flags in the else branch since this activity is singleTask,
+   * so a later unrelated resume of the same instance would otherwise keep bypassing the lock screen.
+   */
+  private fun handleIncomingCallIntent(intent: Intent?) {
+    val isIncomingCall = intent?.getStringExtra("type") == "incoming_call_v2"
+
+    if (isIncomingCall) {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+        setShowWhenLocked(true)
+        setTurnScreenOn(true)
+        val keyguardManager = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
+        keyguardManager.requestDismissKeyguard(this, null)
+      } else {
+        window.addFlags(
+          WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+            WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+        )
+      }
+    } else {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+        setShowWhenLocked(false)
+        setTurnScreenOn(false)
+      } else {
+        window.clearFlags(
+          WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+            WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+        )
+      }
+    }
   }
 
   /**

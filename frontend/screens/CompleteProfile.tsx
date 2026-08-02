@@ -10,7 +10,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
-  Linking,
   Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,7 +19,7 @@ import api from '../services/api';
 import { LoginEndpoints } from '../constants/endpoint';
 import DialogBox from '../components/DialogBox';
 import { useLoading } from '../context/LoadingContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '../services/storage';
 import { useAuth } from '../services/retrieveKeys';
 const CompleteProfile = () => {
   const navigation = useNavigation<any>();
@@ -50,38 +49,6 @@ const CompleteProfile = () => {
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
 
   const {setIsSignedIn, handleLogout, requestNotificationPermissions, setRole, setUser} = useAuth();
-
-  const handleAndroidOverlayPermissionPrompt = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        const hasPrompted = await AsyncStorage.getItem('hasPromptedOverlay');
-        if (!hasPrompted) {
-          setAlertData({
-            title: "Enable Full-Screen Calls",
-            message: "To receive incoming calls while using other apps or when your screen is locked, please enable 'Display over other apps' in your system settings.",
-            primaryButtonText: "Open Settings",
-            onPrimaryPress: async () => {
-              setAlertVisible(false);
-              await AsyncStorage.setItem('hasPromptedOverlay', 'true');
-              Linking.openSettings();
-              setIsSignedIn(true);
-            },
-            secondaryButtonText: "Maybe Later",
-            onSecondaryPress: async () => {
-              setAlertVisible(false);
-              await AsyncStorage.setItem('hasPromptedOverlay', 'true');
-              setIsSignedIn(true);
-            },
-          });
-          setAlertVisible(true);
-          return;
-        }
-      } catch (err) {
-        console.error('Error checking overlay permission:', err);
-      }
-    }
-    setIsSignedIn(true);
-  };
 
   const handleStartFresh = async () => {
     await handleLogout();
@@ -169,10 +136,10 @@ const CompleteProfile = () => {
         setAlertVisible(true);
       } else {
         await setUser(response.data.user);
-        await AsyncStorage.setItem('role', 'mentor');
+        await storage.setItem('role', 'mentor');
         setRole('mentor');
         requestNotificationPermissions();
-        await handleAndroidOverlayPermissionPrompt();
+        setIsSignedIn(true);
       }
     } catch(err: any) {
       setAlertData({title: 'Error', message: err.message || 'Something went wrong'});
@@ -204,14 +171,14 @@ const CompleteProfile = () => {
         setAlertVisible(true);
       } else {
         await setUser(response.data.user);
-        await AsyncStorage.setItem('role', response.data.user.role);
+        await storage.setItem('role', response.data.user.role);
         setRole(response.data.user.role);
         requestNotificationPermissions();
-        await handleAndroidOverlayPermissionPrompt();
+        setIsSignedIn(true);
       }
     }
-    catch(err) {
-      setAlertData({title: 'Error', message: err});
+    catch(err: any) {
+      setAlertData({title: 'Error', message: err.message || 'Something went wrong'});
       setAlertVisible(true);
     }
     finally {

@@ -7,6 +7,7 @@ import ChatPage from './chat/ChatPage';
 import DialogBox from '../components/DialogBox';
 import { useCall } from '../context/CallContext';
 import { resetToScreen } from '../services/navigation';
+import { Routes } from '../constants/routes';
 
 // Figma assets
 const imgIconstackIoProfileCircle = require('../app-assets/profile-circle.svg');
@@ -48,7 +49,7 @@ const InCallScreen = () => {
     React.useCallback(() => {
       if ((!callStatus || callStatus === 'ended') && callId !== activeCallId) {
         console.log('[InCallScreen] Stale screen detected, redirecting to Home');
-        resetToScreen('Main', { screen: 'Home' });
+        resetToScreen(Routes.main, { screen: Routes.home });
       }
     }, [callId, activeCallId, callStatus])
   );

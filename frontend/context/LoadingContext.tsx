@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import LoadingScreen from '../components/LoadingScreen';
 
 interface LoadingContextType {
@@ -13,17 +13,22 @@ export const LoadingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState<string | undefined>(undefined);
 
-  const showLoading = (message?: string) => {
+  const showLoading = useCallback((message?: string) => {
     setLoadingMessage(message);
     setIsLoading(true);
-  };
-  const hideLoading = () => {
+  }, []);
+  const hideLoading = useCallback(() => {
     setIsLoading(false);
     setLoadingMessage(undefined);
-  };
+  }, []);
+
+  const value = useMemo(
+    () => ({ showLoading, hideLoading, isLoading }),
+    [showLoading, hideLoading, isLoading]
+  );
 
   return (
-    <LoadingContext.Provider value={{ showLoading, hideLoading, isLoading }}>
+    <LoadingContext.Provider value={value}>
       {children}
       {isLoading && <LoadingScreen message={loadingMessage} />}
     </LoadingContext.Provider>

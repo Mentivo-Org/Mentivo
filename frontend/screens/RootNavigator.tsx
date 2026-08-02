@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import {
@@ -39,52 +39,29 @@ import StudentAskPage from "./student/StudentAskPage";
 import QuestionDetailScreen from "./student/QuestionDetailScreen";
 import ChatListPage from "./chat/ChatListPage";
 import ChatPage from "./chat/ChatPage";
-import MentorChatListPage from "./mentor/MentorChatListPage";
 import MentorChatPage from "./mentor/MentorChatPage";
 import MentorHomePage from "./mentor/MentorHomePage";
 import MentorSessionsPage from "./mentor/MentorSessionsPage";
 import MentorVerificationPendingPage from "./mentor/MentorVerificationPendingPage";
 import MentorMissedCallsPage from "./mentor/MentorMissedCallsPage";
 import FloatingCallBanner from "../components/FloatingCallBanner";
+import CustomTabBar from "../components/CustomTabBar";
 import SplashScreen from "./SplashScreen";
 import api from "../services/api";
 import {
   LoginEndpoints,
   MentorEndpoints,
-  CallEndpoints,
 } from "../constants/endpoint";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../services/storage";
 import DialogBox from "../components/DialogBox";
-import { Image } from "expo-image";
-import {
-  StyleSheet,
-  View,
-  TouchableOpacity,
-  Animated,
-  AppState,
-  DeviceEventEmitter,
-  Dimensions,
-  Text,
-  Linking,
-} from "react-native";
-import Svg, { Rect, Circle, Defs, Mask } from "react-native-svg";
-import notifee, { EventType, AndroidImportance } from "@notifee/react-native";
-import { getMessaging, onMessage } from "@react-native-firebase/messaging";
-import {
-  navigationRef,
-  navigate,
-  getActiveChatSessionId,
-} from "../services/navigation";
+import { Animated, Linking, Platform } from "react-native";
+import { navigationRef } from "../services/navigation";
 
 import linking from "../linking";
-import { socketManager } from "../services/socketManager";
+import { useNotificationRouter } from "../hooks/useNotificationRouter";
 
 import { agoraChatService } from "../services/chat/agoraChatClient";
 import { chatSessionManager } from "../services/chat/chatSessionManager";
-import ProfileIcon from "../components/ProfileIcon";
-
-const INCOMING_CALL_CHANNEL = "incoming_calls_v2";
-const ONGOING_CALL_CHANNEL = "ongoing_calls";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -100,227 +77,6 @@ interface ProfileInfoParams {
 }
 
 const AnimatedIonicons = Animated.createAnimatedComponent(Ionicons);
-const AnimatedImage = Animated.createAnimatedComponent(Image);
-
-function TabItem({ route, isFocused, onPress, role, userPhotoUrl }: any) {
-  const animatedValue = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
-
-  useEffect(() => {
-    Animated.spring(animatedValue, {
-      toValue: isFocused ? 1 : 0,
-      useNativeDriver: false,
-      friction: 8,
-      tension: 40,
-    }).start();
-  }, [isFocused]);
-
-  const translateY = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-8, -30],
-  });
-
-  const iconContainerBackground = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["transparent", "white"],
-  });
-
-  const iconColor = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#ffffff", "#0077CB"],
-  });
-
-  // 1. Determine which icon asset or component to use
-  let icon;
-  let IsProfileSvg = false;
-
-  if (route.name === "Home") {
-    icon = require("../app-assets/mentoring-icon.svg");
-  } else if (route.name === "Chat") {
-    icon = require("../app-assets/chat-round.svg");
-  } else if (route.name === "Ask") {
-    icon = require("../app-assets/mentor-ask.svg");
-  } else if (route.name === "Profile") {
-    IsProfileSvg = true;
-  }
-
-  let title = "";
-  if (route.name === "Home") {
-    title = "Home";
-  } else if (route.name === "Chat") {
-    title = "Messages";
-  } else if (route.name === "Ask") {
-    title = role === "mentor" ? "Guide" : "Ask";
-  } else if (route.name === "Profile") {
-    title = "Profile";
-  }
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={1}
-      style={tabStyles.tabItem}
-    >
-      <Animated.View
-        style={[
-          tabStyles.animatedWrapper,
-          {
-            transform: [{ translateY }],
-          },
-        ]}
-      >
-        <Animated.View
-          style={[
-            tabStyles.activeCircle,
-            {
-              backgroundColor: "transparent",
-            },
-          ]}
-        />
-        <Animated.View
-          style={[
-            tabStyles.iconContainer,
-            {
-              backgroundColor: iconContainerBackground,
-              elevation: isFocused ? 4 : 0,
-              shadowOpacity: isFocused ? 0.25 : 0,
-            },
-          ]}
-        >
-          {/* 2. Handle the Profile route rendering cleanly */}
-          {route.name === "Profile" ? (
-            userPhotoUrl ? (
-              // If user has uploaded a photo, render the image inside the tab circle
-              <AnimatedImage
-                source={{ uri: userPhotoUrl }}
-                style={[
-                  tabStyles.icon,
-                  tabStyles.profileImage,
-                  { 
-                    borderRadius: 20,
-                    borderWidth: isFocused ? 2 : 0,
-                    borderColor: "#0077CB" 
-                  }
-                ]}
-                contentFit="cover"
-              />
-            ) : (
-              // Fallback to our custom SVG component if no photo is uploaded
-              <ProfileIcon color={isFocused ? "#0077CB" : "#ffffff"} size={26} />
-            )
-          ) : (
-            // Handle all other standard SVG file assets via AnimatedImage
-            <AnimatedImage
-              source={icon}
-              style={tabStyles.icon}
-              tintColor={isFocused ? "#0077CB" : "#ffffff"}
-            />
-          )}
-        </Animated.View>
-      </Animated.View>
-      <Text style={[tabStyles.tabTitle, { color: isFocused ? "#ffffff" : "rgba(255,255,255,0.6)", fontWeight: isFocused ? "bold" : "normal" }]}>
-        {title}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-const PILL_WIDTH_PERCENT = 0.8;
-const PILL_WIDTH = Dimensions.get("window").width * PILL_WIDTH_PERCENT;
-const ITEM_WIDTH = 60;
-const PADDING = 20;
-const USABLE_WIDTH = PILL_WIDTH - 2 * PADDING;
-const GAP = (USABLE_WIDTH - 4 * ITEM_WIDTH) / 5;
-
-const TAB_CENTERS = [
-  PADDING + GAP + ITEM_WIDTH / 2,
-  PADDING + 2 * GAP + 1.5 * ITEM_WIDTH,
-  PADDING + 3 * GAP + 2.5 * ITEM_WIDTH,
-  PADDING + 4 * GAP + 3.5 * ITEM_WIDTH,
-];
-
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-
-function CustomTabBar({ state, descriptors, navigation }: any) {
-  const [circleX, setCircleX] = React.useState(TAB_CENTERS[state.index]);
-  const cutoutX = React.useRef(new Animated.Value(TAB_CENTERS[state.index])).current;
-  const [role, setRole] = React.useState<string | null>(null);
-  const [userPhotoUrl, setUserPhotoUrl] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const userStr = await AsyncStorage.getItem("user");
-        if (userStr) {
-          const user = JSON.parse(userStr);
-          setRole(user.role || null);
-          setUserPhotoUrl(user.photo_url || null);
-        }
-        const storedRole = await AsyncStorage.getItem("role");
-        if (storedRole && !role) {
-          setRole(storedRole);
-        }
-      } catch (err) {
-        console.error("Failed to load user data for tab bar:", err);
-      }
-    };
-    loadUserData();
-  }, []);
-
-  React.useEffect(() => {
-    const listenerId = cutoutX.addListener(({ value }) => setCircleX(value));
-    Animated.spring(cutoutX, {
-      toValue: TAB_CENTERS[state.index],
-      useNativeDriver: false,
-      friction: 8,
-      tension: 40,
-    }).start();
-    return () => cutoutX.removeListener(listenerId);
-  }, [state.index]);
-
-  return (
-    <View style={tabStyles.container}>
-      <View style={tabStyles.pillBackgroundContainer}>
-        <Svg width={PILL_WIDTH} height={60}>
-          <Defs>
-            <Mask id="pillMask">
-              <Rect width={PILL_WIDTH} height={60} rx={30} ry={30} fill="white" />
-              <AnimatedCircle cx={cutoutX} cy={2} r={28} fill="black" />
-            </Mask>
-          </Defs>
-          <Rect width={PILL_WIDTH} height={60} rx={30} ry={30} fill="#0077CB" mask="url(#pillMask)" />
-        </Svg>
-      </View>
-      <View style={tabStyles.pill}>
-        {state.routes.map((route: any, index: number) => {
-          const isFocused = state.index === index;
-
-          const onPress = () => {
-            const event = navigation.emit({
-              type: "tabPress",
-              target: route.key,
-              canPreventDefault: true,
-            });
-
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            }
-          };
-
-          return (
-            <TabItem
-              key={route.name}
-              route={route}
-              isFocused={isFocused}
-              onPress={onPress}
-              role={role}
-              userPhotoUrl={userPhotoUrl}
-            />
-          );
-        })}
-      </View>
-    </View>
-  );
-}
 
 function AuthenticatedTabs() {
   const { role } = useAuth();
@@ -351,7 +107,7 @@ function AuthenticatedTabs() {
 }
 
 export default function RootNavigator() {
-  const { isSignedIn, setIsSignedIn, setRole, role, mentorlevel } = useAuth();
+  const { isSignedIn, setIsSignedIn, setRole, role, mentorlevel, requestNotificationPermissions } = useAuth();
   const [profileData, setProfileData] = useState<ProfileInfoParams>({
     full_name: "",
     email: "",
@@ -360,7 +116,14 @@ export default function RootNavigator() {
     state: "",
   });
   const [initialScreen, setInitialScreen] = useState<string | null>(null);
-  const [alertData, setAlertData] = useState({ title: "", message: "" });
+  const [alertData, setAlertData] = useState<{
+    title: string;
+    message: string;
+    primaryButtonText?: string;
+    onPrimaryPress?: () => void;
+    secondaryButtonText?: string;
+    onSecondaryPress?: () => void;
+  }>({ title: "", message: "" });
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
 
   const setupUncompletedProfile = async (user: any) => {
@@ -396,413 +159,44 @@ export default function RootNavigator() {
     setInitialScreen("CompleteProfile");
   };
 
+  const requestFullScreenIntentAccess = async () => {
+    if (Platform.OS !== "android") return;
+    const hasPrompted = await storage.getItem("hasPromptedFullScreenIntent");
+    if (hasPrompted) return;
+
+    setAlertData({
+      title: "Enable Full-Screen Calls",
+      message:
+        "To see incoming calls over the lock screen like a normal phone call, please allow Mentivo to display full-screen notifications in your system settings.",
+      primaryButtonText: "Open Settings",
+      onPrimaryPress: async () => {
+        setAlertVisible(false);
+        await storage.setItem("hasPromptedFullScreenIntent", "true");
+        Linking.sendIntent("android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT");
+      },
+      secondaryButtonText: "Maybe Later",
+      onSecondaryPress: async () => {
+        setAlertVisible(false);
+        await storage.setItem("hasPromptedFullScreenIntent", "true");
+      },
+    });
+    setAlertVisible(true);
+  };
+
   const setupCompletedProfile = async (user: any) => {
-    await AsyncStorage.setItem("role", user.role);
+    await storage.setItem("role", user.role);
     setRole(user.role);
     setIsSignedIn(true);
     setInitialScreen("");
+    requestNotificationPermissions();
+    requestFullScreenIntentAccess();
   };
 
-  useEffect(() => {
-    if (!isSignedIn) return;
-
-    // 1. Create notifee channels
-    const createChannels = async () => {
-      await notifee.createChannel({
-        id: INCOMING_CALL_CHANNEL,
-        name: "Incoming Calls",
-        importance: AndroidImportance.HIGH,
-        vibration: true,
-        vibrationPattern: [300, 100, 300, 100, 300],
-        sound: "custom_ringtone",
-      });
-
-      await notifee.createChannel({
-        id: ONGOING_CALL_CHANNEL,
-        name: "Ongoing Calls",
-        importance: AndroidImportance.LOW,
-        vibration: false,
-      });
-    };
-    createChannels();
-
-    // 2. Foreground notification press
-    const unsubscribeForeground = notifee.onForegroundEvent(
-      async ({ type, detail }) => {
-        if (type === EventType.PRESS) {
-          const data = detail.notification?.data || {};
-          const {
-            callId,
-            channelName,
-            callerName,
-            callerPhoto,
-            type: notificationType,
-            sessionId,
-            senderId,
-            senderName,
-            questionId,
-          } = data;
-          if (callId) {
-            if (data.screen === "InCall") {
-              navigate("InCall", {
-                callId,
-                channelName,
-                callerName,
-                role: data.role,
-                initialToken: data.initialToken,
-                mentorPhoto: callerPhoto,
-              });
-            } else {
-              navigate("IncomingCall", {
-                callId,
-                channelName,
-                callerName,
-                callerPhoto,
-              });
-            }
-          } else if (notificationType === "chat" || sessionId) {
-            navigate("ChatPage", {
-              partnerId: senderId,
-              partnerName: senderName,
-              sessionId: sessionId,
-            });
-          } else if (notificationType === "question_answered" || questionId) {
-            navigate("QuestionDetail", { questionId: questionId });
-          } else if (data.source === "admin-dashboard") {
-            const { actionType, actionTarget } = data;
-            if (actionType === "EXTERNAL_URL" && actionTarget) {
-              Linking.openURL(actionTarget as string).catch(err => console.error("Failed to open URL:", err));
-            } else if (actionType === "IN_APP" && actionTarget) {
-              navigate(actionTarget as any);
-            }
-          }
-        } else if (type === EventType.ACTION_PRESS) {
-          const data = detail.notification?.data || {};
-          const { callId, channelName, callerName, callerPhoto } = data;
-          const pressActionId = detail.pressAction?.id;
-
-          if (pressActionId === "accept") {
-            console.log("[Foreground Event] User clicked Accept");
-            if (detail.notification?.id) {
-              try {
-                await notifee.cancelNotification(detail.notification.id);
-              } catch (e) {
-                console.error(e);
-              }
-            }
-            navigate("InCall", {
-              callId,
-              channelName,
-              callerName,
-              role: "callee",
-              initialToken: data.initialToken,
-              mentorPhoto: callerPhoto,
-            });
-          } else if (pressActionId === "reject") {
-            console.log("[Foreground Event] User clicked Reject");
-            if (detail.notification?.id) {
-              try {
-                await notifee.cancelNotification(detail.notification.id);
-              } catch (e) {
-                console.error(e);
-              }
-            }
-            try {
-              await api.post(CallEndpoints.reject(callId as string));
-            } catch (e) {
-              console.error(e);
-            }
-          } else if (pressActionId === "end_call") {
-            console.log("[Foreground Event] User clicked End Call");
-            if (detail.notification?.id) {
-              try {
-                await notifee.cancelNotification(detail.notification.id);
-              } catch (e) {
-                console.error(e);
-              }
-            }
-            DeviceEventEmitter.emit("end_active_call");
-          }
-        }
-      },
-    );
-
-    // Foreground FCM handler: show a notifee heads-up notification when a chat
-    // message arrives while the app is open (FCM suppresses its own UI in foreground).
-    const messaging = getMessaging();
-    const unsubscribeFcmForeground = onMessage(
-      messaging,
-      async (remoteMessage) => {
-        console.log(remoteMessage);
-        if (remoteMessage.data?.type === "chat") {
-          const { sessionId, senderId, senderName, title, body } =
-            remoteMessage.data as any;
-          // Don't show a notification if the user is already viewing this chat
-          if (getActiveChatSessionId() === sessionId) return;
-          await notifee.displayNotification({
-            id: `chat_${sessionId}_${Date.now()}`,
-            title: title || senderName || "New Message",
-            body: body || "You have a new message",
-            data: { type: "chat", sessionId, senderId, senderName },
-            android: {
-              channelId: "messages",
-              importance: AndroidImportance.HIGH,
-              pressAction: { id: "default", launchActivity: "default" },
-              asForegroundService: false,
-            },
-          });
-        } else if (remoteMessage.data?.type === "question_answered") {
-          const { questionId, title, body } = remoteMessage.data as any;
-          await notifee.displayNotification({
-            id: `qa_${questionId}_${Date.now()}`,
-            title: title || "New Answer! 💡",
-            body: body || "Someone answered your question.",
-            data: { type: "question_answered", questionId },
-            android: {
-              channelId: "messages",
-              importance: AndroidImportance.HIGH,
-              pressAction: { id: "default", launchActivity: "default" },
-              asForegroundService: false,
-            },
-          });
-        } else if (remoteMessage.data?.type === "incoming_call_v2") {
-          const { callId, channelName, callerName, callerPhoto } = remoteMessage.data as any;
-          navigate("IncomingCall", { callId, channelName, callerName, callerPhoto });
-        } else if (remoteMessage.data?.source === "admin-dashboard") {
-          const { title, body, priority, actionType, actionTarget } = remoteMessage.data as any;
-          await notifee.displayNotification({
-            id: `admin-dash_${Date.now()}`,
-            title: title || "Admin Notification",
-            body: body || "Notification",
-            data: {source: "admin-dashboard", actionType, actionTarget},
-            android: {
-              channelId: "messages",
-              importance: priority==="high" ? AndroidImportance.HIGH : AndroidImportance.DEFAULT,
-              pressAction: {id: "default", launchActivity: "default" }
-            }
-          })
-        } else if (remoteMessage.data?.type === "call_status_changed") {
-          const { callId, status } = remoteMessage.data as any;
-          if (status === 'rejected' || status === 'missed' || status === 'completed' || status === 'cancelled') {
-            await notifee.cancelNotification(callId);
-          }
-          DeviceEventEmitter.emit("call_status_changed_fcm", { callId, status });
-        } else if (remoteMessage.data?.type === "call_cancelled") {
-          const { callId } = remoteMessage.data as any;
-          await notifee.cancelNotification(callId);
-          DeviceEventEmitter.emit("call_status_changed_fcm", { callId, status: 'cancelled' });
-        }
-      },
-    );
-
-    // 3. Cold start - app opened from killed state
-    const checkInitialNotification = async () => {
-      const initialNotification = await notifee.getInitialNotification();
-
-      // NOTE: getInitialNotification() returns { notification, pressAction } at
-      // the TOP level — pressAction is NOT nested inside notification. Verify
-      // this on a real device with the console.log below if routing misbehaves.
-      console.log(
-        "[checkInitialNotification] raw result:",
-        JSON.stringify(initialNotification, null, 2),
-      );
-
-      const data = initialNotification?.notification?.data || {};
-      // pressAction lives at the top level of the result, NOT inside notification.data
-      const pressActionId: string | undefined =
-        (initialNotification as any)?.pressAction?.id;
-
-      const {
-        callId,
-        channelName,
-        callerName,
-        callerPhoto,
-        type: notificationType,
-        sessionId,
-        senderId,
-        senderName,
-        questionId,
-      } = data;
-
-      if (callId) {
-        if (pressActionId === "accept") {
-          // User tapped the Accept action button from killed state.
-          // Skip IncomingCall and go straight to InCall.
-          console.log("[checkInitialNotification] Accept action → navigating to InCall");
-          navigate("InCall", {
-            callId,
-            channelName,
-            callerName,
-            role: "callee",
-            mentorPhoto: callerPhoto,
-          });
-        } else if (pressActionId === "reject") {
-          // User tapped Reject from killed state.
-          // onBackgroundEvent will have already called the reject API and
-          // cancelled the notification in most cases, but the app was still
-          // launched (launchActivity is absent on reject, so this branch is
-          // unlikely — kept as a safety net).
-          console.log("[checkInitialNotification] Reject action → no navigation");
-          // Do NOT navigate anywhere.
-        } else {
-          // pressActionId === 'default' (body tap) OR undefined (edge case).
-          // Navigate to IncomingCall so the user can accept/reject from the screen.
-          console.log(
-            "[checkInitialNotification] Default/body tap (pressActionId=%s) → navigating to IncomingCall",
-            pressActionId,
-          );
-          navigate("IncomingCall", {
-            callId,
-            channelName,
-            callerName,
-            callerPhoto,
-          });
-        }
-      } else if (notificationType === "chat" || sessionId) {
-        navigate("ChatPage", {
-          partnerId: senderId,
-          partnerName: senderName,
-          sessionId: sessionId,
-        });
-      } else if (data.source === "admin-dashboard") {
-        const { actionType, actionTarget } = data;
-        if (actionType === "EXTERNAL_URL" && actionTarget) {
-          Linking.openURL(actionTarget as string).catch(err => console.error("Failed to open URL:", err));
-        } else if (actionType === "IN_APP" && actionTarget) {
-          navigate(actionTarget as any);
-        }
-      } else if (notificationType === "question_answered" || questionId) {
-        navigate("QuestionDetail", { questionId: questionId });
-      }
-
-      // AsyncStorage pendingCallData is still needed for the warm-start /
-      // backgrounded-but-not-killed case (AppState 'active' listener below).
-      // When the app is backgrounded (not killed), onBackgroundEvent fires and
-      // writes pendingCallData. The app then resumes and handleAppStateChange
-      // picks it up. getInitialNotification() returns null in that scenario, so
-      // we still need this roundtrip for that path.
-      // Do NOT check pendingCallData here in addition to getInitialNotification —
-      // both can fire on a cold-start 'accept', causing a double-navigate to
-      // InCall. The onBackgroundEvent for 'accept' writes pendingCallData only
-      // when the app is in the background/killed; on cold-start, getInitialNotification
-      // already handles it, so we skip the AsyncStorage check here.
-    };
-    checkInitialNotification();
-
-    // 3.5 AppState change handler for warm start calls
-    const handleAppStateChange = async (nextAppState: string) => {
-      if (nextAppState === "active") {
-        const pendingCallData = await AsyncStorage.getItem("pendingCallData");
-        if (pendingCallData) {
-          await AsyncStorage.removeItem("pendingCallData");
-          const { callId, channelName, callerName, callerPhoto } =
-            JSON.parse(pendingCallData);
-          console.log("[AppState] Resuming with pending call:", callId);
-          navigate("InCall", {
-            callId,
-            channelName,
-            callerName,
-            role: "callee",
-            mentorPhoto: callerPhoto,
-          });
-          return;
-        }
-
-        const displayed = await notifee.getDisplayedNotifications();
-        const callNotif = displayed.find(n => n.notification.data?.type === 'incoming_call_v2' || !!n.notification.data?.callId);
-
-        if (callNotif && callNotif.notification.data?.callId) {
-          console.log("[AppState] Found active call notification, opening IncomingCall screen");
-          const { callId, channelName, callerName, callerPhoto } = callNotif.notification.data as any;
-          navigate("IncomingCall", {
-            callId,
-            channelName,
-            callerName,
-            callerPhoto,
-          });
-        }
-      }
-    };
-    const appStateSubscription = AppState.addEventListener(
-      "change",
-      handleAppStateChange,
-    );
-
-    // 4. Socket handler - wait for connection
-    const setupSocketHandler = async () => {
-      const waitForSocket = () =>
-        new Promise<void>((resolve) => {
-          if (socketManager.isConnected()) return resolve();
-          let attempts = 0;
-          const check = setInterval(() => {
-            attempts++;
-            if (socketManager.isConnected() || attempts > 25) {
-              clearInterval(check);
-              resolve();
-            }
-          }, 200);
-        });
-
-      await waitForSocket();
-
-      const socketHandler = (data: any) => {
-        if (AppState.currentState === "active") {
-          const { callId, channelName, callerName, callerPhoto } = data;
-          console.log("[Socket] Incoming call received in foreground:", callId);
-          navigate("IncomingCall", {
-            callId,
-            channelName,
-            callerName,
-            callerPhoto,
-          });
-        } else {
-          console.log("[Socket] App background - FCM will handle");
-        }
-      };
-
-      // Global handler to cancel notification when call ends (for foreground app with notification in shade)
-      const globalStatusHandler = (data: any) => {
-        if (
-          data.status === "completed" ||
-          data.status === "rejected" ||
-          data.status === "missed"
-        ) {
-          console.log(
-            "[Socket] Global: Call ended, cancelling notification:",
-            data.callId,
-          );
-          notifee
-            .cancelNotification(data.callId)
-            .catch((err) =>
-              console.error("Failed to cancel notification:", err),
-            );
-        }
-      };
-
-      socketManager.on("incoming_call_v2", socketHandler);
-      socketManager.on("call_status_changed", globalStatusHandler);
-      return () => {
-        socketManager.off("incoming_call_v2", socketHandler);
-        socketManager.off("call_status_changed", globalStatusHandler);
-      };
-    };
-
-    let socketCleanup: (() => void) | undefined;
-    setupSocketHandler().then((cleanup) => {
-      socketCleanup = cleanup;
-    });
-
-    return () => {
-      unsubscribeForeground();
-      unsubscribeFcmForeground();
-      appStateSubscription.remove();
-      if (socketCleanup) socketCleanup();
-    };
-  }, [isSignedIn]);
+  useNotificationRouter(isSignedIn);
 
   useEffect(() => {
     const getInitialScreen = async () => {
-      const accessToken = await AsyncStorage.getItem("accessToken");
+      const accessToken = await storage.getItem("accessToken");
       if (!accessToken) {
         setInitialScreen("Landing");
         return;
@@ -813,7 +207,7 @@ export default function RootNavigator() {
           response.status === 200 &&
           response.data?.user?.isEmailVerified === true
         ) {
-          await AsyncStorage.setItem("verifiedEmail", "true");
+          await storage.setItem("verifiedEmail", "true");
           const user = response.data?.user;
           console.log("user information ", user);
 
@@ -823,7 +217,7 @@ export default function RootNavigator() {
             await setupCompletedProfile(user);
           }
         } else {
-          await AsyncStorage.multiRemove([
+          await storage.multiRemove([
             "accessToken",
             "refreshToken",
             "user",
@@ -833,7 +227,7 @@ export default function RootNavigator() {
         }
       } catch (err) {
         console.warn("Failed to fetch user profile on cold start (using cached session):", err);
-        const userJson = await AsyncStorage.getItem("user");
+        const userJson = await storage.getItem("user");
         if (userJson) {
           try {
             const user = JSON.parse(userJson);
@@ -848,7 +242,7 @@ export default function RootNavigator() {
           }
         }
 
-        await AsyncStorage.multiRemove([
+        await storage.multiRemove([
           "accessToken",
           "refreshToken",
           "user",
@@ -911,10 +305,6 @@ export default function RootNavigator() {
             />
             <AuthStack.Screen name="ChatPage" component={ChatPage} />
             <AuthStack.Screen
-              name="MentorChatListPage"
-              component={MentorChatListPage}
-            />
-            <AuthStack.Screen
               name="MentorChatPage"
               component={MentorChatPage}
             />
@@ -961,6 +351,10 @@ export default function RootNavigator() {
         <DialogBox
           title={alertData.title}
           message={alertData.message}
+          primaryButtonText={alertData.primaryButtonText}
+          onPrimaryPress={alertData.onPrimaryPress}
+          secondaryButtonText={alertData.secondaryButtonText}
+          onSecondaryPress={alertData.onSecondaryPress}
           onClose={() => setAlertVisible(false)}
           visible={alertVisible}
         />
@@ -969,80 +363,3 @@ export default function RootNavigator() {
     </>
   );
 }
-
-const tabStyles = StyleSheet.create({
-  container: {
-    position: "absolute",
-    bottom: 30,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    backgroundColor: "transparent",
-    elevation: 0,
-  },
-  pill: {
-    flexDirection: "row",
-    backgroundColor: "transparent",
-    width: PILL_WIDTH,
-    paddingHorizontal: 20,
-    height: 60,
-    justifyContent: "space-evenly",
-    alignItems: "center",
-  },
-  pillBackgroundContainer: {
-    position: "absolute",
-    width: PILL_WIDTH,
-    height: 60,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 8,
-  },
-  tabTitle: {
-    fontSize: 10,
-    position: 'absolute',
-    bottom: 4,
-    width: 60,
-    textAlign: 'center',
-  },
-  tabItem: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: 60,
-    height: 60,
-  },
-  animatedWrapper: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: 60,
-    height: 60,
-  },
-  activeCircle: {
-    width: 60,
-    height: 30,
-    marginTop: 25,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    position: "absolute",
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 2,
-  },
-  icon: {
-    width: 26,
-    height: 26,
-  },
-  profileImage: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-  },
-});

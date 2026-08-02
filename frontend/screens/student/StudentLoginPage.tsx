@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,14 +8,14 @@ import {
   Alert,
   Linking,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import * as WebBrowser from 'expo-web-browser';
 import api from '../../services/api';
 import { LoginEndpoints, PartnerEndpoints } from '../../constants/endpoint';
 import { useAuth } from '../../services/retrieveKeys';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '../../services/storage';
 import { useLoading } from '../../context/LoadingContext';
 import { authStyles } from '../../styles/authStyles';
 
@@ -37,9 +37,6 @@ const StudentLoginPage = () => {
 
   const [alertData, setAlertData] = useState({title: '', message: ''});
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
-
-  const route=useRoute<any>();
-  const {referral_id} = route.params ?? {};
 
   const openBrowser = async (url: string) => {
     try {
@@ -103,10 +100,10 @@ const StudentLoginPage = () => {
 
       if (response.status === 200 || response.status === 201) {
         const { accessToken, refreshToken, user } = response.data;
-        await AsyncStorage.setItem('accessToken', accessToken);
-        await AsyncStorage.setItem('refreshToken', refreshToken);
+        await storage.setItem('accessToken', accessToken);
+        await storage.setItem('refreshToken', refreshToken);
         await setUser(user);
-        await AsyncStorage.setItem('role', response.data.user.role);
+        await storage.setItem('role', response.data.user.role);
         setRole(response.data.user.role)
         requestNotificationPermissions();
         setIsSignedIn(true);
@@ -121,24 +118,6 @@ const StudentLoginPage = () => {
       hideLoading();
     }
   };
-
-  useEffect(()=> {
-    const loadReferral = async () => {
-      if(referral_id) {
-        const past_referral_id = await AsyncStorage.getItem('referral_code');
-        await AsyncStorage.setItem('referral_code', referral_id);
-        if(past_referral_id) {
-          setAlertData({title: "Referral code successfully updated", message: "Please login to activate the referral code"});
-          setAlertVisible(true);
-        }
-        setAlertData({title: "Referral code successfully applied", message: "Please login to activate the referral code"});
-        setAlertVisible(true);
-      }
-    }
-
-    loadReferral();
-
-  },[])
 
   return (
     <AuthLayout>
@@ -195,7 +174,7 @@ const StudentLoginPage = () => {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('StudentSignUp', { referral_id })}>
+          <TouchableOpacity onPress={() => navigation.navigate('StudentSignUp')}>
             <Text style={styles.signUpText}>Sign Up</Text>
           </TouchableOpacity>
         </View>

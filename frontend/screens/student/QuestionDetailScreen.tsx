@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import Ionicons from "@react-native-vector-icons/ionicons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../../services/storage";
 import api from "../../services/api";
 import { AskEndpoints, CallEndpoints, WalletEndpoints } from "../../constants/endpoint";
 import DialogBox from "../../components/DialogBox";
@@ -65,7 +65,7 @@ export default function QuestionDetailScreen() {
   useEffect(() => {
     const getUserInfo = async () => {
       try {
-        const userStr = await AsyncStorage.getItem("user");
+        const userStr = await storage.getItem("user");
         if (userStr) {
           const user = JSON.parse(userStr);
           setUserId(user.id || user.uid || "");

@@ -56,22 +56,27 @@ try {
 
   if (remoteMessage.data?.source === 'admin-dashboard') {
     console.log('>>> DETECTED: Push notification from Admin Dashboard');
-    const { title, body, priority, actionType, actionTarget } = remoteMessage.data;
     
-    await notifee.displayNotification({
-      id: `admin-dash_${Date.now()}`,
-      title: title || 'Admin Notification',
-      body: body || 'Notification',
-      data: { source: 'admin-dashboard', actionType, actionTarget },
-      android: {
-        channelId: 'messages',
-        importance: priority === 'high' ? AndroidImportance.HIGH : AndroidImportance.DEFAULT,
-        pressAction: {
-          id: 'default',
-          launchActivity: 'default',
+    // If a notification payload exists, the OS handles displaying it in the system tray.
+    // We only need to display it manually if it's a data-only message.
+    if (!remoteMessage.notification) {
+      const { title, body, priority, actionType, actionTarget } = remoteMessage.data;
+      
+      await notifee.displayNotification({
+        id: `admin-dash_${Date.now()}`,
+        title: title || 'Admin Notification',
+        body: body || 'Notification',
+        data: { source: 'admin-dashboard', actionType, actionTarget },
+        android: {
+          channelId: 'messages',
+          importance: priority === 'high' ? AndroidImportance.HIGH : AndroidImportance.DEFAULT,
+          pressAction: {
+            id: 'default',
+            launchActivity: 'default',
+          },
         },
-      },
-    });
+      });
+    }
   }
 
   if (remoteMessage.data?.type === 'ping') {
@@ -120,7 +125,7 @@ try {
         id: callId, // Use callId as notification ID to allow easy cancellation
         title: `Incoming call from ${callerName}`,
         body: 'Tap to answer',
-        data: { callId, channelName, callerName, callerPhoto },
+        data: { type: 'incoming_call_v2', callId, channelName, callerName, callerPhoto },
         android: {
           channelId: 'incoming_calls_v2',
           importance: AndroidImportance.HIGH,

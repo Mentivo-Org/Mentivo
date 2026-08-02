@@ -1,17 +1,12 @@
-import React, { useCallback, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Keyboard,
   Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
@@ -20,34 +15,19 @@ import { LoginEndpoints } from '../../constants/endpoint';
 import { useAuth } from '../../services/retrieveKeys';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLoading } from '../../context/LoadingContext';
+import { authStyles } from '../../styles/authStyles';
 
+import { AuthLayout } from '../../components/AuthLayout';
 import DialogBox from '../../components/DialogBox';
 
 const MentorLoginPage = () => {
   const navigation = useNavigation<any>();
-  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
-
-  useEffect(() => {
-    const showSubscription = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => setKeyboardVisible(true)
-    );
-    const hideSubscription = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardVisible(false)
-    );
-
-    return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
-  }, []);
   const [email, setEmail] = useState("");
 
 
   const handleEmailChange = useCallback((text: string) => setEmail(text), []);
 
-  const { setIsSignedIn, setRole, requestNotificationPermissions, setUser } = useAuth();
+  const { setIsSignedIn, setRole, setUser } = useAuth();
   const {showLoading, hideLoading}  = useLoading();
 
   const [alertData, setAlertData] = useState({title: '', message: ''});
@@ -93,116 +73,55 @@ const MentorLoginPage = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : (isKeyboardVisible ? 'height' : undefined)}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === 'android' ? 70 : 0}
-      >
-        <ScrollView 
-          contentContainerStyle={styles.container} 
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+    <AuthLayout>
+      <View style={authStyles.card}>
+        <Text style={authStyles.title}>Welcome Back</Text>
+        <Text style={authStyles.subtitle}>Provide expert guidance from the IIT community</Text>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>College Email ID</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="name@domain.com"
+            placeholderTextColor="#757684"
+            value={email}
+            onChangeText={handleEmailChange}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </View>
+
+        <TouchableOpacity
+          style={styles.signInButton}
+          onPress={handleLogin}
         >
-          <View style={styles.header}>
-             <Image source={require('../../app-assets/logo.svg')} style={styles.logo} />
-          </View>
+          <Text style={styles.signInText}>Sign In</Text>
+        </TouchableOpacity>
 
-          <View style={styles.card}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Provide expert guidance from the IIT community</Text>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Don't have an account? </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('MentorSignUp')}>
+            <Text style={styles.signUpText}>Sign Up</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>College Email ID</Text>
-              <TextInput 
-                style={styles.input} 
-                placeholder="name@domain.com" 
-                placeholderTextColor="#757684"
-                value={email}
-                onChangeText={handleEmailChange}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
-
-
-
-            <TouchableOpacity 
-              style={styles.signInButton}
-              onPress={handleLogin}
-            >
-              <Text style={styles.signInText}>Sign In</Text>
-            </TouchableOpacity>
-
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>Don't have an account? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('MentorSignUp')}>
-                <Text style={styles.signUpText}>Sign Up</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.legalFooter}>
-            <Text style={styles.legalText}>By signing in, you agree to our </Text>
-            <TouchableOpacity onPress={() => openBrowser('https://www.mentivo.in/terms')}>
-              <Text style={[styles.legalText, styles.underline]}>Terms of Use</Text>
-            </TouchableOpacity>
-            <Text style={styles.legalText}> and </Text>
-            <TouchableOpacity onPress={() => openBrowser('https://www.mentivo.in/privacy')}>
-              <Text style={[styles.legalText, styles.underline]}>Privacy Policy</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      <View style={styles.legalFooter}>
+        <Text style={styles.legalText}>By signing in, you agree to our </Text>
+        <TouchableOpacity onPress={() => openBrowser('https://www.mentivo.in/terms')}>
+          <Text style={[styles.legalText, styles.underline]}>Terms of Use</Text>
+        </TouchableOpacity>
+        <Text style={styles.legalText}> and </Text>
+        <TouchableOpacity onPress={() => openBrowser('https://www.mentivo.in/privacy')}>
+          <Text style={[styles.legalText, styles.underline]}>Privacy Policy</Text>
+        </TouchableOpacity>
+      </View>
       <DialogBox visible={alertVisible} onClose={()=>setAlertVisible(false)} title={alertData.title} message={alertData.message}/>
-    </SafeAreaView>
+    </AuthLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  container: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-  },
-  header: {
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  logo: {
-    width: 40,
-    height: 42,
-  },
-  card: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: '#c4c5d5',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 1,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#0b1c30',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#444653',
-    textAlign: 'center',
-    marginBottom: 32,
-  },
   socialButton: {
     flexDirection: 'row',
     alignItems: 'center',
