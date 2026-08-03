@@ -106,10 +106,6 @@ jobs:
         run: ln -s frontend/node_modules node_modules
         working-directory: ${{ github.workspace }}
 
-      - name: Run Expo Prebuild
-        working-directory: ./frontend
-        run: npx expo prebuild --platform android
-
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
