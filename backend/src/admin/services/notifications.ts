@@ -10,25 +10,24 @@ export async function sendPushNotification(tokens: string[], title: string, body
       priority
     };
 
+    // Data-only payload: the client is the sole display owner. Including a
+    // `notification` block would make the OS a second display owner and cause
+    // duplicate notifications when the app changes foreground state mid-delivery.
+    // `android.priority` must be 'high' regardless of the admin's chosen priority —
+    // Android 8+ background limits refuse to start the RN headless task otherwise,
+    // and nothing gets displayed. The admin's choice travels in data.priority and
+    // selects the notification channel on the client.
     if (tokens.length === 1) {
       await admin.messaging().send({
         token: tokens[0],
-        notification: { title, body },
         data: { ...payloadData, title, body },
-        android: { 
-          priority,
-          notification: { channelId: 'messages' }
-        }
+        android: { priority: 'high' }
       });
     } else {
       await admin.messaging().sendEachForMulticast({
         tokens,
-        notification: { title, body },
         data: { ...payloadData, title, body },
-        android: { 
-          priority,
-          notification: { channelId: 'messages' }
-        }
+        android: { priority: 'high' }
       });
     }
   } catch (error) {

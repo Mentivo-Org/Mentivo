@@ -186,6 +186,8 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
           body: `Connected with ${currentCallerName || 'Mentorship Session'}`,
           android: {
             channelId: ONGOING_CALL_CHANNEL,
+            smallIcon: 'notification_icon',
+            color: '#0077CB',
             ongoing: true,
             asForegroundService: true,
             foregroundServiceTypes: [AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_MICROPHONE],

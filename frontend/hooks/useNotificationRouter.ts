@@ -11,6 +11,7 @@ import { Routes } from "../constants/routes";
 
 const INCOMING_CALL_CHANNEL = "incoming_calls_v2";
 const ONGOING_CALL_CHANNEL = "ongoing_calls";
+const QUIET_CHANNEL = "messages_quiet";
 
 /**
  * Wires up all push/notification/call-routing sources (Notifee foreground events,
@@ -163,6 +164,8 @@ export function useNotificationRouter(isSignedIn: boolean) {
             android: {
               channelId: "messages",
               importance: AndroidImportance.HIGH,
+              smallIcon: "notification_icon",
+              color: "#0077CB",
               pressAction: { id: "default", launchActivity: "default" },
               asForegroundService: false,
             },
@@ -177,6 +180,8 @@ export function useNotificationRouter(isSignedIn: boolean) {
             android: {
               channelId: "messages",
               importance: AndroidImportance.HIGH,
+              smallIcon: "notification_icon",
+              color: "#0077CB",
               pressAction: { id: "default", launchActivity: "default" },
               asForegroundService: false,
             },
@@ -185,15 +190,18 @@ export function useNotificationRouter(isSignedIn: boolean) {
           const { callId, channelName, callerName, callerPhoto } = remoteMessage.data as any;
           navigate(Routes.incomingCall, { callId, channelName, callerName, callerPhoto });
         } else if (remoteMessage.data?.source === "admin-dashboard") {
+          // Mirrors index.js: skip if the OS already owns the display.
+          if (remoteMessage.notification) return;
           const { title, body, priority, actionType, actionTarget } = remoteMessage.data as any;
           await notifee.displayNotification({
-            id: `admin-dash_${Date.now()}`,
-            title: remoteMessage.notification?.title || title || "Admin Notification",
-            body: remoteMessage.notification?.body || body || "Notification",
+            id: `admin-dash_${remoteMessage.messageId || Date.now()}`,
+            title: title || "Admin Notification",
+            body: body || "Notification",
             data: {source: "admin-dashboard", actionType, actionTarget},
             android: {
-              channelId: "messages",
-              importance: priority==="high" ? AndroidImportance.HIGH : AndroidImportance.DEFAULT,
+              channelId: priority === "high" ? "messages" : QUIET_CHANNEL,
+              smallIcon: "notification_icon",
+              color: "#0077CB",
               pressAction: {id: "default", launchActivity: "default" }
             }
           })
