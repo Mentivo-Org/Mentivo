@@ -13,6 +13,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { storage } from '../services/storage';
+import { saveReferralCode } from '../services/referral';
 import { PartnerEndpoints, MentorEndpoints, websiteUrl } from '../constants/endpoint';
 import api from '../services/api';
 import { useLoading } from '../context/LoadingContext';
@@ -55,6 +56,10 @@ const LandingPage = () => {
     const validateReferral = async () => {
       const { referral_id } = route.params ?? {};
       if (referral_id) {
+        // Persist before validating: a network failure here would otherwise discard
+        // the code for good, since the URL is gone by the next app open. An unknown
+        // code is harmless — the backend resolves it to null at signup.
+        await saveReferralCode(referral_id, { force: true });
         showLoading("Verifying referral code...");
         try {
           const response = await api.post(PartnerEndpoints.validate, { code: referral_id });

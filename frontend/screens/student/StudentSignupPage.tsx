@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -12,12 +12,11 @@ import {
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import * as Clipboard from 'expo-clipboard';
 import * as WebBrowser from 'expo-web-browser';
-import * as Application from 'expo-application';
 import api from '../../services/api';
 import { LoginEndpoints, PartnerEndpoints } from '../../constants/endpoint';
 import { storage } from '../../services/storage';
+import { getStoredReferralCode, saveReferralCode } from '../../services/referral';
 import { useLoading } from '../../context/LoadingContext';
 
 import { AuthLayout } from '../../components/AuthLayout';
@@ -127,10 +126,12 @@ const StudentSignupPage = () => {
         } catch (err) {
           console.error("Error in checkReferralSources:", err);
         }
+        const storedCode = await getStoredReferralCode();
+        if (storedCode) setReferralCode(storedCode);
       };
 
-      checkReferralSources();
-    }, [referralCode])
+      resolveReferralCode();
+    }, [route.params])
   );
 
   // No password needed for OTP flow
