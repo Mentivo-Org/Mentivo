@@ -17,10 +17,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { useNavigation } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../../services/storage";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import api from "../../services/api";
 import { AskEndpoints, CallEndpoints, WalletEndpoints } from "../../constants/endpoint";
+import { getRelativeDay, voteOnAnswer } from "../../services/askUtils";
 import DialogBox from "../../components/DialogBox";
 import { useLoading } from "../../context/LoadingContext";
 import useSWR, { mutate } from "swr";
@@ -85,7 +86,7 @@ export default function StudentAskPage() {
   useEffect(() => {
     const getUserId = async () => {
       try {
-        const userStr = await AsyncStorage.getItem("user");
+        const userStr = await storage.getItem("user");
         if (userStr) {
           const user = JSON.parse(userStr);
           setUserId(user.id || user.uid || "");
@@ -245,35 +246,7 @@ export default function StudentAskPage() {
   };
 
   // Upvote/Downvote handling
-  const handleVote = async (answerId: string, voteType: "UP" | "DOWN") => {
-    try {
-      const res = await api.post(AskEndpoints.voteAnswer(answerId), { voteType });
-      if (res.status === 200) {
-        const updatedAnswer = res.data;
-        // Update the list of questions locally
-        setQuestions((prev) =>
-          prev.map((q) => {
-            const updatedAnswers = q.answers.map((a: any) =>
-              a.id === answerId ? { ...a, upvotes: updatedAnswer.upvotes, downvotes: updatedAnswer.downvotes } : a
-            );
-            return { ...q, answers: updatedAnswers };
-          })
-        );
-      }
-    } catch (err) {
-      console.error("Failed to vote:", err);
-    }
-  };
-
-  const getRelativeDay = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    if (diffDays <= 1) return "Today";
-    if (diffDays === 2) return "Yesterday";
-    return `${diffDays} days ago`;
-  };
+  const handleVote = (answerId: string, voteType: "UP" | "DOWN") => voteOnAnswer(answerId, voteType, setQuestions);
 
   const renderQuestionItem = ({ item }: { item: any }) => {
     const isOwner = item.studentId === userId;

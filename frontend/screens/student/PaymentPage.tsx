@@ -12,7 +12,7 @@ import * as WebBrowser from "expo-web-browser";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { useNavigation } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../../services/storage";
 import api from "../../services/api";
 import { WalletEndpoints, websiteUrl } from "../../constants/endpoint";
 import DialogBox from "../../components/DialogBox";
@@ -34,7 +34,7 @@ export default function PaymentPage() {
 
   useEffect(() => {
     const loadUser = async () => {
-      const userData = await AsyncStorage.getItem("user");
+      const userData = await storage.getItem("user");
       if (userData) {
         setUser(JSON.parse(userData));
       }
@@ -44,8 +44,8 @@ export default function PaymentPage() {
 
   const handleAddCredits = async () => {
     try {
-      const accessToken = await AsyncStorage.getItem("accessToken");
-      const refreshToken = await AsyncStorage.getItem("refreshToken");
+      const accessToken = await storage.getItem("accessToken");
+      const refreshToken = await storage.getItem("refreshToken");
 
       if (!accessToken) {
         setAlertData({ title: "Error", message: "Failed to authenticate session. Please log in again." });

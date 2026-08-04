@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Keyboard, StatusBar, ScrollView } from 'react-native';
 import { Skeleton } from '../../components/Skeleton';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -301,6 +301,16 @@ const ChatPage = (props: any) => {
     }
   };
 
+  const renderMessageItem = useCallback(({ item }: { item: any }) => (
+    <MessageBubble
+      content={item.content}
+      isSender={item.isSender}
+      senderName={item.senderName}
+      timestamp={item.timestamp}
+      status={item.status}
+    />
+  ), []);
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
@@ -408,15 +418,7 @@ const ChatPage = (props: any) => {
             ref={flatListRef}
             data={messages}
             keyExtractor={item => item.id}
-            renderItem={({ item }) => (
-              <MessageBubble 
-                content={item.content}
-                isSender={item.isSender}
-                senderName={item.senderName}
-                timestamp={item.timestamp}
-                status={item.status}
-              />
-            )}
+            renderItem={renderMessageItem}
             contentContainerStyle={styles.flatListContent}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
           />

@@ -49,7 +49,6 @@ const ResetPassword = () => {
     }
 
     showLoading("Resetting password...");
-    console.log("Access Token",accessToken)
     try {
       const response = await api.post(ForgotPassEndpoints.resetPass, {accessToken, newPassword: newPasswordRef.current});
       if(response.status===200) {

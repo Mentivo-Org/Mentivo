@@ -42,6 +42,16 @@ async function setupNotifee() {
     vibration: true,
     sound: 'default',
   });
+  // On Android 8+ importance is a channel property, not a per-notification one,
+  // so a quieter channel is the only way to honour the admin dashboard's
+  // "Normal Priority" option.
+  await notifee.createChannel({
+    id: 'messages_quiet',
+    name: 'Announcements',
+    importance: AndroidImportance.DEFAULT,
+    vibration: true,
+    sound: 'default',
+  });
 }
 
 setupNotifee().catch(e => console.error('[Notifee Setup Error]', e));
@@ -56,22 +66,37 @@ try {
 
   if (remoteMessage.data?.source === 'admin-dashboard') {
     console.log('>>> DETECTED: Push notification from Admin Dashboard');
-    const { title, body, priority, actionType, actionTarget } = remoteMessage.data;
     
-    await notifee.displayNotification({
-      id: `admin-dash_${Date.now()}`,
-      title: title || 'Admin Notification',
-      body: body || 'Notification',
-      data: { source: 'admin-dashboard', actionType, actionTarget },
-      android: {
-        channelId: 'messages',
-        importance: priority === 'high' ? AndroidImportance.HIGH : AndroidImportance.DEFAULT,
-        pressAction: {
-          id: 'default',
-          launchActivity: 'default',
-        },
-      },
-    });
+    // The backend sends admin notifications as data-only, so we are the sole
+    // display owner. The guard stays as a safety net: if a `notification` block
+    // ever comes back, the OS displays it and we must not display a second copy.
+    if (!remoteMessage.notification) {
+      const { title, body, priority, actionType, actionTarget } = remoteMessage.data;
+
+      try {
+        await notifee.displayNotification({
+          // Stable id derived from the FCM message id — FCM is at-least-once, and a
+          // redelivery must replace the existing notification rather than stack.
+          id: `admin-dash_${remoteMessage.messageId || Date.now()}`,
+          title: title || 'Admin Notification',
+          body: body || 'Notification',
+          data: { source: 'admin-dashboard', actionType, actionTarget },
+          android: {
+            channelId: priority === 'high' ? 'messages' : 'messages_quiet',
+            smallIcon: 'notification_icon',
+            color: '#0077CB',
+            pressAction: {
+              id: 'default',
+              launchActivity: 'default',
+            },
+          },
+        });
+      } catch (e) {
+        // The failure mode here is a *silent* non-display; surface it.
+        console.error('[Admin Notification Display Error]', e);
+        crashlytics().recordError(e);
+      }
+    }
   }
 
   if (remoteMessage.data?.type === 'ping') {
@@ -103,6 +128,8 @@ try {
         channelId: 'messages',
         importance: AndroidImportance.HIGH,
         priority: 'high',
+        smallIcon: 'notification_icon',
+        color: '#0077CB',
         pressAction: {
           id: 'default',
           launchActivity: 'default',
@@ -120,11 +147,13 @@ try {
         id: callId, // Use callId as notification ID to allow easy cancellation
         title: `Incoming call from ${callerName}`,
         body: 'Tap to answer',
-        data: { callId, channelName, callerName, callerPhoto },
+        data: { type: 'incoming_call_v2', callId, channelName, callerName, callerPhoto },
         android: {
           channelId: 'incoming_calls_v2',
           importance: AndroidImportance.HIGH,
           priority: 'high',
+          smallIcon: 'notification_icon',
+          color: '#0077CB',
           category: 'call',
           autoCancel: false,
           loopSound: true,

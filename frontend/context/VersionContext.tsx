@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Linking } from 'react-native';
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
@@ -81,6 +81,8 @@ export const VersionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setDialogVisible(false);
   };
 
+  const value = useMemo(() => ({ apiVersion }), [apiVersion]);
+
   if (!isReady && dialogType !== 'force') {
     return (
       <View style={styles.loadingContainer}>
@@ -90,7 +92,7 @@ export const VersionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }
 
   return (
-    <VersionContext.Provider value={{ apiVersion }}>
+    <VersionContext.Provider value={value}>
       {children}
       
       {dialogType === 'force' && (

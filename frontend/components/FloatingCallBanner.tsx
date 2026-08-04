@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native
 import { Image } from 'expo-image';
 import { useCall } from '../context/CallContext';
 import { navigate } from '../services/navigation';
+import { Routes } from '../constants/routes';
 
 export default function FloatingCallBanner() {
   const {
@@ -78,7 +79,7 @@ export default function FloatingCallBanner() {
   };
 
   const handleExpand = () => {
-    navigate('InCall', {
+    navigate(Routes.inCall, {
       callId,
       channelName,
       callerName,

@@ -10,10 +10,10 @@ interface MessageBubbleProps {
   status?: 'sending' | 'sent' | 'delivered' | 'read' | 'blocked' | 'failed';
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ 
-  content, 
-  isSender, 
-  senderName, 
+const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
+  content,
+  isSender,
+  senderName,
   timestamp,
   status = 'sent'
 }) => {
@@ -43,7 +43,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       </View>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   bubbleContainer: {

@@ -1,18 +1,17 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, RefreshControl, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DialogBox from '../../components/DialogBox';
 import { Image } from 'expo-image';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from "../../services/retrieveKeys";
 import api from '../../services/api';
-import { MentorEndpoints, ProfilePictureEndpoints } from '../../constants/endpoint';
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as ImagePicker from 'expo-image-picker';
+import { MentorEndpoints } from '../../constants/endpoint';
+import { storage } from "../../services/storage";
+import { useProfilePictureUpload } from '../../hooks/useProfilePictureUpload';
+import ImageViewerModal from '../../components/ImageViewerModal';
 import useSWR, { mutate } from 'swr';
 import { Skeleton } from '../../components/Skeleton';
-
-const { width, height } = Dimensions.get("window");
 
 const getLevelIcon = (lvl?: string) => {
   const normLvl = lvl?.toLowerCase();
@@ -59,7 +58,6 @@ const fetcher = (url: string) => api.get(url).then(res => res.data);
 export default function MentorProfilePage() {
   const navigation = useNavigation<any>();
   const { handleLogout } = useAuth();
-  const [uploading, setUploading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const { data: statsData, error: profileError, isLoading } = useSWR(MentorEndpoints.getMeStats, fetcher);
@@ -90,7 +88,7 @@ export default function MentorProfilePage() {
       setTempUpi(mentorData.upiId || "");
       setTempYear(mentorData.year ? mentorData.year.toString() : "");
       setTempExpertise(mentorData.expertise || "");
-      AsyncStorage.setItem("stats", JSON.stringify(statsData)).catch(err => console.error(err));
+      storage.setItem("stats", JSON.stringify(statsData)).catch(err => console.error(err));
     }
   }, [mentorData, statsData]);
 
@@ -100,55 +98,23 @@ export default function MentorProfilePage() {
     setRefreshing(false);
   };
 
-  const handlePickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      setAlertData({ title: 'Permission Denied', message: 'We need camera roll permissions to change your profile picture.' });
+  const { uploading, handlePickImage } = useProfilePictureUpload({
+    onUploaded: async () => {
+      await mutate(MentorEndpoints.getMeStats); // Refetch profile
+    },
+    onSuccess: () => {
+      setAlertData({ title: 'Success', message: 'Profile picture updated successfully' });
       setAlertVisible(true);
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0].uri) {
-      uploadImage(result.assets[0].uri);
-    }
-  };
-
-  const uploadImage = async (uri: string) => {
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      const filename = uri.split('/').pop() || 'profile.jpg';
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : `image/jpeg`;
-
-      formData.append('profilePic', { uri, name: filename, type } as any);
-
-      const response = await api.post(ProfilePictureEndpoints.uploadProfilePicture, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      if (response.status === 200 && response.data?.photo_url) {
-        await mutate(MentorEndpoints.getMeStats); // Refetch profile
-        setAlertData({ title: 'Success', message: 'Profile picture updated successfully' });
-        setAlertVisible(true);
-      }
-    } catch (error) {
-      console.error('Image upload failed:', error);
+    },
+    onError: () => {
       setAlertData({ title: 'Error', message: 'Failed to upload profile picture' });
       setAlertVisible(true);
-    } finally {
-      setUploading(false);
-    }
-  };
+    },
+    onPermissionDenied: () => {
+      setAlertData({ title: 'Permission Denied', message: 'We need camera roll permissions to change your profile picture.' });
+      setAlertVisible(true);
+    },
+  });
 
   const handleUpdateProfile = async (field: 'upiId' | 'year' | 'expertise', val: string, setSaving: (v: boolean) => void, setIsEditing: (v: boolean) => void) => {
     setSaving(true);
@@ -513,44 +479,6 @@ function DetailsSection({
   );
 }
 
-interface ImageViewerModalProps {
-  visible: boolean;
-  profilePic: any;
-  onClose: () => void;
-}
-
-function ImageViewerModal({ visible, profilePic, onClose }: ImageViewerModalProps) {
-  return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <View style={styles.viewerContainer}>
-        <TouchableOpacity 
-          style={styles.viewerOverlay} 
-          activeOpacity={1} 
-          onPress={onClose} 
-        />
-        <View style={styles.viewerContent}>
-          <Image 
-            source={profilePic} 
-            style={styles.fullImage} 
-            contentFit="contain"
-          />
-          <TouchableOpacity 
-            style={styles.closeViewerBtn} 
-            onPress={onClose}
-          >
-            <Image source={require("../../app-assets/x-icon.svg")} style={styles.closeIcon} tintColor="white" />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -770,38 +698,5 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-  },
-  viewerContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  viewerOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  viewerContent: {
-    width: width,
-    height: height * 0.7,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fullImage: {
-    width: '100%',
-    height: '100%',
-  },
-  closeViewerBtn: {
-    position: 'absolute',
-    top: -40,
-    right: 20,
-    padding: 10,
-  },
-  closeIcon: {
-    width: 24,
-    height: 24,
   },
 });

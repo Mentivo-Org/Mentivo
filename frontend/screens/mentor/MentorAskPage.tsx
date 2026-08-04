@@ -15,10 +15,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../../services/storage";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import api from "../../services/api";
 import { AskEndpoints } from "../../constants/endpoint";
+import { getRelativeDay, voteOnAnswer } from "../../services/askUtils";
 import DialogBox from "../../components/DialogBox";
 
 export default function MentorAskPage() {
@@ -77,7 +78,7 @@ export default function MentorAskPage() {
   useEffect(() => {
     const getUserId = async () => {
       try {
-        const userStr = await AsyncStorage.getItem("user");
+        const userStr = await storage.getItem("user");
         if (userStr) {
           const user = JSON.parse(userStr);
           setUserId(user.id || user.uid || "");
@@ -196,34 +197,7 @@ export default function MentorAskPage() {
     }
   };
 
-  const handleVote = async (answerId: string, voteType: "UP" | "DOWN") => {
-    try {
-      const res = await api.post(AskEndpoints.voteAnswer(answerId), { voteType });
-      if (res.status === 200) {
-        const updatedAnswer = res.data;
-        setQuestions((prev) =>
-          prev.map((q) => {
-            const updatedAnswers = q.answers.map((a: any) =>
-              a.id === answerId ? { ...a, upvotes: updatedAnswer.upvotes, downvotes: updatedAnswer.downvotes } : a
-            );
-            return { ...q, answers: updatedAnswers };
-          })
-        );
-      }
-    } catch (err) {
-      console.error("Failed to vote:", err);
-    }
-  };
-
-  const getRelativeDay = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    if (diffDays <= 1) return "Today";
-    if (diffDays === 2) return "Yesterday";
-    return `${diffDays} days ago`;
-  };
+  const handleVote = (answerId: string, voteType: "UP" | "DOWN") => voteOnAnswer(answerId, voteType, setQuestions);
 
   const renderQuestionItem = ({ item, index }: { item: any; index: number }) => {
     const topAnswer = item.answers && item.answers.length > 0 ? item.answers[0] : null;

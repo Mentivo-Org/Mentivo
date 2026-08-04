@@ -18,7 +18,7 @@ import { ForgotPassEndpoints, LoginEndpoints } from "../constants/endpoint";
 import { useLoading } from "../context/LoadingContext";
 import { useAuth } from "../services/retrieveKeys";
 import DialogBox from "../components/DialogBox";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../services/storage";
 
 const SendOtpScreen = () => {
   const { showLoading, hideLoading } = useLoading();
@@ -130,14 +130,14 @@ const SendOtpScreen = () => {
         });
         if (response.status === 200) {
           const { accessToken, refreshToken, user } = response.data;
-          await AsyncStorage.setItem("accessToken", accessToken);
-          await AsyncStorage.setItem("refreshToken", refreshToken);
-          await AsyncStorage.setItem("verifiedEmail", "true");
+          await storage.setItem("accessToken", accessToken);
+          await storage.setItem("refreshToken", refreshToken);
+          await storage.setItem("verifiedEmail", "true");
 
           // If profile is already completed, log them in directly
           if (user?.profile_completed === true) {
             await setUser(user);
-            await AsyncStorage.setItem("role", user.role);
+            await storage.setItem("role", user.role);
             setRole(user.role);
             requestNotificationPermissions();
             setIsSignedIn(true);

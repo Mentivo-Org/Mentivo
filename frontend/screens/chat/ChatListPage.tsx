@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { chatSessionManager } from '../../services/chat/chatSessionManager';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '../../services/storage';
 import api from '../../services/api';
 import { MentorEndpoints } from '../../constants/endpoint';
 import { Skeleton } from '../../components/Skeleton';
@@ -23,7 +23,7 @@ const ChatListPage = () => {
 
   useEffect(() => {
     const init = async () => {
-      const userJson = await AsyncStorage.getItem('user');
+      const userJson = await storage.getItem('user');
       if (userJson) {
         const user = JSON.parse(userJson);
         setCurrentUserId(user.id);
@@ -57,7 +57,7 @@ const ChatListPage = () => {
 
   const fetchData = async () => {
     try {
-      const userJson = await AsyncStorage.getItem('user');
+      const userJson = await storage.getItem('user');
       let userRole = 'student';
       if (userJson) {
         const user = JSON.parse(userJson);
@@ -135,7 +135,6 @@ const ChatListPage = () => {
 
   const renderRecentItem = (session: any, index: number) => {
     const partner = session.studentId === currentUserId ? session.mentor : session.student;
-    console.log("Partner is",partner);
     if (!partner) return null;
 
     const timeAgo = session.lastMessageAt ? getTimeAgo(new Date(session.lastMessageAt)) : '';

@@ -9,7 +9,7 @@ import { MentorEndpoints, CallEndpoints } from '../../constants/endpoint';
 import { useLoading } from '../../context/LoadingContext';
 import { requestMicrophonePermission } from '../../services/permissions';
 import { chatSessionManager } from '../../services/chat/chatSessionManager';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '../../services/storage';
 
 const { width, height } = Dimensions.get("window");
 
@@ -82,7 +82,7 @@ export default function MentorProfile() {
   useEffect(() => {
     const checkFavoriteStatus = async () => {
       try {
-        const storedFavs = await AsyncStorage.getItem('favouriteMentors');
+        const storedFavs = await storage.getItem('favouriteMentors');
         if (storedFavs) {
           const favs: string[] = JSON.parse(storedFavs);
           if (mentor.id) {
@@ -103,7 +103,7 @@ export default function MentorProfile() {
       setIsFavorite(newStatus);
       
       // Update AsyncStorage
-      const storedFavs = await AsyncStorage.getItem('favouriteMentors');
+      const storedFavs = await storage.getItem('favouriteMentors');
       let favs: string[] = storedFavs ? JSON.parse(storedFavs) : [];
       if (newStatus) {
         if (!favs.includes(mentor.id)) {
@@ -112,7 +112,7 @@ export default function MentorProfile() {
       } else {
         favs = favs.filter(id => id !== mentor.id);
       }
-      await AsyncStorage.setItem('favouriteMentors', JSON.stringify(favs));
+      await storage.setItem('favouriteMentors', JSON.stringify(favs));
       
       await api.post(`${MentorEndpoints.toggleFavoriteMentor}${mentor.id}/favorite`);
     } catch (error) {
@@ -121,7 +121,7 @@ export default function MentorProfile() {
       setIsFavorite(originalStatus);
       
       // Revert AsyncStorage
-      const storedFavs = await AsyncStorage.getItem('favouriteMentors');
+      const storedFavs = await storage.getItem('favouriteMentors');
       let favs: string[] = storedFavs ? JSON.parse(storedFavs) : [];
       if (originalStatus) {
         if (!favs.includes(mentor.id)) {
@@ -130,7 +130,7 @@ export default function MentorProfile() {
       } else {
         favs = favs.filter(id => id !== mentor.id);
       }
-      await AsyncStorage.setItem('favouriteMentors', JSON.stringify(favs));
+      await storage.setItem('favouriteMentors', JSON.stringify(favs));
     }
   };
 

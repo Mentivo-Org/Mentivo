@@ -5,6 +5,7 @@ import DialogBox from '../../components/DialogBox';
 import { Image } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { resetToScreen } from '../../services/navigation';
+import { Routes } from '../../constants/routes';
 import Ionicons from "@react-native-vector-icons/ionicons";
 import api from '../../services/api';
 import { CallEndpoints } from '../../constants/endpoint';
@@ -37,7 +38,7 @@ export default function RatingScreen() {
 
       if (response.status === 200) {
         // Go back to home
-        resetToScreen("Main", { screen: "Home" });
+        resetToScreen(Routes.main, { screen: Routes.home });
       } else {
         setAlertData({ title: 'Error', message: 'Failed to submit rating. Please try again.' });
         setAlertVisible(true);

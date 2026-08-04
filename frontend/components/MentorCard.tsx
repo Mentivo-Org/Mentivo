@@ -3,6 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 
 interface MentorCardProps {
+  id: string;
+  /** The raw mentor object this card was rendered from — passed back on the callbacks below. */
+  item: any;
   name: string;
   iit: string;
   branch: string;
@@ -14,9 +17,9 @@ interface MentorCardProps {
   isFavorite: boolean;
   photoUrl?: string;
   isOnline?: boolean;
-  onPress?: () => void;
-  onFavoritePress?: () => void;
-  onCallPress?: () => void;
+  onPress?: (item: any) => void;
+  onFavoritePress?: (id: string) => void;
+  onCallPress?: (item: any) => void;
   mentorlevel?: string;
 }
 
@@ -29,7 +32,9 @@ const getLevelIcon = (lvl?: string) => {
   return require('../app-assets/verified-check.svg'); // default
 };
 
-const MentorCard: React.FC<MentorCardProps> = ({
+const MentorCard: React.FC<MentorCardProps> = React.memo(({
+  id,
+  item,
   name,
   iit,
   branch,
@@ -47,7 +52,7 @@ const MentorCard: React.FC<MentorCardProps> = ({
   mentorlevel,
 }) => {
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity style={styles.card} onPress={() => onPress?.(item)} activeOpacity={0.7}>
       <View style={styles.imageContainer}>
         <Image 
           source={photoUrl ? { uri: photoUrl } : require('../app-assets/profile-circle.svg')} 
@@ -62,7 +67,7 @@ const MentorCard: React.FC<MentorCardProps> = ({
             <Text style={styles.name}>{name}</Text>
             <Image source={getLevelIcon(mentorlevel)} style={{ width: 14, height: 14 }} />
           </View>
-          <TouchableOpacity onPress={onFavoritePress}>
+          <TouchableOpacity onPress={() => onFavoritePress?.(id)}>
             <Image
               source={require('../app-assets/heart-icon.svg')}
               style={styles.heartIcon}
@@ -95,7 +100,7 @@ const MentorCard: React.FC<MentorCardProps> = ({
           <TouchableOpacity 
             onPress={(e) => {
               e.stopPropagation();
-              onCallPress();
+              onCallPress(item);
             }}
             style={[
               styles.callButton,
@@ -118,7 +123,7 @@ const MentorCard: React.FC<MentorCardProps> = ({
       </View>
     </TouchableOpacity>
   );
-};
+});
 
 const styles = StyleSheet.create({
   card: {

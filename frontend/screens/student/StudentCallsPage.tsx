@@ -15,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { useNavigation, useScrollToTop } from "@react-navigation/native";
 import api from "../../services/api";
-import { MentorEndpoints } from "../../constants/endpoint";
+import { MentorEndpoints, CallEndpoints } from "../../constants/endpoint";
 
 import { useTabPressRefresh } from "../../hooks/useTabPressRefresh";
 
@@ -27,7 +27,9 @@ export default function StudentCallsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [favorites, setFavorites] = useState<any[]>([]);
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(false);
-  
+  const [recentCalls, setRecentCalls] = useState<any[]>([]);
+  const [isLoadingRecentCalls, setIsLoadingRecentCalls] = useState(false);
+
   const scrollViewRef = useRef<ScrollView>(null);
   useScrollToTop(scrollViewRef);
 
@@ -50,24 +52,38 @@ export default function StudentCallsPage() {
     }
   };
 
+  const fetchRecentCalls = async () => {
+    setIsLoadingRecentCalls(true);
+    try {
+      const response = await api.get(CallEndpoints.getStudentSessions);
+      if (response.status === 200) {
+        const fetchedRecentCalls = response.data.slice(0, 10).map((s: any) => ({
+          id: s.id,
+          name: s.mentor?.name || "Unknown Mentor",
+          iit: s.mentor?.mentorProfile?.iit_name || "Unknown IIT",
+          day: new Date(s.createdAt).toLocaleDateString("en-US", { weekday: "long" }),
+        }));
+        setRecentCalls(fetchedRecentCalls);
+      }
+    } catch (error) {
+      console.error("Failed to fetch recent calls:", error);
+    } finally {
+      setIsLoadingRecentCalls(false);
+    }
+  };
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchFavorites();
+    await Promise.all([fetchFavorites(), fetchRecentCalls()]);
     setIsRefreshing(false);
   };
 
   useEffect(() => {
     fetchFavorites();
+    fetchRecentCalls();
   }, []);
 
   useTabPressRefresh(navigation, handleRefresh);
-
-  const recentCalls = [
-    { id: "4", name: "Suraj Jain", iit: "IIT Guwahati", day: "Friday", unread: 1 },
-    { id: "5", name: "Vidur", iit: "IIT BHU", day: "Sunday" },
-    { id: "6", name: "Rhon. v", iit: "IIT Kanpur", day: "Monday" },
-    { id: "7", name: "Suraj Raj", iit: "IIT Patna", day: "Saturday" },
-  ];
 
   const renderFavourite = ({ item }: { item: any }) => (
     <View style={styles.favouriteItem}>
@@ -154,7 +170,11 @@ export default function StudentCallsPage() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Recent</Text>
-          {recentCalls.length > 0 ? (
+          {isLoadingRecentCalls ? (
+            <View style={styles.emptyContainer}>
+              <ActivityIndicator size="small" color="#0077CB" />
+            </View>
+          ) : recentCalls.length > 0 ? (
             recentCalls.map((item) => (
               <React.Fragment key={item.id}>
                 {renderRecentCall({ item })}

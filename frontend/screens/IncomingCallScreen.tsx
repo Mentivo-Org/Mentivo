@@ -5,6 +5,7 @@ import InCallManager from 'react-native-incall-manager';
 import notifee from '@notifee/react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { resetToScreen } from '../services/navigation';
+import { Routes } from '../constants/routes';
 import api from '../services/api';
 import { socketManager } from '../services/socketManager';
 import { CallEndpoints } from '../constants/endpoint';
@@ -52,7 +53,7 @@ const IncomingCallScreen = () => {
         InCallManager.stopRingtone();
         InCallManager.setKeepScreenOn(false);
         notifee.cancelNotification(callId).catch(err => console.error('Failed to cancel notification:', err));
-        resetToScreen('Main', { screen: 'Home' });
+        resetToScreen(Routes.main, { screen: Routes.home });
       }
     };
 
@@ -97,7 +98,7 @@ const IncomingCallScreen = () => {
     } catch (error) {
       console.error('Failed to reject call:', error);
     }
-    resetToScreen('Main', { screen: 'Home' });
+    resetToScreen(Routes.main, { screen: Routes.home });
   };
 
   return (

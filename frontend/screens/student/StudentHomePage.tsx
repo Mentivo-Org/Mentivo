@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useTabPressRefresh } from "../../hooks/useTabPressRefresh";
 import {
   Text,
@@ -20,7 +20,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../../services/storage";
 import { useNavigation, useRoute, useScrollToTop } from "@react-navigation/native";
 import MentorCard from "../../components/MentorCard";
 import { useAuth } from "../../services/retrieveKeys";
@@ -186,7 +186,7 @@ export default function StudentHomePage() {
     }
   };
 
-  const handleCardCallPress = async (mentor: any) => {
+  const handleCardCallPress = useCallback(async (mentor: any) => {
     if (walletBalance < 10) {
       setAlertData({
         title: "Insufficient Balance",
@@ -205,7 +205,7 @@ export default function StudentHomePage() {
       const response = await api.post(CallEndpoints.initiate, { mentorId: mentor.id });
       if (response.status === 200) {
         const { sessionId, channelName, studentToken, maxDurationSeconds, mentorPhoto, chatSessionId } = response.data;
-        
+
         navigation.navigate('InCall', {
           callId: sessionId,
           channelName,
@@ -221,8 +221,8 @@ export default function StudentHomePage() {
       console.error('Failed to initiate call:', error);
       const errorMsg = error.response?.data?.error || 'Failed to connect. Please try again.';
       const isInsufficient = errorMsg.toLowerCase().includes("insufficient");
-      setAlertData({ 
-        title: 'Call Error', 
+      setAlertData({
+        title: 'Call Error',
         message: errorMsg,
         secondaryButtonText: isInsufficient ? "Add Funds" : undefined,
         onSecondaryPress: isInsufficient ? () => navigation.navigate("Payment") : undefined
@@ -231,7 +231,7 @@ export default function StudentHomePage() {
     } finally {
       hideLoading();
     }
-  };
+  }, [walletBalance, navigation, showLoading, hideLoading]);
 
   const handleFreeMatchmaking = async () => {
     showLoading("Finding a mentor...");
@@ -307,10 +307,10 @@ export default function StudentHomePage() {
     }
   }, [route.params?.showCallRejectedAlert]);
 
-  const syncFavorites = async () => {
+  const syncFavorites = useCallback(async () => {
     try {
       // 1. Load from AsyncStorage immediately for fast UI
-      const localFavs = await AsyncStorage.getItem("favouriteMentors");
+      const localFavs = await storage.getItem("favouriteMentors");
       if (localFavs) {
         setFavoriteIds(JSON.parse(localFavs));
       }
@@ -319,14 +319,14 @@ export default function StudentHomePage() {
       const serverFavs = authUser?.favouriteMentors ?? [];
       if (serverFavs.length > 0 || !localFavs) {
         setFavoriteIds(serverFavs);
-        await AsyncStorage.setItem('favouriteMentors', JSON.stringify(serverFavs));
+        await storage.setItem('favouriteMentors', JSON.stringify(serverFavs));
       }
     } catch (error) {
       console.error("Failed to sync favorites:", error);
     }
-  };
+  }, [authUser]);
 
-  const handleToggleFavorite = async (mentorId: string) => {
+  const handleToggleFavorite = useCallback(async (mentorId: string) => {
     // Optimistic UI update
     let updatedFavs;
     if (favoriteIds.includes(mentorId)) {
@@ -334,9 +334,9 @@ export default function StudentHomePage() {
     } else {
       updatedFavs = [...favoriteIds, mentorId];
     }
-    
+
     setFavoriteIds(updatedFavs);
-    await AsyncStorage.setItem("favouriteMentors", JSON.stringify(updatedFavs));
+    await storage.setItem("favouriteMentors", JSON.stringify(updatedFavs));
 
     // Server request
     try {
@@ -346,7 +346,22 @@ export default function StudentHomePage() {
       // Revert if failed
       syncFavorites();
     }
-  };
+  }, [favoriteIds, syncFavorites]);
+
+  const handleMentorPress = useCallback((mentor: any) => {
+    navigation.navigate("MentorProfile", { mentor: { ...mentor, isFavorite: favoriteIds.includes(mentor.id) } });
+  }, [navigation, favoriteIds]);
+
+  const renderMentorItem = useCallback(({ item }: { item: any }) => (
+    <MentorCard
+      {...item}
+      item={item}
+      isFavorite={favoriteIds.includes(item.id)}
+      onFavoritePress={handleToggleFavorite}
+      onCallPress={handleCardCallPress}
+      onPress={handleMentorPress}
+    />
+  ), [favoriteIds, handleToggleFavorite, handleCardCallPress, handleMentorPress]);
 
   const fetchWalletBalance = async () => {
     try {
@@ -501,7 +516,7 @@ export default function StudentHomePage() {
 
   useEffect(() => {
     const loadUser = async () => {
-      const userData = await AsyncStorage.getItem("user");
+      const userData = await storage.getItem("user");
       if (userData) {
         setUser(JSON.parse(userData));
       }
@@ -722,15 +737,7 @@ export default function StudentHomePage() {
         ref={flatListRef}
         data={displayedMentors}
         keyExtractor={(item, index) => `${item.id}-${index}`}
-        renderItem={({ item }) => (
-          <MentorCard
-            {...item}
-            isFavorite={favoriteIds.includes(item.id)}
-            onFavoritePress={() => handleToggleFavorite(item.id)}
-            onCallPress={() => handleCardCallPress(item)}
-            onPress={() => navigation.navigate("MentorProfile", { mentor: { ...item, isFavorite: favoriteIds.includes(item.id) } })}
-          />
-        )}
+        renderItem={renderMentorItem}
         ListHeaderComponent={renderHeader}
         ListFooterComponent={renderFooter}
         onEndReached={() => {
