@@ -4,7 +4,7 @@ import { mentorInclude, formatMentorList } from '../routes/mentors.ts';
 
 export const recalculateTopMentors = async () => {
     try {
-        console.log('[TopMentors] Recalculating top mentors cache...');
+        console.log('[TopMentors v1] Recalculating top mentors cache...');
         
         const settings = await prisma.appSetting.findMany({
             where: {
@@ -42,10 +42,10 @@ export const recalculateTopMentors = async () => {
         // Cache the formatted result in Redis as a JSON string
         await redis.set('public:top_mentors', JSON.stringify(formatted));
         
-        console.log(`[TopMentors] Successfully recalculated and cached ${formatted.length} top mentors.`);
+        console.log(`[TopMentors v1] Successfully recalculated and cached ${formatted.length} top mentors.`);
         return formatted;
     } catch (err) {
-        console.error('[TopMentors] Error recalculating top mentors:', err);
+        console.error('[TopMentors v1] Error recalculating top mentors:', err);
         throw err;
     }
 };

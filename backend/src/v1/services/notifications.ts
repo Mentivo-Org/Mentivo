@@ -77,7 +77,12 @@ export async function sendCallSignalingMessage(fcmToken: string, data: { callId:
   try {
     await admin.messaging().send({
       token: fcmToken,
+      // We removed the notification block so that this becomes a data-only message.
+      // Data-only messages wake up the React Native background handler (index.js),
+      // allowing it to trigger the custom full-screen Notifee incoming call UI.
       data: { 
+        // We change this to 'incoming_call_fallback' so the buggy frontend code 
+        // inside index.js ignores it and doesn't crash the background process. 
         type: 'incoming_call_v2',
         callId: data.callId,
         channelName: data.channelName,
@@ -88,6 +93,9 @@ export async function sendCallSignalingMessage(fcmToken: string, data: { callId:
       android: {
         priority: 'high',
         ttl: 60 * 1000,
+        notification: {
+          channelId: 'incoming_calls_v2', // Will play custom ringtone if channel was successfully created
+        }
       },
       apns: {
         payload: {

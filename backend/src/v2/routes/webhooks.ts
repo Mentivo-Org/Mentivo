@@ -34,6 +34,79 @@ router.post('/razorpay', async (req, res) => {
     const paymentId = payment?.id;
 
     if (event.event === 'payment.captured') {
+      const notes = payment?.notes as any;
+      const isVoucher = notes?.type === 'voucher';
+
+      if (isVoucher) {
+        await prisma.$transaction(async (tx) => {
+          const existing = await tx.voucherSubscription.findFirst({
+            where: { razorpayOrderId: orderId }
+          });
+
+          if (existing) {
+            return; // Already processed
+          }
+
+          const userId = notes.userId;
+          const plan = notes.plan;
+          const amountPaid = plan === '3000' ? 3000 : 6000;
+          const amountPerInstallment = plan === '3000' ? 550 : 1100;
+          const totalCredit = plan === '3000' ? 3300 : 6600;
+          
+          const expectedAmountPaise = amountPaid * 100;
+          const paymentFee = payment.fee || 0;
+          const actualBaseAmountPaise = payment.amount - paymentFee;
+
+          if (actualBaseAmountPaise !== expectedAmountPaise) {
+            console.error(`[CRITICAL] Voucher amount mismatch for Order ${orderId}`);
+            return;
+          }
+
+          const nextDate = new Date();
+          nextDate.setMonth(nextDate.getMonth() + 1);
+
+          await tx.voucherSubscription.create({
+            data: {
+              userId,
+              plan,
+              amountPaid,
+              totalCredit,
+              installmentsRemaining: 5,
+              amountPerInstallment,
+              razorpayOrderId: orderId,
+              razorpayPaymentId: paymentId,
+              nextCreditDate: nextDate,
+              status: 'active'
+            }
+          });
+
+          await tx.wallet.upsert({
+            where: { userId },
+            create: { userId, balance: amountPerInstallment },
+            update: { balance: { increment: amountPerInstallment } }
+          });
+          
+          await tx.walletTransaction.create({
+            data: {
+              userId,
+              amount: amountPerInstallment,
+              type: 'voucher_installment',
+              razorpayOrderId: orderId,
+              razorpayPaymentId: paymentId,
+              status: 'success'
+            }
+          });
+          
+          await tx.logEntry.create({
+            data: {
+              level: 'INFO',
+              source: 'backend',
+              message: `Razorpay voucher payment captured for Order ${orderId}`,
+              metadata: { orderId, paymentId, plan, userId }
+            }
+          });
+        });
+      } else {
       // Idempotent processing with race condition prevention
       await prisma.$transaction(async (tx) => {
         // 1. Atomically attempt to update status to success only if it is pending
@@ -51,7 +124,7 @@ router.post('/razorpay', async (req, res) => {
           where: { razorpayOrderId: orderId }
         });
 
-        if (txn) {
+          if (txn) {
           // 3. Amount verification sanity check
           const expectedAmountPaise = Number(txn.amount) * 100;
           const paymentFee = payment.fee || 0;
@@ -87,6 +160,7 @@ router.post('/razorpay', async (req, res) => {
           });
         }
       });
+      }
     } else if (event.event === 'payment.failed') {
       await prisma.walletTransaction.updateMany({
         where: { razorpayOrderId: orderId, status: 'pending' },

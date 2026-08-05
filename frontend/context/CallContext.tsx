@@ -78,6 +78,16 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const heartbeatInFlightRef = useRef(false);
   const stateRef = useRef({ callId, role, callerName, mentorPhoto, isFreeCall });
 
+  // Anchors the displayed duration to the server's `startedAt` rather than a local
+  // Date.now() taken at Agora join. Without it the two parties disagree, the timer
+  // resets to 0 on any rejoin, and the display drifts from the duration billing uses.
+  const durationAnchorRef = useRef<{ serverElapsedSecs: number; syncedAtMs: number } | null>(null);
+  // Set once the notification chronometer has been re-anchored to server time.
+  const notificationResyncedRef = useRef(false);
+  // The ongoing-call notification as displayed, so it can be re-issued in place
+  // once the server start time is known.
+  const ongoingNotificationRef = useRef<any>(null);
+
   // Sync refs to avoid stale closures in event listeners
   useEffect(() => {
     callStatusRef.current = callStatus;
@@ -95,7 +105,16 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const startTimer = () => {
     if (timerRef.current) return;
     timerRef.current = setInterval(() => {
-      setDuration(prev => prev + 1);
+      const anchor = durationAnchorRef.current;
+      if (anchor) {
+        setDuration(
+          anchor.serverElapsedSecs + Math.floor((Date.now() - anchor.syncedAtMs) / 1000)
+        );
+      } else {
+        // No server anchor yet (slow network, or /start hasn't landed). Keep the
+        // old local behaviour so the timer still moves; the first sync corrects it.
+        setDuration(prev => prev + 1);
+      }
     }, 1000);
   };
 
@@ -103,6 +122,54 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
+    }
+  };
+
+  const setDurationAnchor = (serverElapsedSecs: number) => {
+    durationAnchorRef.current = { serverElapsedSecs, syncedAtMs: Date.now() };
+    setDuration(serverElapsedSecs);
+  };
+
+  /**
+   * Re-issues the ongoing-call notification with its chronometer anchored to the
+   * server elapsed time. Same notification id + `onlyAlertOnce` means this updates
+   * in place silently rather than alerting again. Only worth doing once — the
+   * chronometer runs off the OS clock from there.
+   */
+  const refreshOngoingNotificationTimestamp = async (activeCallId: string, elapsedSecs: number) => {
+    const payload = ongoingNotificationRef.current;
+    if (!payload || payload.id !== activeCallId || notificationResyncedRef.current) return;
+    notificationResyncedRef.current = true;
+    try {
+      await notifee.displayNotification({
+        ...payload,
+        android: {
+          ...payload.android,
+          timestamp: Date.now() - elapsedSecs * 1000,
+        },
+      });
+    } catch (e) {
+      console.error('Failed to re-anchor ongoing call notification:', e);
+    }
+  };
+
+  /**
+   * Pulls the authoritative call start time from the server and re-anchors the
+   * timer. `startedAt` is written by the callee's POST /start, so the caller only
+   * gets a real value once the call has flipped to active.
+   */
+  const syncDurationFromServer = async (activeCallId: string) => {
+    try {
+      const res = await api.get(CallEndpoints.status(activeCallId));
+      const { startedAt, serverNow } = res.data || {};
+      if (!startedAt) return;
+      const startedMs = new Date(startedAt).getTime();
+      const nowMs = serverNow ? new Date(serverNow).getTime() : Date.now();
+      const elapsed = Math.max(0, Math.floor((nowMs - startedMs) / 1000));
+      setDurationAnchor(elapsed);
+      refreshOngoingNotificationTimestamp(activeCallId, elapsed);
+    } catch (e) {
+      console.error('[Timer] Failed to sync duration from server:', e);
     }
   };
 
@@ -116,7 +183,14 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       heartbeatInFlightRef.current = true;
       try {
-        await api.patch(CallEndpoints.heartbeat(activeCallId));
+        const res = await api.patch(CallEndpoints.heartbeat(activeCallId));
+        // The heartbeat is the continuous corrector: the 3s status poll stops once
+        // the call goes active, so this is the only ongoing source of server time.
+        const elapsedSecs = res.data?.elapsedSecs;
+        if (typeof elapsedSecs === 'number') {
+          setDurationAnchor(elapsedSecs);
+          refreshOngoingNotificationTimestamp(activeCallId, elapsedSecs);
+        }
       } catch (error) {
         console.error('Heartbeat failed:', error);
       } finally {
@@ -136,6 +210,9 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const notifyCallStart = async (activeCallId: string) => {
     try {
       await api.post(CallEndpoints.start(activeCallId));
+      // This request is what writes `startedAt` server-side, so the anchor is
+      // available immediately after it.
+      await syncDurationFromServer(activeCallId);
       startHeartbeat(activeCallId);
     } catch (error) {
       console.error('Failed to notify call start:', error);
@@ -179,41 +256,51 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      try {
-        await notifee.displayNotification({
-          id: activeCallId,
-          title: 'Call in Progress',
-          body: `Connected with ${currentCallerName || 'Mentorship Session'}`,
-          android: {
-            channelId: ONGOING_CALL_CHANNEL,
-            smallIcon: 'notification_icon',
-            color: '#0077CB',
-            ongoing: true,
-            asForegroundService: true,
-            foregroundServiceTypes: [AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_MICROPHONE],
-            onlyAlertOnce: true,
-            pressAction: { id: 'default', launchActivity: 'default' },
-            actions: [
-              {
-                title: 'End Call',
-                pressAction: {
-                  id: 'end_call',
-                },
+      const anchoredElapsed = durationAnchorRef.current?.serverElapsedSecs ?? 0;
+      const ongoingNotification = {
+        id: activeCallId,
+        title: 'Call in Progress',
+        body: `Connected with ${currentCallerName || 'Mentorship Session'}`,
+        android: {
+          channelId: ONGOING_CALL_CHANNEL,
+          smallIcon: 'notification_icon',
+          color: '#0077CB',
+          ongoing: true,
+          asForegroundService: true,
+          foregroundServiceTypes: [AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_MICROPHONE],
+          onlyAlertOnce: true,
+          pressAction: { id: 'default', launchActivity: 'default' },
+          actions: [
+            {
+              title: 'End Call',
+              pressAction: {
+                id: 'end_call',
+                // Bring the app forward so the user lands on their post-call
+                // screen (RatingScreen for the caller, Home otherwise) instead of
+                // the call silently ending behind a backgrounded app.
+                launchActivity: 'default',
               },
-            ],
-            showChronometer: true,
-            timestamp: Date.now(),
-          },
-          data: { 
-            callId: String(activeCallId || ''), 
-            channelName: String(currentChannelName || ''), 
-            callerName: String(currentCallerName || ''), 
-            role: String(currentRole || ''), 
-            initialToken: String(currentToken || ''), 
-            mentorPhoto: String(currentMentorPhoto || ''), 
-            screen: 'InCall' 
-          },
-        });
+            },
+          ],
+          showChronometer: true,
+          // Counts from the true call start when we already know it; corrected in
+          // place by refreshOngoingNotificationTimestamp once the server responds.
+          timestamp: Date.now() - anchoredElapsed * 1000,
+        },
+        data: {
+          callId: String(activeCallId || ''),
+          channelName: String(currentChannelName || ''),
+          callerName: String(currentCallerName || ''),
+          role: String(currentRole || ''),
+          initialToken: String(currentToken || ''),
+          mentorPhoto: String(currentMentorPhoto || ''),
+          screen: 'InCall'
+        },
+      };
+      ongoingNotificationRef.current = ongoingNotification;
+
+      try {
+        await notifee.displayNotification(ongoingNotification as any);
       } catch (e) {
         console.error('Failed to show ongoing call notification:', e);
       }
@@ -229,6 +316,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('[Agora Context] Remote user joined');
       setCallStatus('active');
       startTimer();
+      syncDurationFromServer(activeCallId);
     });
 
     engine.addListener('onUserOffline', (_connection: any, _remoteUid: any, _reason: any) => {
@@ -257,6 +345,9 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setMentorPhoto(paramPhoto || null);
     setChatSessionIdState(paramChatSessionId || null);
     setDuration(0);
+    durationAnchorRef.current = null;
+    notificationResyncedRef.current = false;
+    ongoingNotificationRef.current = null;
     setIsMuted(false);
     setIsSpeakerOn(false);
     setIsMinimized(false);
@@ -280,6 +371,16 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const currentCallStatus = statusRes.data.status;
         setIsFreeCall(!!statusRes.data.is_free);
+        // Rejoining a call that is already running (app relaunched mid-call, or a
+        // reconnect): seed the anchor so the timer resumes at the true elapsed
+        // time instead of restarting from 0.
+        if (statusRes.data.startedAt) {
+          const startedMs = new Date(statusRes.data.startedAt).getTime();
+          const nowMs = statusRes.data.serverNow
+            ? new Date(statusRes.data.serverNow).getTime()
+            : Date.now();
+          setDurationAnchor(Math.max(0, Math.floor((nowMs - startedMs) / 1000)));
+        }
         if (!['calling', 'ringing', 'active'].includes(currentCallStatus)) {
           console.warn('Call is no longer active in status check');
           await endCallSession(false);
@@ -368,6 +469,14 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
+    // A press recorded just before teardown would otherwise route the user into a
+    // dead call on the next resume.
+    try {
+      await storage.multiRemove(['pendingCallData', 'pendingCallNavigation']);
+    } catch (e) {
+      console.error('Failed to clear pending call markers:', e);
+    }
+
     const currentStatus = callStatusRef.current;
     const currentDuration = durationRef.current;
     const wasConnected = currentStatus === 'active' || currentDuration > 0 || remoteStatus === 'completed';
@@ -396,6 +505,9 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPartnerName(null);
     setCallStatus(null);
     setDuration(0);
+    durationAnchorRef.current = null;
+    notificationResyncedRef.current = false;
+    ongoingNotificationRef.current = null;
     setIsMuted(false);
     setIsSpeakerOn(false);
     setIsMinimized(false);
@@ -443,10 +555,18 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else if (data.status === 'ringing' && callStatusRef.current === 'calling') {
         console.log('[Socket/FCM Context] Mentor phone is ringing');
         setCallStatus('ringing');
-      } else if (data.status === 'active' && callStatusRef.current !== 'active') {
-        console.log('[Socket/FCM Context] Call is now active');
-        setCallStatus('active');
-        startTimer();
+      } else if (data.status === 'active') {
+        if (callStatusRef.current !== 'active') {
+          console.log('[Socket/FCM Context] Call is now active');
+          setCallStatus('active');
+          startTimer();
+        }
+        // The caller often sees Agora's onUserJoined before the callee's POST /start
+        // has written startedAt, so that earlier sync came back empty. This event is
+        // emitted by /start itself, so retry here whenever we're still unanchored.
+        if (!durationAnchorRef.current) {
+          syncDurationFromServer(activeCallId);
+        }
       }
     };
 
@@ -498,6 +618,14 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
              console.log('[Polling Context] Call is now active');
              setCallStatus('active');
              startTimer();
+             // This poll response already carries the anchor — reuse it directly.
+             if (res.data?.startedAt) {
+               const startedMs = new Date(res.data.startedAt).getTime();
+               const nowMs = res.data.serverNow ? new Date(res.data.serverNow).getTime() : Date.now();
+               const elapsed = Math.max(0, Math.floor((nowMs - startedMs) / 1000));
+               setDurationAnchor(elapsed);
+               refreshOngoingNotificationTimestamp(activeCallId, elapsed);
+             }
           }
         } catch (e) {
           console.error('[Polling Context] Failed to fetch call status:', e);

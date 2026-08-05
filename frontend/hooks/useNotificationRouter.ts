@@ -3,7 +3,7 @@ import { AppState, DeviceEventEmitter, Linking } from "react-native";
 import { storage } from "../services/storage";
 import notifee, { EventType, AndroidImportance } from "@notifee/react-native";
 import { getMessaging, onMessage } from "@react-native-firebase/messaging";
-import { navigate, getActiveChatSessionId } from "../services/navigation";
+import { navigate, navigateToCallScreen, getActiveChatSessionId } from "../services/navigation";
 import { socketManager } from "../services/socketManager";
 import api from "../services/api";
 import { CallEndpoints } from "../constants/endpoint";
@@ -61,7 +61,7 @@ export function useNotificationRouter(isSignedIn: boolean) {
           } = data;
           if (callId) {
             if (data.screen === "InCall") {
-              navigate(Routes.inCall, {
+              navigateToCallScreen(Routes.inCall, {
                 callId,
                 channelName,
                 callerName,
@@ -70,7 +70,7 @@ export function useNotificationRouter(isSignedIn: boolean) {
                 mentorPhoto: callerPhoto,
               });
             } else {
-              navigate(Routes.incomingCall, {
+              navigateToCallScreen(Routes.incomingCall, {
                 callId,
                 channelName,
                 callerName,
@@ -107,7 +107,7 @@ export function useNotificationRouter(isSignedIn: boolean) {
                 console.error(e);
               }
             }
-            navigate(Routes.inCall, {
+            navigateToCallScreen(Routes.inCall, {
               callId,
               channelName,
               callerName,
@@ -188,7 +188,7 @@ export function useNotificationRouter(isSignedIn: boolean) {
           });
         } else if (remoteMessage.data?.type === "incoming_call_v2") {
           const { callId, channelName, callerName, callerPhoto } = remoteMessage.data as any;
-          navigate(Routes.incomingCall, { callId, channelName, callerName, callerPhoto });
+          navigateToCallScreen(Routes.incomingCall, { callId, channelName, callerName, callerPhoto });
         } else if (remoteMessage.data?.source === "admin-dashboard") {
           // Mirrors index.js: skip if the OS already owns the display.
           if (remoteMessage.notification) return;
@@ -253,7 +253,14 @@ export function useNotificationRouter(isSignedIn: boolean) {
           // User tapped the Accept action button from killed state.
           // Skip IncomingCall and go straight to InCall.
           console.log("[checkInitialNotification] Accept action → navigating to InCall");
-          navigate(Routes.inCall, {
+          // onBackgroundEvent may not have run on a cold start, so the ringing
+          // notification can still be in the shade with a live Accept button.
+          try {
+            await notifee.cancelNotification(callId as string);
+          } catch (e) {
+            console.error("Failed to cancel incoming call notification:", e);
+          }
+          navigateToCallScreen(Routes.inCall, {
             callId,
             channelName,
             callerName,
@@ -275,7 +282,7 @@ export function useNotificationRouter(isSignedIn: boolean) {
             "[checkInitialNotification] Default/body tap (pressActionId=%s) → navigating to IncomingCall",
             pressActionId,
           );
-          navigate(Routes.incomingCall, {
+          navigateToCallScreen(Routes.incomingCall, {
             callId,
             channelName,
             callerName,
@@ -316,13 +323,19 @@ export function useNotificationRouter(isSignedIn: boolean) {
     // 3.5 AppState change handler for warm start calls
     const handleAppStateChange = async (nextAppState: string) => {
       if (nextAppState === "active") {
+        // 1. Accept was pressed while backgrounded — go straight into the call.
         const pendingCallData = await storage.getItem("pendingCallData");
         if (pendingCallData) {
           await storage.removeItem("pendingCallData");
           const { callId, channelName, callerName, callerPhoto } =
             JSON.parse(pendingCallData);
           console.log("[AppState] Resuming with pending call:", callId);
-          navigate(Routes.inCall, {
+          try {
+            await notifee.cancelNotification(callId);
+          } catch (e) {
+            console.error("Failed to cancel incoming call notification:", e);
+          }
+          navigateToCallScreen(Routes.inCall, {
             callId,
             channelName,
             callerName,
@@ -332,13 +345,48 @@ export function useNotificationRouter(isSignedIn: boolean) {
           return;
         }
 
-        const displayed = await notifee.getDisplayedNotifications();
-        const callNotif = displayed.find(n => n.notification.data?.type === 'incoming_call_v2' || !!n.notification.data?.callId);
+        // 2. A notification body was pressed while backgrounded. onBackgroundEvent
+        // recorded which screen it meant, so we route on real intent rather than
+        // inferring it from whatever happens to be sitting in the shade.
+        const pendingNav = await storage.getItem("pendingCallNavigation");
+        if (pendingNav) {
+          await storage.removeItem("pendingCallNavigation");
+          const data = JSON.parse(pendingNav);
+          console.log("[AppState] Resuming with pending navigation:", data.screen, data.callId);
+          if (data.screen === "InCall") {
+            navigateToCallScreen(Routes.inCall, {
+              callId: data.callId,
+              channelName: data.channelName,
+              callerName: data.callerName,
+              role: data.role,
+              initialToken: data.initialToken,
+              mentorPhoto: data.mentorPhoto || data.callerPhoto,
+            });
+          } else {
+            navigateToCallScreen(Routes.incomingCall, {
+              callId: data.callId,
+              channelName: data.channelName,
+              callerName: data.callerName,
+              callerPhoto: data.callerPhoto,
+            });
+          }
+          return;
+        }
 
-        if (callNotif && callNotif.notification.data?.callId) {
-          console.log("[AppState] Found active call notification, opening IncomingCall screen");
+        // 3. Safety net: a call is still *ringing* and the app was opened by any
+        // means — surface it. Match on the incoming-call type only. Matching on
+        // `data.callId` would also match the ongoing-call foreground-service
+        // notification, which sends users mid-call to IncomingCallScreen and gets
+        // the live notification cancelled out from under the call.
+        const displayed = await notifee.getDisplayedNotifications();
+        const callNotif = displayed.find(
+          n => n.notification.data?.type === 'incoming_call_v2' && !!n.notification.data?.callId
+        );
+
+        if (callNotif) {
+          console.log("[AppState] Found ringing call notification, opening IncomingCall screen");
           const { callId, channelName, callerName, callerPhoto } = callNotif.notification.data as any;
-          navigate(Routes.incomingCall, {
+          navigateToCallScreen(Routes.incomingCall, {
             callId,
             channelName,
             callerName,
@@ -373,7 +421,7 @@ export function useNotificationRouter(isSignedIn: boolean) {
         if (AppState.currentState === "active") {
           const { callId, channelName, callerName, callerPhoto } = data;
           console.log("[Socket] Incoming call received in foreground:", callId);
-          navigate(Routes.incomingCall, {
+          navigateToCallScreen(Routes.incomingCall, {
             callId,
             channelName,
             callerName,

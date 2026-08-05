@@ -603,6 +603,11 @@ export const sendHeartbeat = async (req: Request, res: Response) => {
       data: { lastHeartbeatAt: new Date() }
     });
 
+    // Reported back to the client so its call timer stays anchored to server
+    // time instead of drifting from a local Date.now() taken at Agora join.
+    let elapsedSecs: number | null = null;
+    let remainingSecs: number | null = null;
+
     if (session.status === 'active') {
       await lockToBusy(session.mentor_id);
 
@@ -616,7 +621,7 @@ export const sendHeartbeat = async (req: Request, res: Response) => {
       });
 
       if (detailedSession && detailedSession.startedAt) {
-        const elapsedSecs = Math.floor((Date.now() - detailedSession.startedAt.getTime()) / 1000);
+        elapsedSecs = Math.floor((Date.now() - detailedSession.startedAt.getTime()) / 1000);
         const { ratePerMin } = await getMentorActiveRateByProfile(detailedSession.mentor?.mentorProfile);
         const isFree = detailedSession.is_free;
         const walletBalance = Number(detailedSession.student?.wallet?.balance || 0);
@@ -627,7 +632,7 @@ export const sendHeartbeat = async (req: Request, res: Response) => {
         const freeSeconds = freeMins * 60;
         const totalAllowedSecs = allowedBillableSecs + (isFree ? freeSeconds : 0);
 
-        const remainingSecs = totalAllowedSecs - elapsedSecs;
+        remainingSecs = totalAllowedSecs - elapsedSecs;
 
         if (remainingSecs <= 0) {
           console.log(`[Heartbeat] Terminating session ${session.id} due to zero balance.`);
@@ -644,7 +649,7 @@ export const sendHeartbeat = async (req: Request, res: Response) => {
       }
     }
 
-    res.sendStatus(200);
+    res.json({ elapsedSecs, remainingSecs });
   } catch (e) {
     console.error('Heartbeat error:', e);
     res.status(500).json({ error: 'Server Error' });
@@ -687,7 +692,7 @@ export const rejectCall = async (req: Request, res: Response) => {
     if (mentorFcmToken) {
       await sendCallCancelledMessage(mentorFcmToken.token, session.id);
     }
-
+    
     // Send FCM to caller
     const callerFcmTokens = await prisma.fCMToken.findMany({
       where: { userId: callerId },
@@ -790,7 +795,9 @@ export const getCallStatus = async (req: Request, res: Response) => {
           chatSessionId: null,
           student: null,
           mentor: null,
-          is_free: true
+          is_free: true,
+          startedAt: null,
+          serverNow: new Date()
         });
       }
     }
@@ -808,12 +815,17 @@ export const getCallStatus = async (req: Request, res: Response) => {
 
     const chatSessionId = session.chatSessions?.[0]?.id || null;
 
-    res.json({ 
+    res.json({
       status: session.status,
       chatSessionId,
       student: session.student,
       mentor: session.mentor,
-      is_free: session.is_free
+      is_free: session.is_free,
+      // Timer anchor. `startedAt` is null until the callee POSTs /start, so the
+      // caller only gets a real value once the call flips to active. `serverNow`
+      // lets the client subtract out device/server clock skew.
+      startedAt: session.startedAt,
+      serverNow: new Date()
     });
   } catch (e) {
     console.error('Get call status error:', e);

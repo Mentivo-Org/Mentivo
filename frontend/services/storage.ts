@@ -20,7 +20,8 @@ export type StorageKey =
   | 'favouriteMentors'
   | 'referredByCode'
   | 'cachedSettings'
-  | 'pendingCallData';
+  | 'pendingCallData'
+  | 'pendingCallNavigation';
 
 export const storage = {
   getItem: (key: StorageKey) => AsyncStorage.getItem(key),
