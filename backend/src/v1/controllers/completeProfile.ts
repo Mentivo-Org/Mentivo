@@ -70,6 +70,7 @@ export const CompleteProfileMentor = async (req: Request, res: Response) => {
         where: {id: user?.id},
         data: {
             profile_completed: true,
+            isFreeAvailable: false,
             mentorProfile: {
                 upsert: {
                     create: {
@@ -131,7 +132,7 @@ export const CompleteProfileStudent = async (req: Request, res: Response) => {
 
     const prismaUser = await prisma.user.update({
       where: { id: user?.id, profile_completed: false },
-      data: { phone, grade, profile_completed: true },
+      data: { phone, grade, profile_completed: true, isFreeAvailable: true },
     });
 
     return res

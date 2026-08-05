@@ -1,11 +1,10 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  Alert,
   Platform,
   Linking,
 } from 'react-native';
@@ -57,74 +56,17 @@ const StudentSignupPage = () => {
   }>({ title: '', message: '' });
   const [alertVisible, setAlertVisible] = useState<boolean>(false);
 
-  // Extract referral code if passed from routing / deep linking
-  useEffect(() => {
-    const { referral_id } = route.params ?? {};
-    if (referral_id) {
-      setReferralCode(referral_id);
-    } else {
-      const checkStoredReferral = async () => {
-        try {
-          const storedCode = await storage.getItem('referredByCode');
-          if (storedCode) {
-            setReferralCode(storedCode);
-          }
-        } catch (err) {
-          console.error("Failed to load stored referral code:", err);
-        }
-      };
-      checkStoredReferral();
-    }
-  }, [route.params]);
-
+  // Detection itself happens at launch (services/referral.ts), so by the time this
+  // screen mounts the code is already persisted. This only resolves it — re-reading
+  // on focus rather than once on mount, in case it was captured after mount.
   useFocusEffect(
     useCallback(() => {
-      const checkReferralSources = async () => {
-        try {
-          let detectedCode: string | null = null;
-
-          // 1. Check Install Referrer (Android only)
-          if (Platform.OS === 'android') {
-            try {
-              const referrer = await Application.getInstallReferrerAsync();
-              if (referrer && referrer.includes('MENTIVO-')) {
-                const match = referrer.match(/MENTIVO-([A-Z0-9]+)/i);
-                if (match) {
-                  detectedCode = match[1];
-                }
-              }
-            } catch (err) {
-              console.error("Failed to get install referrer:", err);
-            }
-          }
-
-          // 2. Check Clipboard (Fallback for iOS or side-loaded)
-          if (!detectedCode) {
-            try {
-              const hasString = await Clipboard.hasStringAsync();
-              if (hasString) {
-                const content = await Clipboard.getStringAsync();
-                if (content.startsWith('MENTIVO-')) {
-                  detectedCode = content.replace('MENTIVO-', '').trim();
-                }
-              }
-            } catch (err) {
-              console.error("Failed to read clipboard:", err);
-            }
-          }
-
-          // 3. Silently save detected code
-          if (detectedCode && detectedCode !== referralCode) {
-            setReferralCode(detectedCode);
-            try {
-              await storage.setItem('referredByCode', detectedCode);
-            } catch (err) {
-              console.error("Failed to save referral code to storage:", err);
-            }
-          }
-
-        } catch (err) {
-          console.error("Error in checkReferralSources:", err);
+      const resolveReferralCode = async () => {
+        const { referral_id } = route.params ?? {};
+        if (referral_id) {
+          const saved = await saveReferralCode(referral_id, { force: true });
+          if (saved) setReferralCode(saved);
+          return;
         }
         const storedCode = await getStoredReferralCode();
         if (storedCode) setReferralCode(storedCode);

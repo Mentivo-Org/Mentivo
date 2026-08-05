@@ -21,6 +21,19 @@ export async function createTopupOrder(amountRupees: number, userId: string) {
   });
 }
 
+// Create a Razorpay order for voucher subscription
+export async function createVoucherOrder(amountRupees: number, userId: string, plan: string) {
+  const rawReceipt = `vouch_${userId}_${Date.now()}`;
+  const shortReceipt = "rcpt_"+crypto.createHash('md5').update(rawReceipt).digest('hex');
+  return rz.orders.create({
+    amount: amountRupees * 100,
+    currency: 'INR',
+    receipt: shortReceipt,
+    payment_capture: true,
+    notes: { userId, type: 'voucher', plan },
+  });
+}
+
 // Verify Razorpay payment signature after checkout
 export async function fetchPayment(paymentId: string) {
   return rz.payments.fetch(paymentId);

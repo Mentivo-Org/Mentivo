@@ -38,20 +38,35 @@ export const logout = async (req: Request, res: Response) => {
   return res.status(200).json({ message: "Logged out successfully" });
 };
 
+import { getCachedData, setCachedData, invalidateCache } from '../utils/cache.ts';
+
 export const whoAmI = async (req:Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+  const cacheKey = `user:profile:${userId}`;
+  const cachedUser = await getCachedData(cacheKey);
+
+  if (cachedUser) {
+    return res.status(200).json({ user: cachedUser });
+  }
+
   if (req.user?.role === 'mentor') {
     const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
+      where: { id: userId },
       include: { mentorProfile: true }
     });
     if (user?.mentorProfile && user.mentorProfile.verificationStatus !== 'VERIFIED') {
       user.mentorProfile.mentorlevel = null;
     }
+    if (user) await setCachedData(cacheKey, user, 300);
     return res.status(200).json({ user });
   }
-  return res.status(200).json({
-    user: req.user
-  })
+
+  const user = await prisma.user.findUnique({ where: { id: userId } }) || req.user;
+  await setCachedData(cacheKey, user, 300);
+  
+  return res.status(200).json({ user })
 }
 
 const checkEmailAndPhoneConflict = async (email: string, phone?: string) => {
@@ -282,6 +297,12 @@ export const loginWithEmail = async (req: Request, res: Response) => {
 export const handleNativeGoogle = async (req: Request, res: Response) => {
   const { idToken, role, mode, referredByReferralCode } = req.body;
 
+  if(!idToken) {
+    return res.status(401).json({
+      error: "Please complete the google authentication flow"
+    });
+  }
+
   const { data: sbData, error: sbError } =
     await supabaseAdmin.auth.signInWithIdToken({
       provider: "google",
@@ -387,15 +408,9 @@ export const verifyOtp = async (req: Request, res: Response) => {
           },
         });
       } else {
-        // If user was previously verified or profile already completed,
-        // they're a returning user — skip CompleteProfile
-        const isReturningUser = user.isEmailVerified === true || user.profile_completed === true;
         user = await prisma.user.update({
           where: { email },
-          data: {
-            isEmailVerified: true,
-            ...(isReturningUser && { profile_completed: true }),
-          },
+          data: { isEmailVerified: true },
         });
       }
     } catch (dbError) {
@@ -523,6 +538,8 @@ export const updateUserProfile = async (req: Request, res: Response) => {
         console.error("Failed to process referral bonus in background:", err);
       });
     }
+
+    await invalidateCache(`user:profile:${userId}`);
 
     return res.status(200).json({ success: true, user: updatedUser });
   } catch (err) {

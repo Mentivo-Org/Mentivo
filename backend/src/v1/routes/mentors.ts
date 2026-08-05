@@ -84,6 +84,8 @@ router.get('/top', async (req: Request, res: Response) => {
   }
 });
 
+import { getCachedData, setCachedData } from '../utils/cache.ts';
+
 // GET /api/mentors
 router.get('/', authenticateUser, async (req:Request, res:Response) => {
   try {
@@ -92,12 +94,34 @@ router.get('/', authenticateUser, async (req:Request, res:Response) => {
       return res.json([]);
     }
 
-    const mentors = await prisma.mentorProfile.findMany({
-      where: { mentorId: { in: availableIds } },
-      include: mentorInclude
-    });
-    
-    res.json(await formatMentorList(mentors));
+    // Try to get formatted mentors from cache
+    const finalMentors = [];
+    const cacheMisses = [];
+
+    for (const id of availableIds) {
+      const cached = await getCachedData<any>(`mentor:formatted:${id}`);
+      if (cached) {
+        finalMentors.push(cached);
+      } else {
+        cacheMisses.push(id);
+      }
+    }
+
+    if (cacheMisses.length > 0) {
+      const dbMentors = await prisma.mentorProfile.findMany({
+        where: { mentorId: { in: cacheMisses } },
+        include: mentorInclude
+      });
+      
+      const formattedMisses = await formatMentorList(dbMentors);
+      
+      for (const m of formattedMisses) {
+        await setCachedData(`mentor:formatted:${m.mentorId}`, m, 300); // 5 min TTL
+        finalMentors.push(m);
+      }
+    }
+
+    res.json(finalMentors);
   } catch (err) {
     res.status(500).json({ error: 'Internal Server Error' });
   }

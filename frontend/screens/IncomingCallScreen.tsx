@@ -11,11 +11,17 @@ import { socketManager } from '../services/socketManager';
 import { CallEndpoints } from '../constants/endpoint';
 import { requestMicrophonePermission } from '../services/permissions';
 import DialogBox from '../components/DialogBox';
+import { useCall } from '../context/CallContext';
 
 const IncomingCallScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { callId, channelName, callerName, callerPhoto } = route.params;
+  const { callId: activeCallId } = useCall();
+  // This call is already live in CallContext, so we were routed here in error.
+  // Mounting the ringing UI anyway would cancel the ongoing-call foreground
+  // service notification and POST /ringing against an active call.
+  const isAlreadyActive = !!activeCallId && activeCallId === callId;
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertData, setAlertData] = useState<{
     title: string;
@@ -24,6 +30,12 @@ const IncomingCallScreen = () => {
   }>({ title: '', message: '' });
 
   useEffect(() => {
+    if (isAlreadyActive) {
+      console.log('[IncomingCallScreen] Call is already active, redirecting to InCall');
+      navigation.replace('InCall', { callId, channelName, callerName, role: 'callee', mentorPhoto: callerPhoto });
+      return;
+    }
+
     // Keep screen on during incoming call
     InCallManager.setKeepScreenOn(true);
 
@@ -69,7 +81,7 @@ const IncomingCallScreen = () => {
       socketManager.off('call_status_changed', statusHandler);
       fcmSub.remove();
     };
-  }, [callId]);
+  }, [callId, isAlreadyActive]);
 
   const handleAccept = async () => {
     const hasPermission = await requestMicrophonePermission();

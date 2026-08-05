@@ -1,5 +1,4 @@
 import prisma from '../config/db.ts';
-import { getCachedAppSettings } from './cache.ts';
 
 export async function getMentorActiveRate(mentorId: string): Promise<{ ratePerMin: number; originalPrice: number | null }> {
   const profile = await prisma.mentorProfile.findUnique({
@@ -12,7 +11,11 @@ export async function getMentorActiveRate(mentorId: string): Promise<{ ratePerMi
 }
 
 export async function getMentorActiveRateByProfile(profile: any): Promise<{ ratePerMin: number; originalPrice: number | null }> {
-  const configMap = await getCachedAppSettings();
+  const settings = await prisma.appSetting.findMany();
+  const configMap = settings.reduce((acc: any, curr) => {
+    acc[curr.key] = curr.value;
+    return acc;
+  }, {});
 
   const level = profile.mentorlevel;
   if (!level) {
@@ -35,17 +38,19 @@ export async function getMentorActiveRateByProfile(profile: any): Promise<{ rate
 }
 
 export async function getFreeCallDurationMins(): Promise<number> {
-  const configMap = await getCachedAppSettings();
-  const value = configMap['free_call_duration_mins'];
-  if (!value || isNaN(Number(value))) {
+  const setting = await prisma.appSetting.findUnique({
+    where: { key: 'free_call_duration_mins' }
+  });
+  if (!setting || isNaN(Number(setting.value))) {
     return 5; // Default to 5 minutes
   }
-  return Number(value);
+  return Number(setting.value);
 }
 
 export async function isFreeCallEnabled(): Promise<boolean> {
-  const configMap = await getCachedAppSettings();
-  const value = configMap['free_call_enabled'];
-  if (value === undefined) return true; // Default to true if not set
-  return value !== 'false';
+  const setting = await prisma.appSetting.findUnique({
+    where: { key: 'free_call_enabled' }
+  });
+  if (!setting) return true; // Default to true if not set
+  return setting.value !== 'false';
 }

@@ -194,7 +194,7 @@ try {
     const { callId } = remoteMessage.data;
     await notifee.cancelNotification(callId);
     try {
-      await AsyncStorage.removeItem('pendingCallData');
+      await AsyncStorage.multiRemove(['pendingCallData', 'pendingCallNavigation']);
     } catch (e) {
       console.error('Failed to remove pending call data:', e);
     }
@@ -205,7 +205,7 @@ try {
     if (status === 'rejected' || status === 'missed' || status === 'completed' || status === 'cancelled') {
       await notifee.cancelNotification(callId);
       try {
-        await AsyncStorage.removeItem('pendingCallData');
+        await AsyncStorage.multiRemove(['pendingCallData', 'pendingCallNavigation']);
       } catch (e) {
         console.error('Failed to remove pending call data:', e);
       }
@@ -220,11 +220,31 @@ try {
 notifee.onBackgroundEvent(async ({ type, detail }) => {
   const { notification, pressAction } = detail;
 
+  if (type === EventType.PRESS) {
+    // A body press only launches the activity — it carries no routing info into
+    // JS. Record the intent so the AppState 'active' handler can route it.
+    // Without this the resume handler has to guess from the notification shade,
+    // which is how an *ongoing* call used to get mistaken for an incoming one.
+    const data = notification?.data || {};
+    if (data.screen === 'InCall' && data.callId) {
+      await AsyncStorage.setItem('pendingCallNavigation', JSON.stringify({ screen: 'InCall', ...data }));
+    } else if (data.type === 'incoming_call_v2' && data.callId) {
+      await AsyncStorage.setItem('pendingCallNavigation', JSON.stringify({ screen: 'IncomingCall', ...data }));
+    }
+  }
+
   if (type === EventType.ACTION_PRESS) {
     if (pressAction.id === 'accept') {
       console.log('User accepted call from background');
       const { callId, channelName, callerName, callerPhoto } = notification.data;
       await AsyncStorage.setItem('pendingCallData', JSON.stringify({ callId, channelName, callerName, callerPhoto }));
+      // Drop the ringing notification immediately: it stays in the shade while the
+      // activity launches, and a second Accept press would re-enter the call flow.
+      try {
+        await notifee.cancelNotification(notification.id);
+      } catch (e) {
+        console.error('Failed to cancel incoming call notification on accept:', e);
+      }
       // App will be launched by launchActivity: 'default'
     } else if (pressAction.id === 'reject') {
       console.log('User rejected call from background');
@@ -244,6 +264,13 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
         console.error('Failed to end call in background:', error);
       }
       await notifee.cancelNotification(notification.id);
+      // cancelNotification alone does not always tear down the foreground service
+      // backing an ongoing-call notification.
+      try {
+        await notifee.stopForegroundService();
+      } catch (e) {
+        console.error('Failed to stop foreground service:', e);
+      }
       DeviceEventEmitter.emit('end_active_call');
     }
   }

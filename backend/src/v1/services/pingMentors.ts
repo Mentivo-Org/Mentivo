@@ -2,7 +2,6 @@ import admin from '../config/firebase.ts';
 import prisma from '../config/db.ts';
 import redis from '../config/redis.ts';
 import { getAvailableMentors } from './presence.ts';
-import { setOffline } from './presence.ts';
 
 export async function pingOnlineMentors() {
     try {
@@ -21,7 +20,6 @@ export async function pingOnlineMentors() {
         }
 
         const now = new Date();
-        // Shift to IST for date matching if necessary (but assuming server timezone handles it for now)
         const dateStr = now.toISOString().split('T')[0];
         const hour = now.getHours(); 
         const timeSlot = `${hour}h`; 
@@ -71,7 +69,6 @@ export async function checkMentorPings() {
             const pingData = await redis.hgetall(key);
             
             // If they didn't respond to ANY of the pings sent to them
-            // We check if there's any 'responded' value.
             const hasResponded = Object.values(pingData).some(status => status === 'responded');
 
             if (!hasResponded) {
@@ -175,7 +172,10 @@ export async function checkManualPings() {
 
                 if (mentor && mentor.isOnline) {
                     console.log(`[PingMentors] Mentor ${mentorId} failed manual ping. Marking offline.`);
-                    await setOffline(mentorId);
+                    await prisma.mentorProfile.update({
+                        where: { mentorId },
+                        data: { isOnline: false }
+                    });
 
                     const tokens = mentor.user?.fcmTokens?.map(t => t.token) || [];
                     if (tokens.length > 0 && admin.apps.length) {
