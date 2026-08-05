@@ -12,6 +12,7 @@ import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { storage } from '../services/storage';
 import { saveReferralCode } from '../services/referral';
 import { PartnerEndpoints, MentorEndpoints, websiteUrl } from '../constants/endpoint';
 import api from '../services/api';
@@ -64,6 +65,7 @@ const LandingPage = () => {
           const response = await api.post(PartnerEndpoints.validate, { code: referral_id });
           hideLoading();
           if (response.data.valid) {
+            await storage.setItem('referredByCode', referral_id);
             setAlertData({
               title: "Success",
               message: "Referral code applied successfully, please login"

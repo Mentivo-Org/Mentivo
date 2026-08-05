@@ -1,11 +1,11 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  Alert,
+  Platform,
   Linking,
 } from 'react-native';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -105,6 +105,14 @@ const StudentSignupPage = () => {
 
       const { data } = response;
       hideLoading();
+      
+      if (referralCode) {
+        try {
+          await storage.removeItem('referredByCode');
+        } catch (e) {
+          console.error("Failed to remove referredByCode from storage:", e);
+        }
+      }
 
       if (data.requiresVerification) {
         navigation.navigate("SendOtp", { email: email, name: fullName, role: "student", phone });
@@ -138,6 +146,13 @@ const StudentSignupPage = () => {
         })
         hideLoading();
         if (response.status === 202) {
+          if (referralCode) {
+            try {
+              await storage.removeItem('referredByCode');
+            } catch (e) {
+              console.error("Failed to remove referredByCode from storage:", e);
+            }
+          }
           await storage.setItem('accessToken', response.data.accessToken);
           await storage.setItem('refreshToken', response.data.refreshToken);
           await setUser(response.data.user);

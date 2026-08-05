@@ -256,51 +256,39 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      const anchoredElapsed = durationAnchorRef.current?.serverElapsedSecs ?? 0;
-      const ongoingNotification = {
-        id: activeCallId,
-        title: 'Call in Progress',
-        body: `Connected with ${currentCallerName || 'Mentorship Session'}`,
-        android: {
-          channelId: ONGOING_CALL_CHANNEL,
-          smallIcon: 'notification_icon',
-          color: '#0077CB',
-          ongoing: true,
-          asForegroundService: true,
-          foregroundServiceTypes: [AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_MICROPHONE],
-          onlyAlertOnce: true,
-          pressAction: { id: 'default', launchActivity: 'default' },
-          actions: [
-            {
-              title: 'End Call',
-              pressAction: {
-                id: 'end_call',
-                // Bring the app forward so the user lands on their post-call
-                // screen (RatingScreen for the caller, Home otherwise) instead of
-                // the call silently ending behind a backgrounded app.
-                launchActivity: 'default',
-              },
-            },
-          ],
-          showChronometer: true,
-          // Counts from the true call start when we already know it; corrected in
-          // place by refreshOngoingNotificationTimestamp once the server responds.
-          timestamp: Date.now() - anchoredElapsed * 1000,
-        },
-        data: {
-          callId: String(activeCallId || ''),
-          channelName: String(currentChannelName || ''),
-          callerName: String(currentCallerName || ''),
-          role: String(currentRole || ''),
-          initialToken: String(currentToken || ''),
-          mentorPhoto: String(currentMentorPhoto || ''),
-          screen: 'InCall'
-        },
-      };
-      ongoingNotificationRef.current = ongoingNotification;
-
       try {
-        await notifee.displayNotification(ongoingNotification as any);
+        await notifee.displayNotification({
+          id: activeCallId,
+          title: 'Call in Progress',
+          body: `Connected with ${currentCallerName || 'Mentorship Session'}`,
+          android: {
+            channelId: ONGOING_CALL_CHANNEL,
+            ongoing: true,
+            asForegroundService: true,
+            foregroundServiceTypes: [AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_MICROPHONE],
+            onlyAlertOnce: true,
+            pressAction: { id: 'default', launchActivity: 'default' },
+            actions: [
+              {
+                title: 'End Call',
+                pressAction: {
+                  id: 'end_call',
+                },
+              },
+            ],
+            showChronometer: true,
+            timestamp: Date.now(),
+          },
+          data: { 
+            callId: String(activeCallId || ''), 
+            channelName: String(currentChannelName || ''), 
+            callerName: String(currentCallerName || ''), 
+            role: String(currentRole || ''), 
+            initialToken: String(currentToken || ''), 
+            mentorPhoto: String(currentMentorPhoto || ''), 
+            screen: 'InCall' 
+          },
+        });
       } catch (e) {
         console.error('Failed to show ongoing call notification:', e);
       }
