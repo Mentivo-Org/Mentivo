@@ -1,5 +1,5 @@
-export const baseUrl = 'http://192.168.29.18:8080/api';
-// export const baseUrl = 'https://dev.mentivo.in/api';
+// export const baseUrl = 'http://192.168.29.18:8080/api';
+export const baseUrl = 'https://dev.mentivo.in/api';
 // export const baseUrl = 'https://app.mentivo.in/api';
 
 export const websiteUrl = baseUrl.includes('localhost')
