@@ -156,26 +156,20 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const registerAgoraListeners = (engine: any, activeCallId: string, currentRole: 'caller' | 'callee', currentChannelName: string, currentToken: string, currentCallerName: string, currentMentorPhoto: string | null, resolvedChatSessionId: string | null) => {
     engine.removeAllListeners();
     
-    engine.addListener('onJoinChannelSuccess', async (_connection: any, _elapsed: number) => {
-      console.log('[Agora Context] Joined channel successfully');
-      setIsConnected(true);
-
-      if (resolvedChatSessionId) {
-        try {
-          await chatSessionManager.linkChatToCall(resolvedChatSessionId, activeCallId);
-          console.log('[Agora Context] Linked chat session to call session');
-        } catch (e) {
-          console.error('Failed to link chat to call:', e);
-        }
-      }
-
+    const updateOngoingNotification = async (status: string) => {
       try {
+        const isWaiting = status === 'calling';
+        const title = isWaiting ? `Calling ${currentCallerName || 'Mentor'}` : `Call with ${currentCallerName || 'Mentor'}`;
+        const body = isWaiting ? 'Please wait...' : 'Ongoing mentorship session';
+
         await notifee.displayNotification({
           id: activeCallId,
-          title: 'Call in Progress',
-          body: `Connected with ${currentCallerName || 'Mentorship Session'}`,
+          title,
+          body,
           android: {
             channelId: ONGOING_CALL_CHANNEL,
+            smallIcon: 'notification_icon',
+            color: '#0077CB',
             ongoing: true,
             asForegroundService: true,
             foregroundServiceTypes: [AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_MICROPHONE],
@@ -189,7 +183,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 },
               },
             ],
-            showChronometer: true,
+            showChronometer: !isWaiting,
             timestamp: Date.now(),
           },
           data: { 
@@ -205,6 +199,23 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (e) {
         console.error('Failed to show ongoing call notification:', e);
       }
+    };
+
+    engine.addListener('onJoinChannelSuccess', async (_connection: any, _elapsed: number) => {
+      console.log('[Agora Context] Joined channel successfully');
+      setIsConnected(true);
+
+      if (resolvedChatSessionId) {
+        try {
+          await chatSessionManager.linkChatToCall(resolvedChatSessionId, activeCallId);
+          console.log('[Agora Context] Linked chat session to call session');
+        } catch (e) {
+          console.error('Failed to link chat to call:', e);
+        }
+      }
+
+      const initialStatus = currentRole === 'caller' ? 'calling' : 'active';
+      await updateOngoingNotification(initialStatus);
 
       if (currentRole === 'callee') {
         setCallStatus('active');
@@ -217,6 +228,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('[Agora Context] Remote user joined');
       setCallStatus('active');
       startTimer();
+      updateOngoingNotification('active');
     });
 
     engine.addListener('onUserOffline', (_connection: any, _remoteUid: any, _reason: any) => {
@@ -227,6 +239,14 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     engine.addListener('onError', (err: any, msg: string) => {
       console.error('[Agora Context] Error:', err, msg);
       endCallSession(true);
+    });
+
+    engine.addListener('onLocalAudioStateChanged', (_connection: any, state: any, error: any) => {
+      console.log(`[Agora Context] Local audio state changed: state=${state}, error=${error}`);
+    });
+    
+    engine.addListener('onRemoteAudioStateChanged', (_connection: any, remoteUid: any, state: any, reason: any, elapsed: any) => {
+      console.log(`[Agora Context] Remote audio state changed for uid ${remoteUid}: state=${state}, reason=${reason}`);
     });
   };
 
@@ -351,8 +371,10 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (activeCallId) {
       try {
         await notifee.cancelNotification(activeCallId);
+        await notifee.stopForegroundService();
+        console.log('[endCallSession] Stopped foreground service and cancelled notification');
       } catch (e) {
-        console.error('Failed to cancel ongoing notification:', e);
+        console.error('Failed to cancel ongoing notification/foreground service:', e);
       }
     }
 
@@ -427,6 +449,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
         notifee.cancelNotification(activeCallId).catch(err =>
           console.error('Failed to cancel notification:', err)
         );
+        notifee.stopForegroundService();
         endCallSession(false, data.status);
       } else if (data.status === 'ringing' && callStatusRef.current === 'calling') {
         console.log('[Socket/FCM Context] Mentor phone is ringing');

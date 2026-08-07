@@ -712,14 +712,27 @@ export default function RootNavigator() {
         const callNotif = displayed.find(n => n.notification.data?.type === 'incoming_call_v2' || !!n.notification.data?.callId);
 
         if (callNotif && callNotif.notification.data?.callId) {
-          console.log("[AppState] Found active call notification, opening IncomingCall screen");
-          const { callId, channelName, callerName, callerPhoto } = callNotif.notification.data as any;
-          navigate("IncomingCall", {
-            callId,
-            channelName,
-            callerName,
-            callerPhoto,
-          });
+          const { callId, channelName, callerName, callerPhoto, screen, role, initialToken } = callNotif.notification.data as any;
+          
+          if (screen === 'InCall') {
+            console.log("[AppState] Found active call notification, returning to InCall screen");
+            navigate("InCall", {
+              callId,
+              channelName,
+              callerName,
+              role,
+              initialToken,
+              mentorPhoto: callerPhoto,
+            });
+          } else {
+            console.log("[AppState] Found incoming call notification, opening IncomingCall screen");
+            navigate("IncomingCall", {
+              callId,
+              channelName,
+              callerName,
+              callerPhoto,
+            });
+          }
         }
       }
     };

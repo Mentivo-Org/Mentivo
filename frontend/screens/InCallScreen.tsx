@@ -44,8 +44,14 @@ const InCallScreen = () => {
     onClose?: () => void;
   }>({ title: '', message: '' });
 
+  const isInitialMount = React.useRef(true);
+
   useFocusEffect(
     React.useCallback(() => {
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        return;
+      }
       if ((!callStatus || callStatus === 'ended') && callId !== activeCallId) {
         console.log('[InCallScreen] Stale screen detected, redirecting to Home');
         resetToScreen('Main', { screen: 'Home' });

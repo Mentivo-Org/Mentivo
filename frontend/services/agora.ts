@@ -30,14 +30,17 @@ export const getAgoraEngine = () => {
 export const joinChannel = async (token: string, channelName: string, uid: number | string) => {
   const rtcEngine = getAgoraEngine();
   
-  // Start InCallManager for audio session management
-  InCallManager.start({ media: 'audio' });
+  console.log('[Agora] Enabling audio and configuring options...');
+  rtcEngine.enableAudio();
+  rtcEngine.enableLocalAudio(true);
   
   const options = {
     clientRoleType: ClientRoleType.ClientRoleBroadcaster,
     publishMicrophoneTrack: true,
     autoSubscribeAudio: true,
   };
+  
+  console.log('[Agora] Joining channel with options:', options);
 
   if (typeof uid === 'number') {
     return rtcEngine.joinChannel(token, channelName, uid, options);
@@ -49,7 +52,6 @@ export const joinChannel = async (token: string, channelName: string, uid: numbe
 export const leaveChannel = () => {
   if (engine) {
     engine.leaveChannel();
-    InCallManager.stop();
   }
 };
 
@@ -61,5 +63,8 @@ const releaseAgoraEngine = () => {
 };
 
 export const setSpeakerphoneOn = (isOn: boolean) => {
-  InCallManager.setSpeakerphoneOn(isOn);
+  if (engine) {
+    console.log(`[Agora] Setting speakerphone to: ${isOn}`);
+    engine.setEnableSpeakerphone(isOn);
+  }
 };

@@ -11,3 +11,6 @@ allowBuilds:
   protobufjs: true
   sharp: true
   unrs-resolver: true
+nodeLinker: hoisted
+virtualStoreDirMaxLength: 50
+virtualStoreDir: C:/p
